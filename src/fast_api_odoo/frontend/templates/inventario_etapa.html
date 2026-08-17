@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', path='css/inicio.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/inventario-etapas.css') }}">
+{% endblock %}
+
+{% block title %}{{ stage.name }} - Inventário{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">Inventário</p>
+                <h1>{{ stage.name }}</h1>
+                <p>Registros pendentes nesta etapa.</p>
+            </div>
+            <a class="logout-button" href="/inventario">Todas as etapas</a>
+        </header>
+
+        <section class="records-panel" aria-live="polite">
+            <p id="stageStatus">Carregando registros do Odoo...</p>
+            <ul id="stageRecordList" class="stage-record-list"></ul>
+        </section>
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const inventoryStage = {{ stage.key | tojson }};
+    </script>
+    <script src="{{ url_for('static', path='js/inventario-etapas.js') }}"></script>
+{% endblock %}

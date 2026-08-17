@@ -1,0 +1,19 @@
+[project]
+name = "fast-api-odoo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "gitgabrielrodri", email = "gabriel.rodrigues@indufix.com.br" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+]
+
+[project.scripts]
+fast-api-odoo = "fast_api_odoo:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"

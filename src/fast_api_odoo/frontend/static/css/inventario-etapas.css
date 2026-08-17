@@ -1,0 +1,101 @@
+.stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.stage-card {
+    position: relative;
+    display: flex;
+    min-height: 150px;
+    padding: 20px;
+    border: 1px solid var(--odoo-border);
+    border-left: 4px solid var(--odoo-purple);
+    border-radius: 2px;
+    background: var(--odoo-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: var(--odoo-text);
+    flex-direction: column;
+    text-decoration: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stage-card:hover {
+    border-color: var(--odoo-purple-hover);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16);
+}
+
+.stage-card:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.stage-number {
+    color: var(--odoo-purple);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.stage-card h2 {
+    margin: 14px 0 0;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.stage-action {
+    margin-top: auto;
+    padding-top: 16px;
+    color: var(--odoo-purple);
+    font-size: 13px;
+}
+
+.records-panel {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 2px;
+    background: var(--odoo-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+#stageStatus {
+    margin: 0 0 14px;
+    color: var(--odoo-muted);
+}
+
+.stage-record-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stage-record-list li {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(180px, 2fr) auto;
+    gap: 16px;
+    padding: 14px 0;
+    border-top: 1px solid #eeeeee;
+    font-size: 14px;
+}
+
+.stage-record-list strong {
+    color: var(--odoo-purple);
+}
+
+.stage-record-list span {
+    color: var(--odoo-muted);
+}
+
+@media (max-width: 640px) {
+    .stage-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stage-record-list li {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+}

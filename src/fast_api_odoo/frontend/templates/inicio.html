@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', path='css/inicio.css') }}">
+{% endblock %}
+
+{% block title %}Início - FastAPI Odoo{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">FastAPI Odoo</p>
+                <h1>Modelos do Odoo</h1>
+                <p>Selecione uma área para consultar os dados.</p>
+            </div>
+            <form action="/logout" method="post">
+                <button class="logout-button" type="submit">Sair</button>
+            </form>
+        </header>
+
+        <section class="module-grid" aria-label="Módulos do Odoo">
+            {% for module in modules %}
+                <a class="module-card" href="{{ module.route or '/modelos/' ~ module.model }}">
+                    <h2>{{ module.name }}</h2>
+                    <p>{{ module.description }}</p>
+                    <span>{{ module.model }}</span>
+                </a>
+            {% endfor %}
+        </section>
+    </main>
+{% endblock %}

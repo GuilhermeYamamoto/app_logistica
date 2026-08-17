@@ -1,0 +1,424 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+
+    --background: #f3f6fb;
+    --card: #ffffff;
+
+    --text: #172033;
+    --text-secondary: #667085;
+
+    --border: #d9dee8;
+
+    --danger: #dc2626;
+    --success: #16a34a;
+}
+
+body {
+    min-height: 100vh;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: var(--background);
+    color: var(--text);
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+.login-page {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+}
+
+
+.login-card {
+    width: 100%;
+    max-width: 440px;
+
+    padding: 40px;
+
+    background: var(--card);
+
+    border: 1px solid #e6eaf0;
+    border-radius: 16px;
+
+    box-shadow:
+        0 20px 50px rgba(16, 24, 40, 0.08);
+}
+
+
+/* =========================
+   BRAND
+========================= */
+
+.brand {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-bottom: 36px;
+}
+
+
+.brand-logo {
+    width: 46px;
+    height: 46px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: var(--primary);
+
+    color: white;
+
+    font-size: 22px;
+    font-weight: 700;
+}
+
+
+.brand h1 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+
+.brand span {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--text-secondary);
+
+    font-size: 13px;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.login-header {
+    margin-bottom: 28px;
+}
+
+
+.login-header h2 {
+    margin-bottom: 8px;
+
+    font-size: 25px;
+    line-height: 1.3;
+}
+
+
+.login-header p {
+    color: var(--text-secondary);
+
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+
+/* =========================
+   FORM
+========================= */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+
+.form-group label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+.password-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+.password-label a {
+    color: var(--primary);
+
+    font-size: 13px;
+    text-decoration: none;
+}
+
+
+.password-label a:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================
+   INPUTS
+========================= */
+
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    height: 48px;
+
+    padding: 0 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    outline: none;
+
+    background: #ffffff;
+
+    color: var(--text);
+
+    font-size: 14px;
+
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+}
+
+
+input::placeholder {
+    color: #98a2b3;
+}
+
+
+input[type="email"]:focus,
+input[type="password"]:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+
+/* =========================
+   PASSWORD
+========================= */
+
+.password-wrapper {
+    position: relative;
+}
+
+
+.password-wrapper input {
+    padding-right: 50px;
+}
+
+
+.toggle-password {
+    position: absolute;
+
+    top: 50%;
+    right: 8px;
+
+    width: 36px;
+    height: 36px;
+
+    transform: translateY(-50%);
+
+    border: 0;
+    border-radius: 6px;
+
+    background: transparent;
+
+    cursor: pointer;
+
+    opacity: 0.65;
+}
+
+
+.toggle-password:hover {
+    background: #f2f4f7;
+
+    opacity: 1;
+}
+
+
+/* =========================
+   OPTIONS
+========================= */
+
+.form-options {
+    margin-bottom: 22px;
+}
+
+
+.remember {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    color: var(--text-secondary);
+
+    font-size: 13px;
+
+    cursor: pointer;
+}
+
+
+.remember input {
+    width: 16px;
+    height: 16px;
+
+    accent-color: var(--primary);
+
+    cursor: pointer;
+}
+
+
+/* =========================
+   BUTTON
+========================= */
+
+.login-button {
+    width: 100%;
+    height: 48px;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: var(--primary);
+    color: white;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s,
+        transform 0.1s;
+}
+
+
+.login-button:hover {
+    background: var(--primary-hover);
+}
+
+
+.login-button:active {
+    transform: scale(0.99);
+}
+
+
+.login-button:disabled {
+    opacity: 0.7;
+
+    cursor: not-allowed;
+}
+
+
+/* =========================
+   MESSAGES
+========================= */
+
+.message {
+    padding: 11px 12px;
+
+    margin-bottom: 16px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+}
+
+
+.message.error {
+    background: #fef2f2;
+
+    color: var(--danger);
+}
+
+
+.message.success {
+    background: #f0fdf4;
+
+    color: var(--success);
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+.login-footer {
+    display: flex;
+    justify-content: space-between;
+
+    margin-top: 30px;
+    padding-top: 20px;
+
+    border-top: 1px solid #eef1f5;
+
+    color: #98a2b3;
+
+    font-size: 11px;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 480px) {
+
+    .login-page {
+        padding: 16px;
+    }
+
+
+    .login-card {
+        padding: 28px 22px;
+
+        border-radius: 12px;
+    }
+
+
+    .brand {
+        margin-bottom: 28px;
+    }
+
+
+    .login-header h2 {
+        font-size: 22px;
+    }
+
+
+    .login-footer {
+        flex-direction: column;
+
+        gap: 6px;
+    }
+}

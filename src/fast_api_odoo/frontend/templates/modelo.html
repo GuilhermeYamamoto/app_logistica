@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', path='css/inicio.css') }}">
+{% endblock %}
+
+{% block title %}{{ module.name }} - FastAPI Odoo{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">{{ module.model }}</p>
+                <h1>{{ module.name }}</h1>
+                <p>{{ module.description }}</p>
+            </div>
+            <a class="logout-button" href="/inicio">Voltar</a>
+        </header>
+
+        <section class="module-card" aria-live="polite">
+            <h2>Registros recentes</h2>
+            <p id="modelStatus">Carregando dados do Odoo...</p>
+            <ul id="recordList"></ul>
+        </section>
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const model = {{ module.model | tojson }};
+    </script>
+    <script src="{{ url_for('static', path='js/modelo.js') }}"></script>
+{% endblock %}
