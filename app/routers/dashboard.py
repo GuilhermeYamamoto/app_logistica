@@ -15,12 +15,7 @@ templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 MODULES = [
     ModuleInfo(name="Vendas", model="sale.order", description="Pedidos e cotações"),
     ModuleInfo(name="Compras", model="purchase.order", description="Pedidos a fornecedores"),
-    ModuleInfo(
-        name="Inventário",
-        model="stock.picking",
-        description="Transferências e entregas",
-        route="/inventory",
-    ),
+    ModuleInfo(name="Inventário", model="stock.picking", description="Transferências e entregas", route="/inventario"),
     ModuleInfo(name="Produtos", model="product.template", description="Catálogo de produtos"),
     ModuleInfo(name="Contatos", model="res.partner", description="Clientes e fornecedores"),
 ]
