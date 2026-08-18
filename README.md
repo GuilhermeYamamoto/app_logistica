@@ -255,40 +255,19 @@ client.execute(
 )
 ```
 
-### Template especifico por etapa
+### Recebimento de Qualidade
 
-Cada item de `INVENTORY_STAGES` possui o campo `template`. A rota da etapa
-usa esse campo para decidir qual arquivo HTML renderizar.
+A tela `/recebimento-qualidade` obtém os dados reais em:
 
-Por exemplo, **Recebimento Qualidade** usa `inventario3.html`:
-
-```py
-{
-    "key": "recebimento-qualidade",
-    "name": "Recebimento Qualidade",
-    "template": "inventario3.html",
-}
+```http
+GET /api/recebimento-qualidade/pickings
 ```
 
-Portanto, o cartao dessa etapa abre:
-
-```text
-/inventario/etapas/recebimento-qualidade
-```
-
-e a rota renderiza `frontend/templates/inventario3.html`.
-
-As outras etapas usam provisoriamente `inventario_etapa.html`. Para atribuir
-um template proprio a uma delas, crie o HTML em `frontend/templates/` e altere
-somente o valor de `template`:
-
-```py
-{
-    "key": "separacao",
-    "name": "Separação",
-    "template": "separacao.html",
-}
-```
+A API consulta `stock.picking` com `picking_type_id = 137`, exclui registros
+cancelados e busca as respectivas linhas em `stock.move`. A resposta contém
+fornecedor, referência, produtos e as quantidades esperada e recebida para
+cada picking. O navegador carrega esse endpoint na abertura da tela; os dados
+de demonstração não são usados.
 
 ## Rotas
 
@@ -298,6 +277,8 @@ somente o valor de `template`:
 | GET | `/login` | Exibe o formulario de login |
 | POST | `/login` | Autentica no Odoo e cria a sessao |
 | POST | `/logout` | Remove a sessao e redireciona para login |
+| GET | `/recebimento-qualidade` | Exibe a tela de recebimento de qualidade |
+| GET | `/api/recebimento-qualidade/pickings` | Lista os pickings do tipo 137 |
 | GET | `/inicio` | Exibe os modulos disponiveis |
 | GET | `/inventario` | Exibe as etapas de Inventario |
 | GET | `/inventario/etapas/{stage_key}` | Renderiza o template da etapa |

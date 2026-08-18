@@ -3,91 +3,7 @@
 ========================================================= */
 
 
-/* =========================================================
-   DADOS DE TESTE
-========================================================= */
-
-let orders = [
-    {
-        id: 1,
-        pv: "PV-100245",
-        client: "MERCADO CENTRAL",
-        product: "CAIXA ORGANIZADORA",
-        expectedQuantity: 120,
-        receivedQuantity: 120,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 2,
-        pv: "PV-100246",
-        client: "LOJA NOVA ERA",
-        product: "KIT DE FERRAMENTAS",
-        expectedQuantity: 80,
-        receivedQuantity: 80,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 3,
-        pv: "PV-100247",
-        client: "DISTRIBUIDORA BRASIL",
-        product: "GARRAFA TÉRMICA",
-        expectedQuantity: 50,
-        receivedQuantity: 50,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 4,
-        pv: "PV-100248",
-        client: "CASA & CIA",
-        product: "ORGANIZADOR PLÁSTICO",
-        expectedQuantity: 200,
-        receivedQuantity: 200,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 5,
-        pv: "PV-100249",
-        client: "COMERCIAL ALIANÇA",
-        product: "LÂMPADA LED",
-        expectedQuantity: 150,
-        receivedQuantity: 150,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    }
-];
+let orders = [];
 
 
 /* =========================================================
@@ -151,9 +67,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupQuantityValidation();
 
-    render();
+    loadOrders();
 
 });
+
+
+async function loadOrders() {
+
+    try {
+
+        const response =
+            await fetch("/api/recebimento-qualidade/pickings");
+
+        if (!response.ok) {
+
+            throw new Error("Não foi possível carregar os recebimentos.");
+
+        }
+
+        const data =
+            await response.json();
+
+        orders = data.records.map(order => ({
+            ...order,
+            photos: [null, null, null],
+            packageConfirmed: false,
+            qualityAlert: null
+        }));
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "Não foi possível carregar os recebimentos do Odoo.",
+            "!"
+        );
+
+    }
+
+    render();
+
+}
 
 
 /* =========================================================
