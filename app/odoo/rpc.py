@@ -1,8 +1,7 @@
 import xmlrpc.client
+from typing import Any, Optional
 
-
-class AuthenticationError(Exception):
-    pass
+from app.core.exceptions import AuthenticationError
 
 
 class OdooRPC:
@@ -20,7 +19,7 @@ class OdooRPC:
         self.password = None
         self.db = None
 
-    def authenticate(self, db: str, username: str, password: str) -> int | None:
+    def authenticate(self, db: str, username: str, password: str) -> Optional[int]:
         """
         Autentica o usuário no servidor Odoo e armazena o ID do usuário (uid).
         """
@@ -39,7 +38,7 @@ class OdooRPC:
         self.uid = uid
         self.password = password
 
-    def execute(self, model: str, method: str, *args, **kwargs) -> any:
+    def execute(self, model: str, method: str, *args, **kwargs) -> Any:
         """
         Executa um método no modelo Odoo especificado.
         """

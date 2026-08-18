@@ -6,13 +6,17 @@ readme = "README.md"
 authors = [
     { name = "gitgabrielrodri", email = "gabriel.rodrigues@indufix.com.br" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.8"
 dependencies = [
-    "fastapi[standard]>=0.141.1",
+    "fastapi>=0.104.0",
+    "jinja2>=3.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "uvicorn[standard]>=0.24.0",
 ]
 
 [project.scripts]
-fast-api-odoo = "fast_api_odoo:main"
+fast-api-odoo = "app.main:app"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
