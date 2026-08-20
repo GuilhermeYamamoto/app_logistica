@@ -8,6 +8,15 @@
     padding: 0;
 }
 
+.brand-icon,
+.brand-icon:hover,
+.brand-icon:focus,
+.brand-icon:active,
+.brand-icon:visited {
+    text-decoration: none;
+    font-size: px;
+}
+
 :root {
     --blue: #A44389;
     --blue-dark: #003db5;
