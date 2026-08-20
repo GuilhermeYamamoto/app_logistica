@@ -1,93 +1,9 @@
 /* =========================================================
-   RECEBIMENTO QUALIDADE - V5
+   RECEBIMENTO QUALIDADE - V6
 ========================================================= */
 
 
-/* =========================================================
-   DADOS DE TESTE
-========================================================= */
-
-let orders = [
-    {
-        id: 1,
-        pv: "PV-100245",
-        client: "MERCADO CENTRAL",
-        product: "CAIXA ORGANIZADORA",
-        expectedQuantity: 120,
-        receivedQuantity: 120,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 2,
-        pv: "PV-100246",
-        client: "LOJA NOVA ERA",
-        product: "KIT DE FERRAMENTAS",
-        expectedQuantity: 80,
-        receivedQuantity: 80,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 3,
-        pv: "PV-100247",
-        client: "DISTRIBUIDORA BRASIL",
-        product: "GARRAFA TÉRMICA",
-        expectedQuantity: 50,
-        receivedQuantity: 50,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 4,
-        pv: "PV-100248",
-        client: "CASA & CIA",
-        product: "ORGANIZADOR PLÁSTICO",
-        expectedQuantity: 200,
-        receivedQuantity: 200,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    },
-
-    {
-        id: 5,
-        pv: "PV-100249",
-        client: "COMERCIAL ALIANÇA",
-        product: "LÂMPADA LED",
-        expectedQuantity: 150,
-        receivedQuantity: 150,
-
-        photos: [null, null, null],
-
-        packageConfirmed: false,
-        validated: false,
-
-        qualityAlert: null
-    }
-];
+let orders = [];
 
 
 /* =========================================================
@@ -151,9 +67,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupQuantityValidation();
 
-    render();
+    loadOrders();
 
 });
+
+
+async function loadOrders() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/recebimento-qualidade/pickings"
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Não foi possível carregar os recebimentos."
+            );
+
+        }
+
+        const data =
+            await response.json();
+
+        orders = data.records.map(order => ({
+
+            ...order,
+
+            photos: [
+                null,
+                null,
+                null
+            ],
+
+            packageConfirmed: false,
+
+            qualityAlert: null
+
+        }));
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "Não foi possível carregar os recebimentos do Odoo.",
+            "!"
+        );
+
+    }
+
+    render();
+
+}
 
 
 /* =========================================================
@@ -163,24 +131,35 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupDashboard() {
 
     const cards =
-        document.querySelectorAll(".dashboard-card");
+        document.querySelectorAll(
+            ".dashboard-card"
+        );
 
     cards.forEach(card => {
 
-        card.addEventListener("click", () => {
+        card.addEventListener(
+            "click",
+            () => {
 
-            currentFilter =
-                card.dataset.filter;
+                currentFilter =
+                    card.dataset.filter;
 
-            cards.forEach(item => {
-                item.classList.remove("active");
-            });
+                cards.forEach(item => {
 
-            card.classList.add("active");
+                    item.classList.remove(
+                        "active"
+                    );
 
-            render();
+                });
 
-        });
+                card.classList.add(
+                    "active"
+                );
+
+                render();
+
+            }
+        );
 
     });
 
@@ -193,34 +172,43 @@ function setupDashboard() {
 
 function setupSearch() {
 
-    searchInput.addEventListener("input", () => {
+    searchInput.addEventListener(
+        "input",
+        () => {
 
-        searchTerm =
-            searchInput.value
-                .trim()
-                .toLowerCase();
+            searchTerm =
+                searchInput.value
+                    .trim()
+                    .toLowerCase();
 
-        clearSearch.style.display =
-            searchTerm ? "block" : "none";
+            clearSearch.style.display =
+                searchTerm
+                    ? "block"
+                    : "none";
 
-        render();
+            render();
 
-    });
+        }
+    );
 
 
-    clearSearch.addEventListener("click", () => {
+    clearSearch.addEventListener(
+        "click",
+        () => {
 
-        searchInput.value = "";
+            searchInput.value = "";
 
-        searchTerm = "";
+            searchTerm = "";
 
-        clearSearch.style.display = "none";
+            clearSearch.style.display =
+                "none";
 
-        render();
+            render();
 
-        searchInput.focus();
+            searchInput.focus();
 
-    });
+        }
+    );
 
 }
 
@@ -228,18 +216,6 @@ function setupSearch() {
 /* =========================================================
    STATUS
 ========================================================= */
-
-/*
-    IMPORTANTE:
-
-    O status visual NÃO controla a aba PENDENTES.
-
-    A aba PENDENTES verifica apenas:
-
-        !order.validated
-
-    Isso evita o bug da V3.
-*/
 
 function getOrderStatus(order) {
 
@@ -254,7 +230,9 @@ function getOrderStatus(order) {
 
 
     if (
-        order.photos.every(photo => photo !== null)
+        order.photos.every(
+            photo => photo !== null
+        )
         &&
         order.packageConfirmed
     ) {
@@ -268,7 +246,9 @@ function getOrderStatus(order) {
 
 
     if (
-        order.photos.every(photo => photo !== null)
+        order.photos.every(
+            photo => photo !== null
+        )
     ) {
 
         return {
@@ -280,7 +260,9 @@ function getOrderStatus(order) {
 
 
     if (
-        order.photos.some(photo => photo !== null)
+        order.photos.some(
+            photo => photo !== null
+        )
     ) {
 
         return {
@@ -314,27 +296,18 @@ function belongsToFilter(order) {
 
         case "pendentes":
 
-            /*
-                REGRA PRINCIPAL DA V4/V5:
-
-                Enquanto não estiver validado,
-                continua em PENDENTES.
-            */
-
             return !order.validated;
 
 
         case "andamento":
 
-            /*
-                Começou qualquer parte do processo.
-            */
-
             return (
                 !order.validated
                 &&
                 (
-                    order.photos.some(photo => photo !== null)
+                    order.photos.some(
+                        photo => photo !== null
+                    )
                     ||
                     order.packageConfirmed
                 )
@@ -378,7 +351,11 @@ function render() {
                     .toLowerCase()
                     .includes(searchTerm);
 
-            return matchesFilter && matchesSearch;
+            return (
+                matchesFilter
+                &&
+                matchesSearch
+            );
 
         });
 
@@ -403,15 +380,64 @@ function render() {
         }`;
 
 
-    if (filteredOrders.length === 0) {
+    if (
+        filteredOrders.length === 0
+    ) {
 
-        emptyState.classList.remove("hidden");
+        emptyState.classList.remove(
+            "hidden"
+        );
 
     } else {
 
-        emptyState.classList.add("hidden");
+        emptyState.classList.add(
+            "hidden"
+        );
 
     }
+
+}
+
+
+function formatCount(number) {
+
+    if (number < 1000) {
+
+        return number.toString();
+
+    }
+
+
+    if (number < 1000000) {
+
+        const value =
+            number / 1000;
+
+        return `${parseFloat(
+            value.toFixed(2)
+        )}K`;
+
+    }
+
+
+    if (number < 1000000000) {
+
+        const value =
+            number / 1000000;
+
+        return `${parseFloat(
+            value.toFixed(2)
+        )}M`;
+
+    }
+
+
+    const value =
+        number / 1000000000;
+
+    return `${parseFloat(
+        value.toFixed(2)
+    )}B`;
 
 }
 
@@ -425,39 +451,56 @@ function updateDashboard() {
     const total =
         orders.length;
 
+
     const pending =
-        orders.filter(order =>
-            !order.validated
+        orders.filter(
+            order => !order.validated
         ).length;
+
 
     const progress =
-        orders.filter(order =>
-            !order.validated
-            &&
-            (
-                order.photos.some(photo => photo !== null)
-                ||
-                order.packageConfirmed
-            )
+        orders.filter(
+            order =>
+                !order.validated
+                &&
+                (
+                    order.photos.some(
+                        photo => photo !== null
+                    )
+                    ||
+                    order.packageConfirmed
+                )
         ).length;
+
 
     const completed =
-        orders.filter(order =>
-            order.validated
+        orders.filter(
+            order => order.validated
         ).length;
 
 
-    document.getElementById("totalCount")
-        .textContent = total;
+    document.getElementById(
+        "totalCount"
+    ).textContent =
+        formatCount(total);
 
-    document.getElementById("pendingCount")
-        .textContent = pending;
 
-    document.getElementById("progressCount")
-        .textContent = progress;
+    document.getElementById(
+        "pendingCount"
+    ).textContent =
+        formatCount(pending);
 
-    document.getElementById("completedCount")
-        .textContent = completed;
+
+    document.getElementById(
+        "progressCount"
+    ).textContent =
+        formatCount(progress);
+
+
+    document.getElementById(
+        "completedCount"
+    ).textContent =
+        formatCount(completed);
 
 }
 
@@ -480,6 +523,7 @@ function renderSectionTitle() {
 
     };
 
+
     currentSection.textContent =
         titles[currentFilter];
 
@@ -495,11 +539,16 @@ function createOrderCard(order) {
     const article =
         document.createElement("article");
 
-    article.className = "order-card";
+
+    article.className =
+        "order-card";
+
 
     if (order.validated) {
 
-        article.classList.add("completed-card");
+        article.classList.add(
+            "completed-card"
+        );
 
     }
 
@@ -533,14 +582,6 @@ function createOrderCard(order) {
                 <strong>
                     ${order.pv}
                 </strong>
-
-                <span>
-                    ${order.product}
-                </span>
-
-                <span>
-                    ${order.client}
-                </span>
 
                 <div class="order-status ${status.className}">
                     ${status.label}
@@ -586,12 +627,12 @@ function createOrderCard(order) {
             <div>
 
                 <strong>
-                    Produto
+                    Produto:<br/><br/>
                 </strong>
 
-                <span class="expected-quantity">
+                <h3>
                     ${order.product}
-                </span>
+                </h3>
 
             </div>
 
@@ -611,6 +652,7 @@ function createOrderCard(order) {
                 </span>
 
                 FOTOS
+
             </button>
 
 
@@ -686,20 +728,25 @@ function createOrderCard(order) {
         .querySelectorAll("[data-action]")
         .forEach(button => {
 
-            button.addEventListener("click", () => {
+            button.addEventListener(
+                "click",
+                () => {
 
-                const action =
-                    button.dataset.action;
+                    const action =
+                        button.dataset.action;
 
-                const orderId =
-                    Number(button.dataset.orderId);
+                    const orderId =
+                        Number(
+                            button.dataset.orderId
+                        );
 
-                handleAction(
-                    action,
-                    orderId
-                );
+                    handleAction(
+                        action,
+                        orderId
+                    );
 
-            });
+                }
+            );
 
         });
 
@@ -709,7 +756,9 @@ function createOrderCard(order) {
     ====================================================== */
 
     const quantityInput =
-        article.querySelector(".quantity-input");
+        article.querySelector(
+            ".quantity-input"
+        );
 
 
     quantityInput.addEventListener(
@@ -717,7 +766,10 @@ function createOrderCard(order) {
         () => {
 
             const value =
-                Number(quantityInput.value);
+                Number(
+                    quantityInput.value
+                );
+
 
             if (
                 Number.isNaN(value)
@@ -735,6 +787,7 @@ function createOrderCard(order) {
 
             order.receivedQuantity =
                 value;
+
 
             showToast(
                 "Quantidade atualizada.",
@@ -754,10 +807,14 @@ function createOrderCard(order) {
    AÇÕES DOS PEDIDOS
 ========================================================= */
 
-function handleAction(action, orderId) {
+function handleAction(
+    action,
+    orderId
+) {
 
     const order =
         findOrder(orderId);
+
 
     if (!order) return;
 
@@ -830,13 +887,16 @@ function setupModalButtons() {
         .querySelectorAll("[data-close]")
         .forEach(button => {
 
-            button.addEventListener("click", () => {
+            button.addEventListener(
+                "click",
+                () => {
 
-                closeModal(
-                    button.dataset.close
-                );
+                    closeModal(
+                        button.dataset.close
+                    );
 
-            });
+                }
+            );
 
         });
 
@@ -845,19 +905,22 @@ function setupModalButtons() {
         .querySelectorAll(".modal-overlay")
         .forEach(overlay => {
 
-            overlay.addEventListener("click", event => {
+            overlay.addEventListener(
+                "click",
+                event => {
 
-                if (
-                    event.target === overlay
-                ) {
+                    if (
+                        event.target === overlay
+                    ) {
 
-                    closeModal(
-                        overlay.id
-                    );
+                        closeModal(
+                            overlay.id
+                        );
+
+                    }
 
                 }
-
-            });
+            );
 
         });
 
@@ -872,7 +935,9 @@ function openModal(id) {
 
     document
         .getElementById(id)
-        .classList.remove("hidden");
+        .classList.remove(
+            "hidden"
+        );
 
 }
 
@@ -881,7 +946,9 @@ function closeModal(id) {
 
     document
         .getElementById(id)
-        .classList.add("hidden");
+        .classList.add(
+            "hidden"
+        );
 
 }
 
@@ -896,79 +963,71 @@ function setupPhotoSlots() {
         .querySelectorAll(".photo-slot")
         .forEach(slot => {
 
-            slot.addEventListener("click", () => {
+            slot.addEventListener(
+                "click",
+                () => {
 
-                const index =
-                    Number(
-                        slot.dataset.photoIndex
-                    );
-
-
-                /*
-                    Guarda qual das três fotos
-                    será criada/substituída.
-                */
-
-                currentPhotoIndex =
-                    index;
+                    const index =
+                        Number(
+                            slot.dataset.photoIndex
+                        );
 
 
-                /*
-                    Limpamos o valor anterior do input.
-
-                    Isso é importante porque permite
-                    selecionar novamente o mesmo arquivo
-                    e também refazer uma foto.
-                */
-
-                photoInput.value = "";
+                    currentPhotoIndex =
+                        index;
 
 
-                /*
-                    Abre o mecanismo nativo do dispositivo.
+                    photoInput.value = "";
 
-                    Tablet:
-                    câmera traseira.
 
-                    Computador:
-                    explorador de arquivos.
-                */
+                    photoInput.click();
 
-                photoInput.click();
-
-            });
+                }
+            );
 
         });
 
 
     document
-        .getElementById("finishPhotosButton")
-        .addEventListener("click", () => {
+        .getElementById(
+            "finishPhotosButton"
+        )
+        .addEventListener(
+            "click",
+            () => {
 
-            const order =
-                findOrder(currentOrderId);
+                const order =
+                    findOrder(
+                        currentOrderId
+                    );
 
-            if (!order) return;
+
+                if (!order) return;
 
 
-            if (
-                order.photos.every(
-                    photo => photo !== null
-                )
-            ) {
+                if (
+                    order.photos.every(
+                        photo => photo !== null
+                    )
+                ) {
 
-                closeModal("photoModal");
+                    closeModal(
+                        "photoModal"
+                    );
 
-                showToast(
-                    "3 FOTOS REGISTRADAS",
-                    "✓"
-                );
 
-                render();
+                    showToast(
+                        "3 FOTOS REGISTRADAS",
+                        "✓"
+                    );
+
+
+                    render();
+
+                }
 
             }
-
-        });
+        );
 
 }
 
@@ -997,11 +1056,6 @@ function handlePhotoSelection(event) {
         event.target.files[0];
 
 
-    /*
-        Usuário cancelou a câmera ou
-        o explorador de arquivos.
-    */
-
     if (!file) {
 
         return;
@@ -1027,12 +1081,11 @@ function handlePhotoSelection(event) {
     }
 
 
-    /*
-        Garantimos que o arquivo selecionado
-        realmente seja uma imagem.
-    */
-
-    if (!file.type.startsWith("image/")) {
+    if (
+        !file.type.startsWith(
+            "image/"
+        )
+    ) {
 
         showToast(
             "Selecione uma imagem válida.",
@@ -1050,13 +1103,9 @@ function handlePhotoSelection(event) {
 
     reader.onload = () => {
 
-        /*
-            Substitui ou registra a foto
-            na posição selecionada.
-        */
-
-        order.photos[currentPhotoIndex] =
-            reader.result;
+        order.photos[
+            currentPhotoIndex
+        ] = reader.result;
 
 
         const photoNumber =
@@ -1073,10 +1122,6 @@ function handlePhotoSelection(event) {
             "✓"
         );
 
-
-        /*
-            Reseta o índice depois de concluir.
-        */
 
         currentPhotoIndex =
             null;
@@ -1108,6 +1153,7 @@ function openPhotoModal(order) {
     currentOrderId =
         order.id;
 
+
     document.getElementById(
         "photoOrderInfo"
     ).textContent =
@@ -1116,7 +1162,9 @@ function openPhotoModal(order) {
 
     updatePhotoInterface();
 
-    openModal("photoModal");
+    openModal(
+        "photoModal"
+    );
 
 }
 
@@ -1129,6 +1177,7 @@ function updatePhotoInterface() {
 
     const order =
         findOrder(currentOrderId);
+
 
     if (!order) return;
 
@@ -1153,38 +1202,42 @@ function updatePhotoInterface() {
 
     document
         .querySelectorAll(".photo-slot")
-        .forEach((slot, index) => {
+        .forEach(
+            (slot, index) => {
 
-            const preview =
-                slot.querySelector(
-                    ".photo-preview"
-                );
-
-            const photo =
-                order.photos[index];
+                const preview =
+                    slot.querySelector(
+                        ".photo-preview"
+                    );
 
 
-            if (photo) {
+                const photo =
+                    order.photos[index];
 
-                slot.classList.add(
-                    "has-photo"
-                );
 
-                preview.src = photo;
+                if (photo) {
 
-            } else {
+                    slot.classList.add(
+                        "has-photo"
+                    );
 
-                slot.classList.remove(
-                    "has-photo"
-                );
+                    preview.src =
+                        photo;
 
-                preview.removeAttribute(
-                    "src"
-                );
+                } else {
+
+                    slot.classList.remove(
+                        "has-photo"
+                    );
+
+                    preview.removeAttribute(
+                        "src"
+                    );
+
+                }
 
             }
-
-        });
+        );
 
 
     const finishButton =
@@ -1238,32 +1291,135 @@ function openPackageModal(order) {
         confirmPackage;
 
 
-    openModal("packageModal");
+    openModal(
+        "packageModal"
+    );
 
 }
 
 
-function confirmPackage() {
+/* =========================================================
+   CONFIRMAR PACOTE
+========================================================= */
+
+async function confirmPackage() {
 
     const order =
         findOrder(currentOrderId);
 
+
     if (!order) return;
 
 
-    order.packageConfirmed =
-        true;
+    const confirmButton =
+        document.getElementById(
+            "confirmPackage"
+        );
 
 
-    closeModal("packageModal");
+    /*
+        Evita múltiplos cliques
+        enquanto a requisição está sendo feita.
+    */
 
-    render();
+    confirmButton.disabled = true;
+
+    const originalText =
+        confirmButton.textContent;
+
+    confirmButton.textContent =
+        "PROCESSANDO...";
 
 
-    showToast(
-        "PRODUTO COLOCADO EM PACOTE",
-        "✓"
-    );
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${order.id}/colocar-em-pacote`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+
+        let data = null;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
+
+        if (!response.ok) {
+
+            const message =
+                data?.detail
+                ||
+                "Não foi possível colocar o produto em pacote.";
+
+            throw new Error(message);
+
+        }
+
+
+        /*
+            Só atualizamos o estado local
+            depois que o Odoo confirmou
+            a operação com sucesso.
+        */
+
+        order.packageConfirmed =
+            true;
+
+
+        closeModal(
+            "packageModal"
+        );
+
+
+        render();
+
+
+        showToast(
+            "PRODUTO COLOCADO EM PACOTE",
+            "✓"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao colocar em pacote:",
+            error
+        );
+
+
+        showToast(
+            error.message
+            ||
+            "Não foi possível colocar o produto em pacote.",
+            "!"
+        );
+
+
+    } finally {
+
+        confirmButton.disabled =
+            false;
+
+        confirmButton.textContent =
+            originalText;
+
+    }
 
 }
 
@@ -1311,7 +1467,9 @@ function openValidationModal(order) {
         `Deseja realmente validar o pedido ${order.pv}?`;
 
 
-    openModal("validationModal");
+    openModal(
+        "validationModal"
+    );
 
 }
 
@@ -1319,7 +1477,9 @@ function openValidationModal(order) {
 function setupQuantityValidation() {
 
     document
-        .getElementById("confirmValidation")
+        .getElementById(
+            "confirmValidation"
+        )
         .addEventListener(
             "click",
             validateOrder
@@ -1333,14 +1493,9 @@ function validateOrder() {
     const order =
         findOrder(currentOrderId);
 
+
     if (!order) return;
 
-
-    /*
-        Segurança adicional:
-        só valida se as três fotos
-        e o pacote estiverem concluídos.
-    */
 
     const photosComplete =
         order.photos.every(
@@ -1350,12 +1505,16 @@ function validateOrder() {
 
     if (!photosComplete) {
 
-        closeModal("validationModal");
+        closeModal(
+            "validationModal"
+        );
+
 
         showToast(
             "É necessário registrar as 3 fotos.",
             "!"
         );
+
 
         return;
 
@@ -1364,28 +1523,30 @@ function validateOrder() {
 
     if (!order.packageConfirmed) {
 
-        closeModal("validationModal");
+        closeModal(
+            "validationModal"
+        );
+
 
         showToast(
             "É necessário colocar o produto em pacote.",
             "!"
         );
 
+
         return;
 
     }
 
 
-    /*
-        Aqui acontece a mudança
-        definitiva para CONCLUÍDO.
-    */
-
     order.validated =
         true;
 
 
-    closeModal("validationModal");
+    closeModal(
+        "validationModal"
+    );
+
 
     render();
 
@@ -1425,10 +1586,14 @@ function openQualityModal(order) {
 
     document.getElementById(
         "partialQuantityGroup"
-    ).classList.add("hidden");
+    ).classList.add(
+        "hidden"
+    );
 
 
-    openModal("qualityModal");
+    openModal(
+        "qualityModal"
+    );
 
 }
 
@@ -1445,18 +1610,22 @@ function setupQualityForm() {
         );
 
 
-    rejectionOptions.forEach(input => {
+    rejectionOptions.forEach(
+        input => {
 
-        input.addEventListener(
-            "change",
-            updateRejectionFields
-        );
+            input.addEventListener(
+                "change",
+                updateRejectionFields
+            );
 
-    });
+        }
+    );
 
 
     document
-        .getElementById("qualityForm")
+        .getElementById(
+            "qualityForm"
+        )
         .addEventListener(
             "submit",
             submitQualityAlert
@@ -1512,13 +1681,30 @@ function submitQualityAlert(event) {
     const order =
         findOrder(currentOrderId);
 
+
     if (!order) return;
 
 
-    const rejectionType =
+    const selectedRejection =
         document.querySelector(
             'input[name="rejectionType"]:checked'
-        ).value;
+        );
+
+
+    if (!selectedRejection) {
+
+        showToast(
+            "Selecione o tipo de reprovação.",
+            "!"
+        );
+
+        return;
+
+    }
+
+
+    const rejectionType =
+        selectedRejection.value;
 
 
     const rejectedQuantity =
@@ -1600,7 +1786,10 @@ function submitQualityAlert(event) {
     };
 
 
-    closeModal("qualityModal");
+    closeModal(
+        "qualityModal"
+    );
+
 
     render();
 
@@ -1631,15 +1820,22 @@ function printLabel(order) {
    TOAST
 ========================================================= */
 
-function showToast(message, icon = "✓") {
+function showToast(
+    message,
+    icon = "✓"
+) {
 
     const toast =
-        document.getElementById("toast");
+        document.getElementById(
+            "toast"
+        );
+
 
     const toastMessage =
         document.getElementById(
             "toastMessage"
         );
+
 
     const toastIcon =
         document.getElementById(
@@ -1649,6 +1845,7 @@ function showToast(message, icon = "✓") {
 
     toastMessage.textContent =
         message;
+
 
     toastIcon.textContent =
         icon;
@@ -1665,12 +1862,15 @@ function showToast(message, icon = "✓") {
 
 
     toastTimeout =
-        setTimeout(() => {
+        setTimeout(
+            () => {
 
-            toast.classList.remove(
-                "show"
-            );
+                toast.classList.remove(
+                    "show"
+                );
 
-        }, 2800);
+            },
+            2800
+        );
 
 }
