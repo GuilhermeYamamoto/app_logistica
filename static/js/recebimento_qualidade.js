@@ -473,10 +473,10 @@ function updateDashboard() {
         ).length;
 
 
-/*    const completed =
+    const completed =
         orders.filter(
             order => order.validated
-        ).length; */
+        ).length; 
 
 
 /*    document.getElementById(
