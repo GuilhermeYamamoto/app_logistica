@@ -448,8 +448,8 @@ function formatCount(number) {
 
 function updateDashboard() {
 
-/*    const total =
-        orders.length; */
+    const total =
+        orders.length; 
 
 
     const pending =
@@ -491,10 +491,10 @@ function updateDashboard() {
         formatCount(pending);
 
 
-    document.getElementById(
+/*    document.getElementById(
         "progressCount"
     ).textContent =
-        formatCount(progress);
+        formatCount(progress);/*
 
 
 /*    document.getElementById(
