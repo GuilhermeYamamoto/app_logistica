@@ -219,7 +219,7 @@ async def list_quality_receipts(
         "records": records,
     }
 
-
+#rota para chamar o método put.in.pack ao clicar no botão "COLOCAR EM PACOTE"
 @router.post(
     "/api/recebimento-qualidade/pickings/{picking_id}/colocar-em-pacote"
 )
