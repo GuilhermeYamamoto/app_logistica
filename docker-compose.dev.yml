@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: app_logistica_dev
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - ODOO_URL=${ODOO_URL:-https://trn-serp.indufix.com.br}
       - ODOO_DB=${ODOO_DB:-odoo-trn}
