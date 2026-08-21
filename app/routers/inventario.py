@@ -10,6 +10,10 @@ from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.core.auth import OdooAuthService, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
+from typing import Dict
+from fastapi import Request
+from app.core.auth import OdooCredentials
+from app.services import InventoryService
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -99,3 +103,20 @@ async def list_stage_records(
         ) from error
 
     return {"stage": stage, "records": records}
+
+@router.get("/recebimento-qualidade", response_class=HTMLResponse)
+async def quality_page(request: Request, credentials: OdooCredentials = Depends(get_odoo_credentials),):
+    """Retorna página de recebimento de qualidade."""
+    return templates.TemplateResponse(request=request, name="recebimento_qualidade.html")
+
+@router.get("/api/recebimento-qualidade/pickings")
+async def list_quality_receipts(client=Depends(get_odoo_client)):
+    return InventoryService.list_quality_receipts(client)
+
+@router.post("/api/recebimento-qualidade/pickings/{picking_id}/colocar-em-pacote")
+async def put_in_pack(picking_id: int, client=Depends(get_odoo_client)):
+    return InventoryService.put_in_pack(client, picking_id)
+
+@router.post("/api/recebimento-qualidade/pickings/{picking_id}/imprimir-etiqueta")
+async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
+    return await InventoryService.print_report_qualidade(client, picking_id)

@@ -1,6 +1,6 @@
 """Módulo de serviços de negócio."""
 
-from app.services.inventario_service import InventarioService
+from app.services.inventario_service import InventoryService
 
-__all__ = ["InventarioService"]
+__all__ = ["InventoryService"]
 
