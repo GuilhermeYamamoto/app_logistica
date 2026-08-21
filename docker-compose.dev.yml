@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: app_logistica_dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ODOO_URL=${ODOO_URL:-https://trn-serp.indufix.com.br}
+      - ODOO_DB=${ODOO_DB:-odoo-trn}
+      - SESSION_COOKIE_NAME=${SESSION_COOKIE_NAME:-odoo_session}
+      - SESSION_MAX_AGE=${SESSION_MAX_AGE:-28800}
+      - DEBUG=true
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+      - ./templates:/app/templates
+    networks:
+      - app_network
+    restart: unless-stopped
+    depends_on:
+      - redis
+    stdin_open: true
+    tty: true
+
+  redis:
+    image: redis:7-alpine
+    container_name: app_logistica_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - app_network
+    restart: unless-stopped
+
+volumes:
+  redis_data_dev:
+
+networks:
+  app_network:
+    driver: bridge

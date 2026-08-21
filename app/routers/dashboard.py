@@ -5,9 +5,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
+from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_credentials
 from app.models import ModuleInfo
-from app.odoo.session import OdooCredentials
 
 router = APIRouter(tags=["dashboard"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)

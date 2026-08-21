@@ -2,10 +2,8 @@
 
 from typing import Dict, List
 
-from app.odoo.rpc import OdooRPC
 
-
-class InventoryService:
+class InventarioService:
     """Serviço responsável por lógica de inventário."""
 
     @staticmethod

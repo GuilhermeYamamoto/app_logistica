@@ -1,102 +1,185 @@
-# FastAPI Odoo
+# FastAPI Odoo - App Logística
 
-Aplicacao web em FastAPI que autentica usuarios no Odoo por XML-RPC, mantem
-uma sessao no servidor e disponibiliza uma tela inicial para consultar modelos
-do Odoo.
+Aplicação web em FastAPI que integra com Odoo via XML-RPC, gerencia sessões de usuários e fornece uma interface para consultar dados de inventário, modelos e recebimentos de qualidade.
 
-## Funcionalidades
+## ✨ Funcionalidades
 
-- Login no banco Odoo por XML-RPC.
-- Sessao protegida por cookie `HttpOnly`.
-- Pagina inicial com os modulos Vendas, Compras, Inventario, Produtos e
-  Contatos.
-- Consulta dos registros recentes de cada modelo.
-- Etapas de Inventario com templates independentes e registros filtrados por
-  tipo de operacao.
-- Logout que encerra a sessao no navegador e no servidor.
+- ✅ Autenticação no Odoo via XML-RPC
+- ✅ Gerenciamento de sessões com Redis (fallback para memória)
+- ✅ Sessões protegidas por cookie `HttpOnly`
+- ✅ Dashboard com módulos do Odoo
+- ✅ Consulta de registros por modelo
+- ✅ Etapas de inventário com templates específicos
+- ✅ Recebimento de qualidade com integração em tempo real
+- ✅ Logout seguro
 
-## Tecnologias
+## 🛠️ Tecnologias
 
-- Python 3.14+
-- FastAPI
-- Jinja2
-- XML-RPC nativo do Python (`xmlrpc.client`)
-- `uv` para dependencias e execucao
+- **Python 3.8.9+**
+- **FastAPI** - Framework web moderno
+- **Uvicorn** - ASGI server
+- **Pydantic** - Validação de dados e configurações
+- **Jinja2** - Templates HTML
+- **Redis** - Armazenamento de sessões (opcional)
+- **Docker** - Containerização
+- **Nginx** - Reverse proxy
 
-## Estrutura do projeto
+## 📁 Estrutura do Projeto
 
-```text
-fast_api_odoo/
+```
+app_logistica/
+├── app/
+│   ├── core/
+│   │   ├── auth/              ← Autenticação e sessões
+│   │   │   ├── odoo_client.py
+│   │   │   ├── session.py
+│   │   │   ├── service.py
+│   │   │   └── __init__.py
+│   │   ├── exceptions.py
+│   │   ├── security.py
+│   │   └── __init__.py
+│   ├── models/                ← Schemas Pydantic
+│   │   ├── schemas.py
+│   │   └── __init__.py
+│   ├── routers/               ← Endpoints
+│   │   ├── auth.py
+│   │   ├── dashboard.py
+│   │   ├── inventory.py
+│   │   ├── models.py
+│   │   ├── quality.py
+│   │   └── __init__.py
+│   ├── services/              ← Serviços de negócio
+│   │   ├── inventory_service.py
+│   │   └── __init__.py
+│   ├── config.py              ← Configurações
+│   ├── main.py                ← FastAPI app
+│   └── __init__.py
+├── static/                    ← Arquivos estáticos
+│   ├── css/
+│   ├── img/
+│   └── js/
+├── templates/                 ← Templates Jinja2
+│   ├── base.html
+│   ├── login.html
+│   ├── inicio.html
+│   └── ...
+├── Dockerfile                 ← Produção
+├── Dockerfile.dev             ← Desenvolvimento
+├── docker-compose.yml         ← Produção
+├── docker-compose.dev.yml     ← Desenvolvimento
+├── docker.sh                  ← Helper scripts
+├── nginx.conf                 ← Configuração Nginx
 ├── pyproject.toml
 ├── README.md
-└── src/
-    └── fast_api_odoo/
-        ├── main.py
-        ├── frontend/
-        │   ├── static/
-        │   │   ├── css/
-        │   │   └── js/
-        │   └── templates/
-        ├── odoo/
-        │   ├── rpc.py
-        │   └── session.py
-        └── routers/
-            ├── inicio.py
-            ├── inventario.py
-            ├── login.py
-            └── modelos.py
+├── README_DOCKER.md           ← Documentação Docker
+└── .env.docker                ← Variáveis de ambiente exemplo
 ```
 
-## Como executar
+## 🚀 Como Executar
 
-Na raiz do projeto:
+### Desenvolvimento Local (sem Docker)
 
 ```bash
-uv sync
-uv run fastapi dev src/fast_api_odoo/main.py
+# Criar ambiente virtual
+python -m venv venv
+
+# Ativar (Windows)
+.\venv\Scripts\Activate.ps1
+
+# Instalar dependências
+pip install fastapi uvicorn jinja2 pydantic-settings python-dotenv redis
+
+# Configurar variáveis de ambiente
+cp .env.docker .env
+# Editar .env com suas credenciais Odoo
+
+# Rodar servidor
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Abra `http://127.0.0.1:8000`. A rota raiz redireciona para `/inicio`; sem uma
-sessao valida, o usuario e redirecionado para `/login`.
+Acesse `http://localhost:8000`
 
-## Fluxo de autenticacao
+### Com Docker
 
-### 1. Envio do formulario
+```bash
+# Desenvolvimento com hot-reload
+docker-compose -f docker-compose.dev.yml up
 
-O formulario em `frontend/templates/login.html` chama o JavaScript de
-`frontend/static/js/login.js`.
-
-Ao clicar em **Entrar**, o JavaScript envia uma requisicao:
-
-```http
-POST /login
-Content-Type: application/json
+# Produção
+docker-compose up -d
 ```
 
-```json
-{
-  "username": "usuario@empresa.com",
-  "password": "senha"
-}
+Ver [README_DOCKER.md](README_DOCKER.md) para mais detalhes.
+
+## ⚙️ Configuração
+
+Crie um arquivo `.env` baseado em `.env.docker`:
+
+```env
+# Odoo
+ODOO_URL=https://seu-odoo.com
+ODOO_DB=seu_banco
+
+# Sessão
+SESSION_COOKIE_NAME=odoo_session
+SESSION_MAX_AGE=28800
+
+# Redis (opcional)
+REDIS_URL=redis://localhost:6379/0
+
+# FastAPI
+ENVIRONMENT=development
+DEBUG=True
 ```
 
-### 2. Autenticacao no Odoo
+## 🔐 Fluxo de Autenticação
 
-A rota `POST /login`, em `routers/login.py`, instancia `OdooRPC` e chama:
+1. **Login** → Usuário envia credenciais
+2. **Autenticação Odoo** → Valida via XML-RPC
+3. **Criar Sessão** → Armazena credenciais (Redis/Memória)
+4. **Cookie** → Define cookie HttpOnly com token
+5. **Requisições** → Cookie incluído automaticamente
+6. **Logout** → Remove sessão
 
-```py
-uid = client.authenticate(
-    db=ODOO_DB,
-    username=data.username,
-    password=data.password,
-)
+## 📚 Módulos Principais
+
+### `app.core.auth`
+- `OdooClient` - Cliente XML-RPC para Odoo
+- `OdooAuthService` - Serviço de autenticação
+- `OdooCredentials` - Dataclass com credenciais
+- Session stores (Redis + Memory fallback)
+
+### `app.routers`
+- `auth.py` - Login/Logout
+- `dashboard.py` - Dashboard principal
+- `inventory.py` - Etapas de inventário
+- `models.py` - Consulta de modelos
+- `quality.py` - Recebimento de qualidade
+
+### `app.services`
+- `InventarioService` - Etapas de inventário
+
+## 🧪 Testes
+
+```bash
+# Verificar app carrega
+python -c "from app.main import app; print(f'{len(app.routes)} routers carregados')"
+
+# Com pytest (se instalado)
+pytest
 ```
 
-O metodo `authenticate()` em `odoo/rpc.py` chama o endpoint XML-RPC:
+## 🐛 Troubleshooting
 
-```text
-https://trn-serp.indufix.com.br/xmlrpc/2/common
-```
+**Redis não conecta?** → App usa fallback automático para memória
+
+**Sessão expira rápido?** → Ajuste `SESSION_MAX_AGE` em `.env`
+
+**CORS issues?** → Adicione origens permitidas em `main.py`
+
+## 📝 Licença
+
+MIT
 
 O Odoo responde com o `uid` do usuario quando as credenciais sao validas. Se
 nao forem, a aplicacao levanta `AuthenticationError`.

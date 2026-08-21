@@ -3,13 +3,12 @@
 from fastapi import HTTPException, Request, status
 
 from app.config import settings
-from app.odoo.session import odoo_sessions, OdooCredentials
-from app.odoo.rpc import OdooRPC
+from app.core.auth import OdooClient, OdooCredentials, session_store
 
 
 def get_odoo_credentials(request: Request) -> OdooCredentials:
     """Extrai as credenciais do Odoo da sessão do navegador."""
-    credentials = odoo_sessions.get(request.cookies.get(settings.SESSION_COOKIE_NAME))
+    credentials = session_store.get(request.cookies.get(settings.SESSION_COOKIE_NAME))
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -18,10 +17,10 @@ def get_odoo_credentials(request: Request) -> OdooCredentials:
     return credentials
 
 
-def get_odoo_client(request: Request) -> OdooRPC:
+def get_odoo_client(request: Request) -> OdooClient:
     """Cria um cliente Odoo autenticado."""
     credentials = get_odoo_credentials(request)
-    client = OdooRPC(settings.ODOO_URL)
+    client = OdooClient(settings.ODOO_URL)
     client.set_authenticated_session(
         db=credentials.db,
         uid=credentials.uid,

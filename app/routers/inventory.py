@@ -8,14 +8,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
+from app.core.auth import OdooAuthService, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
-from app.odoo.session import OdooCredentials
-from app.services import InventoryService
 
 router = APIRouter(tags=["inventory"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 
-INVENTORY_STAGES = InventoryService.get_inventory_stages()
+INVENTORY_STAGES = OdooAuthService.get_inventory_stages()
 STAGES_BY_KEY = {stage["key"]: stage for stage in INVENTORY_STAGES}
 
 

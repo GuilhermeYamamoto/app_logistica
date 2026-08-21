@@ -10,8 +10,7 @@ env/
 
 # Environment / secrets
 .env
-.env.*
-!.env.example
+.env.local
 
 # IDEs
 .vscode/

@@ -5,21 +5,17 @@ from collections import defaultdict
 from typing import Any, Dict, List
 from xmlrpc.client import Fault
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
 
 from app.config import settings
+from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
-from app.odoo.session import OdooCredentials
-
 
 router = APIRouter(tags=["quality"])
 
-templates = Jinja2Templates(
-    directory=settings.TEMPLATES_DIR
-)
+templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 
 
 QUALITY_RECEIPT_PICKING_TYPE_ID = 137

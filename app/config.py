@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "odoo_session"
     SESSION_MAX_AGE: int = 60 * 60 * 8  # 8 horas
 
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # FastAPI
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = True
+
     # Paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
     TEMPLATES_DIR: Path = BASE_DIR / "templates"

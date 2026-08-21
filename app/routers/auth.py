@@ -7,10 +7,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
+from app.core.auth import OdooAuthService, session_store
 from app.core.exceptions import AuthenticationError, OdooConnectionError
 from app.models import LoginRequest
-from app.odoo.session import odoo_sessions
-from app.services import AuthService
 
 router = APIRouter(tags=["auth"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -19,7 +18,7 @@ templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Retorna página de login."""
-    if odoo_sessions.get(request.cookies.get(settings.SESSION_COOKIE_NAME)) is not None:
+    if session_store.get(request.cookies.get(settings.SESSION_COOKIE_NAME)) is not None:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
     return templates.TemplateResponse(request=request, name="login.html")
@@ -29,7 +28,7 @@ async def login_page(request: Request):
 async def login(data: LoginRequest):
     """Realiza login do usuário."""
     try:
-        session_token = AuthService.authenticate(data.username, data.password)
+        session_token = OdooAuthService.authenticate(data.username, data.password)
     except AuthenticationError:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,7 +62,7 @@ async def login(data: LoginRequest):
 async def logout(request: Request):
     """Realiza logout do usuário."""
     token = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    AuthService.logout(token)
+    OdooAuthService.logout(token)
 
     response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(settings.SESSION_COOKIE_NAME)
