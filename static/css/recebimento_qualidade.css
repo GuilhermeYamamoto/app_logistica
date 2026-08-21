@@ -66,8 +66,16 @@ button {
    TOPBAR
 ========================================================= */
 
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+}
+
 .topbar {
-    height: 90px;
+    min-height: calc(90px + var(--safe-top));
+    height: auto;
+
     background: var(--blue);
     color: white;
 
@@ -75,9 +83,20 @@ button {
     align-items: center;
     justify-content: space-between;
 
-    padding: 32px 28px;
-    padding-top: 28px;
-    padding-bottom: 12px;
+    /*
+     * Aumenta o espaço no topo para não ficar atrás
+     * do relógio / barra de status / notch.
+     */
+    padding-top: var(--safe-top);
+
+    /*
+     * Mantém os 28px originais e respeita as laterais
+     * de dispositivos com notch.
+     */
+    padding-left: max(28px, var(--safe-left));
+    padding-right: max(28px, var(--safe-right));
+
+    padding-bottom: 0;
 
     box-shadow: 0 3px 12px rgba(0, 0, 0, .15);
 }

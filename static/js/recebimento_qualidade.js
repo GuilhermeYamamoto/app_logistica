@@ -491,10 +491,10 @@ function updateDashboard() {
         formatCount(pending);
 
 
-/*    document.getElementById(
+    document.getElementById(
         "progressCount"
     ).textContent =
-        formatCount(progress);/*
+        formatCount(progress);
 
 
 /*    document.getElementById(
@@ -1806,13 +1806,44 @@ function submitQualityAlert(event) {
    IMPRESSÃO
 ========================================================= */
 
-function printLabel(order) {
+async function printLabel(order) {
+    try {
+        const response = await fetch(
+            `/api/recebimento-qualidade/pickings/${order.id}/imprimir-etiqueta`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }
+        );
 
-    showToast(
-        `ETIQUETA DO ${order.pv} IMPRESSA`,
-        "✓"
-    );
+        const data = await response.json();
 
+        if (!response.ok) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível imprimir a etiqueta."
+            );
+        }
+
+        showToast(
+            `ETIQUETA DO ${order.pv} ENVIADA PARA IMPRESSÃO`,
+            "✓"
+        );
+
+    } catch (error) {
+        console.error(
+            "Erro ao imprimir etiqueta:",
+            error
+        );
+
+        showToast(
+            error.message ||
+            "Não foi possível imprimir a etiqueta.",
+            "!"
+        );
+    }
 }
 
 
