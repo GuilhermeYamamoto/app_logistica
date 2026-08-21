@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.auth import OdooAuthService, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 
-router = APIRouter(tags=["inventory"])
+router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 
 INVENTORY_STAGES = OdooAuthService.get_inventory_stages()

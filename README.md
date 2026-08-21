@@ -44,12 +44,12 @@ app_logistica/
 │   ├── routers/               ← Endpoints
 │   │   ├── auth.py
 │   │   ├── dashboard.py
-│   │   ├── inventory.py
+│   │   ├── inventario.py
 │   │   ├── models.py
 │   │   ├── quality.py
 │   │   └── __init__.py
 │   ├── services/              ← Serviços de negócio
-│   │   ├── inventory_service.py
+│   │   ├── inventario_service.py
 │   │   └── __init__.py
 │   ├── config.py              ← Configurações
 │   ├── main.py                ← FastAPI app
@@ -152,7 +152,7 @@ DEBUG=True
 ### `app.routers`
 - `auth.py` - Login/Logout
 - `dashboard.py` - Dashboard principal
-- `inventory.py` - Etapas de inventário
+- `inventario.py` - Etapas de inventário
 - `models.py` - Consulta de modelos
 - `quality.py` - Recebimento de qualidade
 
