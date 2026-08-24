@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.models import ModuleInfo
-from app.routers.dashboard import MODULES
+from app.routers.index import MODULES
 
 router = APIRouter(tags=["models"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)

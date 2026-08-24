@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routers import auth, dashboard, inventario, models
+from app.routers import auth, index, stock_picking, models
 
 app = FastAPI()
 
@@ -17,9 +17,9 @@ app.mount(
 
 # Incluir routers
 app.include_router(auth.router)
-app.include_router(dashboard.router)
+app.include_router(index.router)
 app.include_router(models.router)
-app.include_router(inventario.router)
+app.include_router(stock_picking.router)
 
 
 @app.get("/health")
