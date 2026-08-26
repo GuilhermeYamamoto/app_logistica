@@ -359,3 +359,22 @@ class InventoryService:
                 status_code=500,
                 detail=f"Erro ao imprimir etiqueta: {str(e)}",
             )
+
+    def button_validate(client, picking_id):
+        result = None
+
+        try:
+            result = client.execute("stock.picking", "button_validate", [picking_id])
+
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi validado, mas não conseguiu serializar o retorno.")
+
+                result = None
+
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível validar o recebimento no Odoo"))
+
+        return {"success": True, "picking_id": picking_id, "result": result}
