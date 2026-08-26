@@ -124,7 +124,7 @@ class InventoryService:
 
         return {"picking_type_id": picking_type_id, "records": records}
 
-
+      
 
     # ========================================================
     # IMPRESSÃO DA ETIQUETA DE QUALIDADE
