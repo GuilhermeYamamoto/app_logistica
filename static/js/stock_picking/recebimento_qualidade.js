@@ -46,6 +46,9 @@ const clearSearch =
 const photoInput =
     document.getElementById("photoInput");
 
+const qualityRecordsElement =
+    document.getElementById("qualityRecords");
+
 
 /* =========================================================
    INICIALIZAÇÃO
@@ -76,23 +79,20 @@ async function loadOrders() {
 
     try {
 
-        const response =
-            await fetch(
-                "/api/recebimento-qualidade/pickings"
+        const records =
+            JSON.parse(
+                qualityRecordsElement.textContent
             );
 
-        if (!response.ok) {
+        if (!Array.isArray(records)) {
 
-            throw new Error(
-                "Não foi possível carregar os recebimentos."
+            throw new TypeError(
+                "Os registros de recebimento têm formato inválido."
             );
 
         }
 
-        const data =
-            await response.json();
-
-        orders = data.records.map(order => ({
+        orders = records.map(order => ({
 
             ...order,
 
@@ -1335,7 +1335,7 @@ async function confirmPackage() {
 
         const response =
             await fetch(
-                `/api/recebimento-qualidade/pickings/${order.id}/colocar-em-pacote`,
+                `/api/recebimento-qualidade/${order.id}/colocar-em-pacote`,
                 {
                     method: "POST",
                     headers: {
@@ -1809,7 +1809,7 @@ function submitQualityAlert(event) {
 async function printLabel(order) {
     try {
         const response = await fetch(
-            `/api/recebimento-qualidade/pickings/${order.id}/imprimir-etiqueta`,
+            `/api/recebimento-qualidade/${order.id}/imprimir-etiqueta`,
             {
                 method: "POST",
                 headers: {

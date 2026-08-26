@@ -1,12 +1,12 @@
 """Serviço de inventário."""
 
-from typing import Dict, List
-from fastapi import Depends, HTTPException, status
+from typing import Any, Dict, List
+
+from fastapi import HTTPException, status
 
 from collections import defaultdict
 import xmlrpc.client
 from app.core.auth import OdooClient
-from app.core.security import get_odoo_client, get_odoo_credentials
 
 import json
 import uuid
@@ -16,58 +16,64 @@ import httpx
 class InventoryService:
     """Serviço responsável por lógica de inventário."""
 
-    QUALITY_RECEIPT_PICKING_TYPE_ID = 137
-
     @staticmethod
-    def get_inventory_stages() -> List[Dict[str, str]]:
+    def get_inventory_stages() -> List[Dict[str, Any]]:
         """Retorna as etapas de inventário."""
         return [
             {
                 "key": "recebimento-fiscal",
                 "name": "Recebimento Fiscal",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 93,
+                "template": "stock_picking/inventario_etapa.html",
             },
             {
                 "key": "recebimento-qualidade",
                 "name": "Recebimento Qualidade",
-                "template": "recebimento_qualidade.html",
+                "picking_type_id": 137,
+                "template": "stock_picking/recebimento_qualidade.html",
             },
             {
                 "key": "estoque-transitorio",
                 "name": "Estoque Transitório",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 138,
+                "template": "stock_picking/inventario_etapa.html",
             },
             {
                 "key": "pre-separacao",
                 "name": "Pré-Separação",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 119,
+                "template": "stock_picking/inventario_etapa.html",
             },
             {
                 "key": "separacao",
                 "name": "Separação",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 120,
+                "template": "stock_picking/inventario_etapa.html",
             },
             {
                 "key": "empacotamento",
                 "name": "Empacotamento",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 148,
+                "template": "stock_picking/inventario_etapa.html",
             },
             {
                 "key": "conferencia-expedicao",
                 "name": "Conferencia Expedicao",
-                "template": "inventario_etapa.html",
+                "picking_type_id": 139,
+                "template": "stock_picking/inventario_etapa.html",
             },
         ]
 
-    def list_quality_receipts(client, picking_type_id = QUALITY_RECEIPT_PICKING_TYPE_ID):
+    @staticmethod
+    def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         """
-        Listar os pickings do step 137 -> Recebimento Qualidade
+        Listar os pickings de cada etapa do inventario
         """
 
         try:
 
             pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "!=", "cancel",)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package"], order="scheduled_date asc, id asc")
-
+            
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
 
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
@@ -90,7 +96,7 @@ class InventoryService:
                     moves_by_picking[move["picking_id"][0]].append(move)
 
         except (KeyError, OSError, xmlrpc.client.Error) as error:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os recebimentos de qualidade no Odoo.")) from error
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings da etapa solicitada")) from error
 
         records = []
 
@@ -333,4 +339,3 @@ class InventoryService:
                 status_code=500,
                 detail=f"Erro ao imprimir etiqueta: {str(e)}",
             )
-

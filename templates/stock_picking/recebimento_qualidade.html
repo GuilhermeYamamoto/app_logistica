@@ -640,6 +640,9 @@
 
     </div>
 
+    <script id="qualityRecords" type="application/json">
+        {{ records["records"] | tojson }}
+    </script>
     <script src="{{ url_for('static', path='js/recebimento_qualidade.js') }}"></script>
 
 </body>

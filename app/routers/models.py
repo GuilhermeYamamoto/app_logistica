@@ -40,7 +40,7 @@ async def model_page(
     module = get_module(model)
     return templates.TemplateResponse(
         request=request,
-        name="modelo.html",
+        name="base/modelo.html",
         context={"module": module},
     )
 

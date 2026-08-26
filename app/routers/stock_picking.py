@@ -1,122 +1,60 @@
 """Router de inventário."""
 
 import xmlrpc.client
-from typing import Dict
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
-from app.core.auth import OdooAuthService, OdooCredentials
+from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
-from typing import Dict
-from fastapi import Request
-from app.core.auth import OdooCredentials
-from app.services import InventoryService
+from app.services.inventory_service import InventoryService
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 
-INVENTORY_STAGES = OdooAuthService.get_inventory_stages()
+INVENTORY_STAGES = InventoryService.get_inventory_stages()
 STAGES_BY_KEY = {stage["key"]: stage for stage in INVENTORY_STAGES}
 
-
-def get_stage(stage_key: str) -> Dict[str, str]:
+def get_stage(stage_key: str) -> Dict[str, Any]:
     """Valida e retorna a etapa solicitada."""
     stage = STAGES_BY_KEY.get(stage_key)
     if stage is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Etapa de inventário não disponível.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Etapa de inventário não disponível.")
     return stage
 
 
 @router.get("/inventario", response_class=HTMLResponse)
-async def inventory_page(
-    request: Request,
-    credentials: OdooCredentials = Depends(get_odoo_credentials),
-):
+async def inventory_page(request: Request, credentials: OdooCredentials = Depends(get_odoo_credentials)):
     """Retorna página principal de inventário."""
-    return templates.TemplateResponse(
-        request=request,
-        name="inventario.html",
-        context={"stages": INVENTORY_STAGES},
-    )
+    return templates.TemplateResponse(request=request, name="stock_picking/inventario.html", context={"stages": INVENTORY_STAGES})
 
 
-@router.get("/inventario/etapas/{stage_key}", response_class=HTMLResponse)
+@router.get("/inventario/{stage_key}", response_class=HTMLResponse)
 async def stage_page(
     request: Request,
     stage_key: str,
-    credentials: OdooCredentials = Depends(get_odoo_credentials),
+    client: OdooClient = Depends(get_odoo_client),
 ):
-    """Retorna página de uma etapa de inventário."""
+    """
+    Retorna página de uma etapa de inventário.
+    -> A página vem do services > inventory_service.py, em que o método get_inventory_stages() retorna as etapas disponíveis, sendo "template" a chave que define o template html.
+    """
     stage = get_stage(stage_key)
-    return templates.TemplateResponse(
-        request=request,
-        name=stage["template"],
-        context={"stage": stage},
-    )
+    records = InventoryService.list_stage_records(client, stage["picking_type_id"])
+    return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
-
-@router.get("/api/inventario/etapas/{stage_key}")
-async def list_stage_records(
-    request: Request,
-    stage_key: str,
-    client=Depends(get_odoo_client),
-):
-    """Lista registros de uma etapa de inventário."""
-    stage = get_stage(stage_key)
-
-    try:
-        picking_types = client.execute(
-            "stock.picking.type",
-            "search_read",
-            [("name", "=", stage["name"])],
-            fields=["id"],
-            limit=1,
-        )
-        if not picking_types:
-            return {
-                "stage": stage,
-                "records": [],
-                "message": "Esta etapa não está configurada no Odoo.",
-            }
-
-        records = client.execute(
-            "stock.picking",
-            "search_read",
-            [
-                ("picking_type_id", "=", picking_types[0]["id"]),
-                ("state", "not in", ["done", "cancel"]),
-            ],
-            fields=["name", "origin", "state", "partner_id", "scheduled_date"],
-            limit=30,
-            order="scheduled_date asc",
-        )
-    except (OSError, xmlrpc.client.Error) as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Não foi possível consultar o Odoo.",
-        ) from error
-
-    return {"stage": stage, "records": records}
-
-@router.get("/recebimento-qualidade", response_class=HTMLResponse)
-async def quality_page(request: Request, credentials: OdooCredentials = Depends(get_odoo_credentials),):
-    """Retorna página de recebimento de qualidade."""
-    return templates.TemplateResponse(request=request, name="recebimento_qualidade.html")
-
-@router.get("/api/recebimento-qualidade/pickings")
-async def list_quality_receipts(client=Depends(get_odoo_client)):
-    return InventoryService.list_quality_receipts(client)
-
-@router.post("/api/recebimento-qualidade/pickings/{picking_id}/colocar-em-pacote")
+@router.post("/api/recebimento-qualidade/{picking_id}/colocar-em-pacote")
 async def put_in_pack(picking_id: int, client=Depends(get_odoo_client)):
     return InventoryService.put_in_pack(client, picking_id)
 
-@router.post("/api/recebimento-qualidade/pickings/{picking_id}/imprimir-etiqueta")
+@router.post("/api/recebimento-qualidade/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report_qualidade(client, picking_id)
+
+@router.post("/api/{stage_key}/validar")
+async def validate_stage(stage_key: str, picking_id: int, client=Depends(get_odoo_client)):
+    stage = get_stage(stage_key)
+    return await InventoryService.validate(client, picking_id, stage["picking_type_id"])

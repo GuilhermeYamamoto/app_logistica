@@ -9,11 +9,7 @@ from app.routers import auth, index, stock_picking, models
 app = FastAPI()
 
 # Montar arquivos estáticos
-app.mount(
-    "/static",
-    StaticFiles(directory=settings.STATIC_DIR),
-    name="static",
-)
+app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 
 # Incluir routers
 app.include_router(auth.router)

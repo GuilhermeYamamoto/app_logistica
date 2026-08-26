@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from secrets import token_urlsafe
 from threading import Lock
 from typing import Dict, Optional
+from fastapi.responses import RedirectResponse
 
 import redis
 
@@ -179,3 +180,4 @@ try:
 except Exception:
     logger.warning("Redis indisponível, usando sessões em memória")
     session_store = MemorySessionStore()
+

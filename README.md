@@ -61,7 +61,7 @@ app_logistica/
 ├── templates/                 ← Templates Jinja2
 │   ├── base.html
 │   ├── login.html
-│   ├── inicio.html
+│   ├── index.html
 │   └── ...
 ├── Dockerfile                 ← Produção
 ├── Dockerfile.dev             ← Desenvolvimento
