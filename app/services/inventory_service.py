@@ -122,6 +122,26 @@ class InventoryService:
 
         return {"picking_type_id": picking_type_id, "records": records}
 
+    def button_validate(client, picking_id, qty_done=None, product_uom_qty=None):
+        result = None
+
+        try:
+            if qty_done is not None and product_uom_qty is not None and qty_done < product_uom_qty:
+                result = client.execute("stock.picking", "button_validate", [picking_id])
+
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi validado, mas não conseguiu serializar o retorno.")
+
+                result = None
+
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível validar o recebimento no Odoo"))
+
+        return {"success": True, "picking_id": picking_id, "result": result}
+
     def put_in_pack(client, picking_id):
         result = None
 

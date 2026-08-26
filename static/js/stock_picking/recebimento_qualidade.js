@@ -1487,12 +1487,10 @@ function setupQuantityValidation() {
 
 }
 
-
-function validateOrder() {
+async function validateOrder() {
 
     const order =
         findOrder(currentOrderId);
-
 
     if (!order) return;
 
@@ -1509,12 +1507,10 @@ function validateOrder() {
             "validationModal"
         );
 
-
         showToast(
             "É necessário registrar as 3 fotos.",
             "!"
         );
-
 
         return;
 
@@ -1527,34 +1523,115 @@ function validateOrder() {
             "validationModal"
         );
 
-
         showToast(
             "É necessário colocar o produto em pacote.",
             "!"
         );
-
 
         return;
 
     }
 
 
-    order.validated =
-        true;
+    const confirmButton =
+        document.getElementById(
+            "confirmValidation"
+        );
 
 
-    closeModal(
-        "validationModal"
-    );
+    confirmButton.disabled = true;
+
+    const originalText =
+        confirmButton.textContent;
+
+    confirmButton.textContent =
+        "VALIDANDO...";
 
 
-    render();
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${order.id}/validar`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
 
 
-    showToast(
-        "PEDIDO VALIDADO COM SUCESSO",
-        "✓"
-    );
+        let data = null;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível validar o recebimento no Odoo."
+            );
+
+        }
+
+
+        /*
+         * Só altera o estado local
+         * depois que o Odoo confirmou.
+         */
+
+        order.validated = true;
+
+
+        closeModal(
+            "validationModal"
+        );
+
+
+        render();
+
+
+        showToast(
+            "PEDIDO VALIDADO COM SUCESSO",
+            "✓"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao validar pedido:",
+            error
+        );
+
+
+        showToast(
+            error.message ||
+            "Não foi possível validar o recebimento.",
+            "!"
+        );
+
+
+    } finally {
+
+        confirmButton.disabled =
+            false;
+
+        confirmButton.textContent =
+            originalText;
+
+    }
 
 }
 
