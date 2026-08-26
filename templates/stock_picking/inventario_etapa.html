@@ -1,8 +1,8 @@
 {% extends "base/base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', path='css/inicio.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/inventario-etapas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/index/inicio.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/inventario-etapas.css') }}">
 {% endblock %}
 
 {% block title %}{{ stage.name }} - Inventário{% endblock %}
@@ -30,5 +30,5 @@
         const inventoryStage = {{ stage.key | tojson }};
         const inventoryStageRecords = {{ records.records | tojson }};
     </script>
-    <script src="{{ url_for('static', path='js/inventario-etapas.js') }}"></script>
+    <script src="{{ url_for('static', path='js/stock_picking/inventario-etapas.js') }}"></script>
 {% endblock %}
