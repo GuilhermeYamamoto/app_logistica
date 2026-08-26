@@ -1,4 +1,4 @@
-"""Router do dashboard (página inicial)."""
+"""Router do index (página inicial)."""
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -9,7 +9,7 @@ from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_credentials
 from app.models import ModuleInfo
 
-router = APIRouter(tags=["dashboard"])
+router = APIRouter(tags=["index"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 
 MODULES = [
@@ -23,24 +23,11 @@ MODULES = [
 
 @router.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
-    """Redireciona para o dashboard."""
-    return RedirectResponse(url="/dashboard", status_code=303)
+    """Redireciona para o index"""
+    return RedirectResponse(url="/index", status_code=303)
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(
-    request: Request,
-    credentials: OdooCredentials = Depends(get_odoo_credentials),
-):
-    """Retorna página do dashboard."""
-    return templates.TemplateResponse(
-        request=request,
-        name="inicio.html",
-        context={"modules": [m.model_dump() for m in MODULES]},
-    )
-
-
-@router.get("/inicio", include_in_schema=False)
-async def redirect_to_dashboard() -> RedirectResponse:
-    """Redireciona /inicio para /dashboard."""
-    return RedirectResponse(url="/dashboard", status_code=301)
+@router.get("/index", response_class=HTMLResponse)
+async def index(request: Request, credentials: OdooCredentials = Depends(get_odoo_credentials)):
+    """Retorna página do index"""
+    return templates.TemplateResponse(request=request, name="index/index.html", context={"modules": [m.model_dump() for m in MODULES]})

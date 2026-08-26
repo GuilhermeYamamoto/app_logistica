@@ -19,9 +19,9 @@ templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
 async def login_page(request: Request):
     """Retorna página de login."""
     if session_store.get(request.cookies.get(settings.SESSION_COOKIE_NAME)) is not None:
-        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/index", status_code=status.HTTP_303_SEE_OTHER)
 
-    return templates.TemplateResponse(request=request, name="login.html")
+    return templates.TemplateResponse(request=request, name="login/login.html")
 
 
 @router.post("/login")
@@ -45,7 +45,7 @@ async def login(data: LoginRequest):
         content={
             "success": True,
             "message": "Login realizado com sucesso.",
-            "redirect": "/dashboard",
+            "redirect": "/index",
         },
     )
     response.set_cookie(
