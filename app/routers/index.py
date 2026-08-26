@@ -24,7 +24,7 @@ MODULES = [
 @router.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
     """Redireciona para o index"""
-    return RedirectResponse(url="/index", status_code=303)
+    return RedirectResponse(url="/login", status_code=303)
 
 
 @router.get("/index", response_class=HTMLResponse)
