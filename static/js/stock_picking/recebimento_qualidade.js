@@ -657,23 +657,6 @@ function createOrderCard(order) {
 
 
             <button
-                class="main-action package-action
-                    ${packageAvailable ? "" : "disabled"}"
-                data-action="package"
-                data-order-id="${order.id}"
-                ${packageAvailable ? "" : "disabled"}
-            >
-
-                <span class="action-icon-small">
-                    📦
-                </span>
-
-                COLOCAR EM PACOTE
-
-            </button>
-
-
-            <button
                 class="main-action validation-action
                     ${validationAvailable ? "" : "disabled"}"
                 data-action="validate"
@@ -1270,161 +1253,6 @@ function updatePhotoInterface() {
 
 
 /* =========================================================
-   COLOCAR EM PACOTE
-========================================================= */
-
-function openPackageModal(order) {
-
-    currentOrderId =
-        order.id;
-
-
-    document.getElementById(
-        "packageText"
-    ).textContent =
-        `Confirme que o produto do ${order.pv} foi colocado corretamente no pacote.`;
-
-
-    document.getElementById(
-        "confirmPackage"
-    ).onclick =
-        confirmPackage;
-
-
-    openModal(
-        "packageModal"
-    );
-
-}
-
-
-/* =========================================================
-   CONFIRMAR PACOTE
-========================================================= */
-
-async function confirmPackage() {
-
-    const order =
-        findOrder(currentOrderId);
-
-
-    if (!order) return;
-
-
-    const confirmButton =
-        document.getElementById(
-            "confirmPackage"
-        );
-
-
-    /*
-        Evita múltiplos cliques
-        enquanto a requisição está sendo feita.
-    */
-
-    confirmButton.disabled = true;
-
-    const originalText =
-        confirmButton.textContent;
-
-    confirmButton.textContent =
-        "PROCESSANDO...";
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/recebimento-qualidade/${order.id}/colocar-em-pacote`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                }
-            );
-
-
-        let data = null;
-
-        try {
-
-            data =
-                await response.json();
-
-        } catch (error) {
-
-            data = null;
-
-        }
-
-
-        if (!response.ok) {
-
-            const message =
-                data?.detail
-                ||
-                "Não foi possível colocar o produto em pacote.";
-
-            throw new Error(message);
-
-        }
-
-
-        /*
-            Só atualizamos o estado local
-            depois que o Odoo confirmou
-            a operação com sucesso.
-        */
-
-        order.packageConfirmed =
-            true;
-
-
-        closeModal(
-            "packageModal"
-        );
-
-
-        render();
-
-
-        showToast(
-            "PRODUTO COLOCADO EM PACOTE",
-            "✓"
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Erro ao colocar em pacote:",
-            error
-        );
-
-
-        showToast(
-            error.message
-            ||
-            "Não foi possível colocar o produto em pacote.",
-            "!"
-        );
-
-
-    } finally {
-
-        confirmButton.disabled =
-            false;
-
-        confirmButton.textContent =
-            originalText;
-
-    }
-
-}
-
-
-/* =========================================================
    VALIDAÇÃO
 ========================================================= */
 
@@ -1516,23 +1344,7 @@ async function validateOrder() {
 
     }
 
-
-    if (!order.packageConfirmed) {
-
-        closeModal(
-            "validationModal"
-        );
-
-        showToast(
-            "É necessário colocar o produto em pacote.",
-            "!"
-        );
-
-        return;
-
-    }
-
-
+    
     const confirmButton =
         document.getElementById(
             "confirmValidation"

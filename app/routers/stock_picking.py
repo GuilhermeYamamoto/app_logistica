@@ -46,9 +46,6 @@ async def stage_page(
     records = InventoryService.list_stage_records(client, stage["picking_type_id"])
     return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
-@router.post("/api/recebimento-qualidade/{picking_id}/colocar-em-pacote")
-async def put_in_pack(picking_id: int, client=Depends(get_odoo_client)):
-    return InventoryService.put_in_pack(client, picking_id)
 
 @router.post("/api/recebimento-qualidade/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
