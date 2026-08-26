@@ -54,7 +54,6 @@ async def put_in_pack(picking_id: int, client=Depends(get_odoo_client)):
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report_qualidade(client, picking_id)
 
-@router.post("/api/{stage_key}/validar")
-async def validate_stage(stage_key: str, picking_id: int, client=Depends(get_odoo_client)):
-    stage = get_stage(stage_key)
-    return await InventoryService.validate(client, picking_id, stage["picking_type_id"])
+@router.post("/api/recebimento-qualidade/pickings/{picking_id}/validar")
+async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
+    return InventoryService.button_validate(client, picking_id)
