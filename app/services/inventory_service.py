@@ -338,7 +338,7 @@ class InventoryService:
         result = None
 
         try:
-            result = client.execute("stock.picking", "button_validate", [picking_id])
+            result = client.execute("stock.picking", "action_validate_with_backorder", [picking_id])
 
         except xmlrpc.client.Fault as e:
             error_message = str(e)
