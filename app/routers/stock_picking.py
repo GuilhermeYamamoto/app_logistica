@@ -54,3 +54,7 @@ async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
 @router.post("/api/recebimento-qualidade/pickings/{picking_id}/validar")
 async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
     return InventoryService.button_validate(client, picking_id)
+
+@router.get("/api/recebimento-qualidade/pickings")
+async def filter_nf(nf_number: str, client=Depends(get_odoo_client)):
+    return InventoryService.filter_nf(client, nf_number)
