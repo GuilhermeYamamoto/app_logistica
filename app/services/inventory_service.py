@@ -64,13 +64,11 @@ class InventoryService:
             },
         ]
 
-
-    # ========================================================
-    # LISTAR OS PICKINGS DE CADA ETAPA DO INVENTARIO
-    # ========================================================
-
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
+        """
+        Listar os pickings de cada etapa do inventario
+        """
 
         try:
 
@@ -124,11 +122,29 @@ class InventoryService:
 
         return {"picking_type_id": picking_type_id, "records": records}
 
-      
 
-    # ========================================================
-    # IMPRESSÃO DA ETIQUETA DE QUALIDADE
-    # ========================================================
+    
+
+    def put_in_pack(client, picking_id):
+        result = None
+
+        try:
+            result = client.execute("stock.picking", "action_put_in_pack", [picking_id])
+
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+
+            if "cannot marshal" in error_message and "stock.quant.package" in error_message:
+                print("AVISO: Odoo criou o pacote, mas não conseguiu serializar o retorno.")
+
+                result = None
+
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível colocar o recebimento em pacote no Odoo"))
+
+        return {"success": True, "picking_id": picking_id, "result": result}
+
+
 
     async def print_report_qualidade(client, picking_id):
         try:
@@ -331,7 +347,7 @@ class InventoryService:
         result = None
 
         try:
-            result = client.execute("stock.picking", "button_validate", [picking_id])
+            result = client.execute("stock.picking", "action_validate_with_backorder", [picking_id])
 
         except xmlrpc.client.Fault as e:
             error_message = str(e)
