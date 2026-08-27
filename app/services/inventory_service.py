@@ -345,3 +345,10 @@ class InventoryService:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível validar o recebimento no Odoo"))
 
         return {"success": True, "picking_id": picking_id, "result": result}
+
+    def create_quality_alert(client, quality_alert_data):
+        """
+        Cria um alerta de qualidade no Odoo.
+        """
+        print("==========================================")
+        print(quality_alert_data)

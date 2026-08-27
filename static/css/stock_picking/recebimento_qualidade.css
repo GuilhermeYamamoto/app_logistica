@@ -294,13 +294,13 @@ button {
    PEDIDOS
 ========================================================= */
 
-.orders-container {
+.pickings-container {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.order-card {
+.picking-card {
     background: white;
 
     border-radius: var(--radius);
@@ -312,11 +312,11 @@ button {
     border-left: 7px solid var(--orange);
 }
 
-.order-card.completed-card {
+.picking-card.completed-card {
     border-left-color: var(--green);
 }
 
-.order-main {
+.picking-main {
     display: grid;
 
     grid-template-columns:
@@ -330,14 +330,14 @@ button {
     gap: 18px;
 }
 
-.order-identification strong {
+.picking-identification strong {
     display: block;
 
     font-size: 24px;
     font-weight: 900;
 }
 
-.order-identification span {
+.picking-identification span {
     display: block;
 
     margin-top: 5px;
@@ -396,7 +396,7 @@ button {
     color: var(--muted);
 }
 
-.order-status {
+.picking-status {
     display: inline-flex;
 
     width: fit-content;
@@ -441,7 +441,7 @@ button {
    BOTÕES PRINCIPAIS
 ========================================================= */
 
-.order-actions {
+.picking-actions {
     display: grid;
 
     grid-template-columns: repeat(3, 1fr);
@@ -1099,7 +1099,7 @@ button {
 
 @media (max-width: 1000px) {
 
-    .order-main {
+    .picking-main {
         grid-template-columns: repeat(2, 1fr);
     }
 
@@ -1133,11 +1133,11 @@ button {
         padding: 5px 12px 25px;
     }
 
-    .order-main {
+    .picking-main {
         grid-template-columns: 1fr;
     }
 
-    .order-actions {
+    .picking-actions {
         grid-template-columns: 1fr;
     }
 
@@ -1173,7 +1173,7 @@ button {
         font-size: 12px;
     }
 
-    .order-identification strong {
+    .picking-identification strong {
         font-size: 21px;
     }
 
