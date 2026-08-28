@@ -16,14 +16,14 @@ let searchTerm = "";
 
 let filteredPickingIds = null;
 
-let currentOrderId = null;
+let currentPickingId = null;
 
 let currentPhotoIndex = null;
 
 let toastTimeout = null;
 
 
-/* =========================================================
+/*
    ELEMENTOS
 ========================================================= */
 
@@ -317,6 +317,7 @@ function getPickingStatus(picking) {
 
 
     if (
+        picking.photos.some(
             photo => photo !== null
         )
     ) {
@@ -360,7 +361,7 @@ function belongsToFilter(picking) {
             return (
                 !picking.validated
                 &&
-                order.photos.some(
+                picking.photos.some(
                     photo => photo !== null
                 )
             );
@@ -400,7 +401,7 @@ function render() {
             const matchesSearch =
                 filteredPickingIds === null
                 ||
-                filteredPickingIds.includes(order.id);
+                filteredPickingIds.includes(picking.id);
 
             return (
                 matchesFilter
@@ -514,7 +515,7 @@ function updateDashboard() {
             picking =>
                 !picking.validated
                 &&
-                order.photos.some(
+                picking.photos.some(
                     photo => photo !== null
                 )
         ).length;
@@ -1576,7 +1577,7 @@ function updateRejectionFields() {
     if (
         selected
         &&
-        selected.value === "partial"
+        selected.value === "parcial"
     ) {
 
         group.classList.remove(
@@ -1671,7 +1672,7 @@ async function submitQualityAlert(event) {
 
 
     if (
-        reprovacao === "partial"
+        reprovacao === "parcial"
         &&
         (
             !quantidade_nao_conforme
@@ -1697,7 +1698,7 @@ async function submitQualityAlert(event) {
         picking_id: picking.id,
         reprovacao,
         quantidade_nao_conforme:
-            reprovacao === "partial"
+            reprovacao === "parcial"
                 ? quantidade_nao_conforme
                 : picking.receivedQuantity,
         descricao_geral,

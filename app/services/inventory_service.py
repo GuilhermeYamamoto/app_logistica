@@ -375,5 +375,17 @@ class InventoryService:
         """
         Cria um alerta de qualidade no Odoo.
         """
-        print("==========================================")
-        print(quality_alert_data)
+        vals = {
+                "picking_id": quality_alert_data.picking_id,
+                "reprovacao": quality_alert_data.reprovacao,
+                "quantidade_nao_conforme": quality_alert_data.quantidade_nao_conforme,
+                "descricao_geral": quality_alert_data.descricao_geral,
+                "especificado_quality": quality_alert_data.especificado_quality,
+                "encontrado_quality": quality_alert_data.encontrado_quality,
+               }
+
+        print(vals)
+        try:
+            quality_alert = client.execute("quality.alert", "create", [vals])
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao criar alerta de qualidade") from error
