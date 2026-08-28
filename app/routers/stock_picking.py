@@ -3,7 +3,7 @@
 import xmlrpc.client
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -11,6 +11,7 @@ from app.config import settings
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
+from app.models.schemas import QualityAlert
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -46,7 +47,6 @@ async def stage_page(
     records = InventoryService.list_stage_records(client, stage["picking_type_id"])
     return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
-
 @router.post("/api/recebimento-qualidade/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report_qualidade(client, picking_id)
@@ -58,3 +58,11 @@ async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
 @router.get("/api/recebimento-qualidade/pickings")
 async def filter_nf(nf_number: str, client=Depends(get_odoo_client)):
     return InventoryService.filter_nf(client, nf_number)
+
+@router.post("/api/quality-alert")
+def create_quality_alert(quality_alert_data: QualityAlert = Body(...), client=Depends(get_odoo_client)):
+    """
+    Cria um alerta de qualidade no Odoo.
+    """
+    create_quality_alert = InventoryService.create_quality_alert(client, quality_alert_data)
+    return {"success": True, "message": "Alerta de qualidade criado com sucesso."}

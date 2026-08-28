@@ -353,7 +353,6 @@ class InventoryService:
 
         return {"success": True, "picking_id": picking_id, "result": result}
 
-
     # ========================================================
     # MÉTODO PARA FILTRAR PICKING POR NOTA FISCAL
     # ========================================================
@@ -366,3 +365,15 @@ class InventoryService:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings com a origem solicitada")) from error
 
         return result
+
+     
+    # ========================================================
+    # MÉTODO PARA Criar o Alerta de Qualidade
+    # ========================================================
+    
+    def create_quality_alert(client, quality_alert_data):
+        """
+        Cria um alerta de qualidade no Odoo.
+        """
+        print("==========================================")
+        print(quality_alert_data)
