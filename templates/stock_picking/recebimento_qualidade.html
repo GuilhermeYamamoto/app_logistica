@@ -138,8 +138,8 @@
 
 
         <section
-            id="ordersContainer"
-            class="orders-container"
+            id="pickingsContainer"
+            class="pickings-container"
         ></section>
 
 
@@ -185,7 +185,7 @@
                         FOTOS DO PRODUTO
                     </h2>
 
-                    <p id="photoOrderInfo">
+                    <p id="photoPickingInfo">
                         PV
                     </p>
                 </div>
@@ -357,7 +357,7 @@
                         REGISTRAR PROBLEMA
                     </h2>
 
-                    <p id="qualityOrderInfo">
+                    <p id="qualityPickingInfo">
                         PV
                     </p>
 
@@ -387,8 +387,8 @@
 
                             <input
                                 type="radio"
-                                name="rejectionType"
-                                value="complete"
+                                name="reprovacao"
+                                value="total"
                                 checked
                             >
 
@@ -403,8 +403,8 @@
 
                             <input
                                 type="radio"
-                                name="rejectionType"
-                                value="partial"
+                                name="reprovacao"
+                                value="parcial"
                             >
 
                             <span>
@@ -423,14 +423,14 @@
                     class="form-group hidden"
                 >
 
-                    <label for="rejectedQuantity">
+                    <label for="quantidade_nao_conforme">
                         QUANTIDADE REPROVADA
                     </label>
 
                     <input
-                        id="rejectedQuantity"
+                        id="quantidade_nao_conforme"
                         type="number"
-                        min="1"
+                        min="0"
                         placeholder="Digite a quantidade"
                     >
 
@@ -439,12 +439,12 @@
 
                 <div class="form-group">
 
-                    <label for="qualityDescription">
+                    <label for="descricao_geral">
                         DESCRIÇÃO GERAL
                     </label>
 
                     <textarea
-                        id="qualityDescription"
+                        id="descricao_geral"
                         rows="3"
                         placeholder="Descreva o problema encontrado..."
                     ></textarea>
@@ -454,12 +454,12 @@
 
                 <div class="form-group">
 
-                    <label for="qualitySpecified">
+                    <label for="especificado_quality">
                         ESPECIFICADO
                     </label>
 
                     <textarea
-                        id="qualitySpecified"
+                        id="especificado_quality"
                         rows="2"
                         placeholder="O que veio no pedido?"
                     ></textarea>
@@ -469,12 +469,12 @@
 
                 <div class="form-group">
 
-                    <label for="qualityFound">
+                    <label for="encontrado_quality">
                         ENCONTRADO
                     </label>
 
                     <textarea
-                        id="qualityFound"
+                        id="encontrado_quality"
                         rows="2"
                         placeholder="O que deveria ter vindo?"
                     ></textarea>

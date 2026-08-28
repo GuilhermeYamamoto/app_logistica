@@ -3,7 +3,7 @@
 ========================================================= */
 
 
-let orders = [];
+let pickings = [];
 
 
 /* =========================================================
@@ -16,19 +16,19 @@ let searchTerm = "";
 
 let filteredPickingIds = null;
 
-let currentOrderId = null;
+let currentPickingId = null;
 
 let currentPhotoIndex = null;
 
 let toastTimeout = null;
 
 
-/* =========================================================
+/*
    ELEMENTOS
 ========================================================= */
 
-const ordersContainer =
-    document.getElementById("ordersContainer");
+const pickingsContainer =
+    document.getElementById("pickingsContainer");
 
 const emptyState =
     document.getElementById("emptyState");
@@ -72,12 +72,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupQuantityValidation();
 
-    loadOrders();
+    loadPickings();
 
 });
 
 
-async function loadOrders() {
+async function loadPickings() {
 
     try {
 
@@ -94,9 +94,9 @@ async function loadOrders() {
 
         }
 
-        orders = records.map(order => ({
+        pickings = records.map(picking => ({
 
-            ...order,
+            ...picking,
 
             photos: [
                 null,
@@ -290,9 +290,9 @@ async function filterByNF(nfNumber) {
    STATUS
 ========================================================= */
 
-function getOrderStatus(order) {
+function getPickingStatus(picking) {
 
-    if (order.validated) {
+    if (picking.validated) {
 
         return {
             label: "CONCLUÍDO",
@@ -303,7 +303,7 @@ function getOrderStatus(order) {
 
 
     if (
-        order.photos.every(
+        picking.photos.every(
             photo => photo !== null
         )
     ) {
@@ -317,7 +317,7 @@ function getOrderStatus(order) {
 
 
     if (
-        order.photos.some(
+        picking.photos.some(
             photo => photo !== null
         )
     ) {
@@ -342,7 +342,7 @@ function getOrderStatus(order) {
    REGRAS DOS FILTROS
 ========================================================= */
 
-function belongsToFilter(order) {
+function belongsToFilter(picking) {
 
     switch (currentFilter) {
 
@@ -353,15 +353,15 @@ function belongsToFilter(order) {
 
         case "pendentes":
 
-            return !order.validated;
+            return !picking.validated;
 
 
         case "andamento":
 
             return (
-                !order.validated
+                !picking.validated
                 &&
-                order.photos.some(
+                picking.photos.some(
                     photo => photo !== null
                 )
             );
@@ -370,7 +370,7 @@ function belongsToFilter(order) {
 
         case "concluidos":
 
-            return order.validated;
+            return picking.validated;
 
 
         default:
@@ -392,16 +392,16 @@ function render() {
 
     renderSectionTitle();
 
-    const filteredOrders =
-        orders.filter(order => {
+    const filteredPickings =
+        pickings.filter(picking => {
 
             const matchesFilter =
-                belongsToFilter(order);
+                belongsToFilter(picking);
 
             const matchesSearch =
                 filteredPickingIds === null
                 ||
-                filteredPickingIds.includes(order.id);
+                filteredPickingIds.includes(picking.id);
 
             return (
                 matchesFilter
@@ -412,28 +412,28 @@ function render() {
         });
 
 
-    ordersContainer.innerHTML = "";
+    pickingsContainer.innerHTML = "";
 
 
-    filteredOrders.forEach(order => {
+    filteredPickings.forEach(picking => {
 
-        ordersContainer.appendChild(
-            createOrderCard(order)
+        pickingsContainer.appendChild(
+            createPickingCard(picking)
         );
 
     });
 
 
     resultCount.textContent =
-        `${filteredOrders.length} ${
-            filteredOrders.length === 1
+        `${filteredPickings.length} ${
+            filteredPickings.length === 1
                 ? "pedido"
                 : "pedidos"
         }`;
 
 
     if (
-        filteredOrders.length === 0
+        filteredPickings.length === 0
     ) {
 
         emptyState.classList.remove(
@@ -501,21 +501,21 @@ function formatCount(number) {
 function updateDashboard() {
 
     const total =
-        orders.length; 
+        pickings.length; 
 
 
     const pending =
-        orders.filter(
-            order => !order.validated
+        pickings.filter(
+            picking => !picking.validated
         ).length;
 
 
     const progress =
-        orders.filter(
-            order =>
-                !order.validated
+        pickings.filter(
+            picking =>
+                !picking.validated
                 &&
-                order.photos.some(
+                picking.photos.some(
                     photo => photo !== null
                 )
         ).length;
@@ -523,8 +523,8 @@ function updateDashboard() {
 
 
     const completed =
-        orders.filter(
-            order => order.validated
+        pickings.filter(
+            picking => picking.validated
         ).length; 
 
 
@@ -583,17 +583,17 @@ function renderSectionTitle() {
    CARD DO PEDIDO
 ========================================================= */
 
-function createOrderCard(order) {
+function createPickingCard(picking) {
 
     const article =
         document.createElement("article");
 
 
     article.className =
-        "order-card";
+        "picking-card";
 
 
-    if (order.validated) {
+    if (picking.validated) {
 
         article.classList.add(
             "completed-card"
@@ -603,11 +603,11 @@ function createOrderCard(order) {
 
 
     const status =
-        getOrderStatus(order);
+        getPickingStatus(picking);
 
 
     const photosComplete =
-        order.photos.every(
+        picking.photos.every(
             photo => photo !== null
         );
 
@@ -619,15 +619,15 @@ function createOrderCard(order) {
 
     article.innerHTML = `
 
-        <div class="order-main">
+        <div class="picking-main">
 
-            <div class="order-identification">
+            <div class="picking-identification">
 
                 <strong>
-                    ${order.pv}
+                    ${picking.pv}
                 </strong>
 
-                <div class="order-status ${status.className}">
+                <div class="picking-status ${status.className}">
                     ${status.label}
                 </div>
 
@@ -637,7 +637,7 @@ function createOrderCard(order) {
             <div class="client-info">
 
                 <strong>
-                    ${order.client}
+                    ${picking.client}
                 </strong>
 
                 <span>
@@ -657,12 +657,12 @@ function createOrderCard(order) {
                     class="quantity-input"
                     type="number"
                     min="0"
-                    value="${order.receivedQuantity}"
-                    data-order-id="${order.id}"
+                    value="${picking.receivedQuantity}"
+                    data-picking-id="${picking.id}"
                 >
 
                 <span class="expected-quantity">
-                    Esperado: ${order.expectedQuantity} unidades
+                    Esperado: ${picking.expectedQuantity} unidades
                 </span>
 
             </div>
@@ -675,7 +675,7 @@ function createOrderCard(order) {
                 </strong>
 
                 <h3>
-                    ${order.product}
+                    ${picking.product}
                 </h3>
 
             </div>
@@ -683,12 +683,12 @@ function createOrderCard(order) {
         </div>
 
 
-        <div class="order-actions">
+        <div class="picking-actions">
 
             <button
                 class="main-action photo-action"
                 data-action="photos"
-                data-order-id="${order.id}"
+                data-picking-id="${picking.id}"
             >
 
                 <span class="action-icon-small">
@@ -704,7 +704,7 @@ function createOrderCard(order) {
                 class="main-action validation-action
                     ${validationAvailable ? "" : "disabled"}"
                 data-action="validate"
-                data-order-id="${order.id}"
+                data-picking-id="${picking.id}"
                 ${validationAvailable ? "" : "disabled"}
             >
 
@@ -724,7 +724,7 @@ function createOrderCard(order) {
             <button
                 class="secondary-action quality-action"
                 data-action="quality"
-                data-order-id="${order.id}"
+                data-picking-id="${picking.id}"
             >
 
                 ⚠️ ALERTA DE QUALIDADE
@@ -735,7 +735,7 @@ function createOrderCard(order) {
             <button
                 class="secondary-action print-action"
                 data-action="print"
-                data-order-id="${order.id}"
+                data-picking-id="${picking.id}"
             >
 
                 🖨️ IMPRIMIR ETIQUETA
@@ -762,14 +762,14 @@ function createOrderCard(order) {
                     const action =
                         button.dataset.action;
 
-                    const orderId =
+                    const picking_id =
                         Number(
-                            button.dataset.orderId
+                            button.dataset.pickingId
                         );
 
                     handleAction(
                         action,
-                        orderId
+                        picking_id
                     );
 
                 }
@@ -805,14 +805,14 @@ function createOrderCard(order) {
             ) {
 
                 quantityInput.value =
-                    order.receivedQuantity;
+                    picking.receivedQuantity;
 
                 return;
 
             }
 
 
-            order.receivedQuantity =
+            picking.receivedQuantity =
                 value;
 
 
@@ -836,46 +836,46 @@ function createOrderCard(order) {
 
 function handleAction(
     action,
-    orderId
+    picking_id
 ) {
 
-    const order =
-        findOrder(orderId);
+    const picking =
+        findPicking(picking_id);
 
 
-    if (!order) return;
+    if (!picking) return;
 
 
-    currentOrderId =
-        orderId;
+    currentPickingId =
+        picking_id;
 
 
     switch (action) {
 
         case "photos":
 
-            openPhotoModal(order);
+            openPhotoModal(picking);
 
             break;
 
 
         case "validate":
 
-            openValidationModal(order);
+            openValidationModal(picking);
 
             break;
 
 
         case "quality":
 
-            openQualityModal(order);
+            openQualityModal(picking);
 
             break;
 
 
         case "print":
 
-            printLabel(order);
+            printLabel(picking);
 
             break;
 
@@ -888,10 +888,10 @@ function handleAction(
    ENCONTRAR PEDIDO
 ========================================================= */
 
-function findOrder(orderId) {
+function findPicking(picking_id) {
 
-    return orders.find(
-        order => order.id === orderId
+    return pickings.find(
+        picking => picking.id === picking_id
     );
 
 }
@@ -1016,17 +1016,17 @@ function setupPhotoSlots() {
             "click",
             () => {
 
-                const order =
-                    findOrder(
-                        currentOrderId
+                const picking =
+                    findPicking(
+                        currentPickingId
                     );
 
 
-                if (!order) return;
+                if (!picking) return;
 
 
                 if (
-                    order.photos.every(
+                    picking.photos.every(
                         photo => photo !== null
                     )
                 ) {
@@ -1083,11 +1083,11 @@ function handlePhotoSelection(event) {
     }
 
 
-    const order =
-        findOrder(currentOrderId);
+    const picking =
+        findPicking(currentPickingId);
 
 
-    if (!order) {
+    if (!picking) {
 
         return;
 
@@ -1123,7 +1123,7 @@ function handlePhotoSelection(event) {
 
     reader.onload = () => {
 
-        order.photos[
+        picking.photos[
             currentPhotoIndex
         ] = reader.result;
 
@@ -1168,16 +1168,16 @@ function handlePhotoSelection(event) {
    ABRIR MODAL DE FOTOS
 ========================================================= */
 
-function openPhotoModal(order) {
+function openPhotoModal(picking) {
 
-    currentOrderId =
-        order.id;
+    currentPickingId =
+        picking.id;
 
 
     document.getElementById(
-        "photoOrderInfo"
+        "photoPickingInfo"
     ).textContent =
-        `${order.pv} • ${order.product}`;
+        `${picking.pv} • ${picking.product}`;
 
 
     updatePhotoInterface();
@@ -1195,15 +1195,15 @@ function openPhotoModal(order) {
 
 function updatePhotoInterface() {
 
-    const order =
-        findOrder(currentOrderId);
+    const picking =
+        findPicking(currentPickingId);
 
 
-    if (!order) return;
+    if (!picking) return;
 
 
     const completed =
-        order.photos.filter(
+        picking.photos.filter(
             photo => photo !== null
         ).length;
 
@@ -1232,7 +1232,7 @@ function updatePhotoInterface() {
 
 
                 const photo =
-                    order.photos[index];
+                    picking.photos[index];
 
 
                 if (photo) {
@@ -1293,10 +1293,10 @@ function updatePhotoInterface() {
    VALIDAÇÃO
 ========================================================= */
 
-function openValidationModal(order) {
+function openValidationModal(picking) {
 
-    currentOrderId =
-        order.id;
+    currentPickingId =
+        picking.id;
 
 
     const warning =
@@ -1306,9 +1306,9 @@ function openValidationModal(order) {
 
 
     const isLower =
-        order.receivedQuantity
+        picking.receivedQuantity
         <
-        order.expectedQuantity;
+        picking.expectedQuantity;
 
 
     if (isLower) {
@@ -1329,7 +1329,7 @@ function openValidationModal(order) {
     document.getElementById(
         "validationText"
     ).textContent =
-        `Deseja realmente validar o pedido ${order.pv}?`;
+        `Deseja realmente validar o pedido ${picking.pv}?`;
 
 
     openModal(
@@ -1347,21 +1347,21 @@ function setupQuantityValidation() {
         )
         .addEventListener(
             "click",
-            validateOrder
+            validatePicking
         );
 
 }
 
-async function validateOrder() {
+async function validatePicking() {
 
-    const order =
-        findOrder(currentOrderId);
+    const picking =
+        findPicking(currentPickingId);
 
-    if (!order) return;
+    if (!picking) return;
 
 
     const photosComplete =
-        order.photos.every(
+        picking.photos.every(
             photo => photo !== null
         );
 
@@ -1401,7 +1401,7 @@ async function validateOrder() {
 
         const response =
             await fetch(
-                `/api/recebimento-qualidade/pickings/${order.id}/validar`,
+                `/api/recebimento-qualidade/pickings/${picking.id}/validar`,
                 {
                     method: "POST",
                     headers: {
@@ -1440,7 +1440,7 @@ async function validateOrder() {
          * depois que o Odoo confirmou.
          */
 
-        order.validated = true;
+        picking.validated = true;
 
 
         closeModal(
@@ -1489,16 +1489,16 @@ async function validateOrder() {
    ALERTA DE QUALIDADE
 ========================================================= */
 
-function openQualityModal(order) {
+function openQualityModal(picking) {
 
-    currentOrderId =
-        order.id;
+    currentPickingId =
+        picking.id;
 
 
     document.getElementById(
-        "qualityOrderInfo"
+        "qualityPickingInfo"
     ).textContent =
-        `${order.pv} • ${order.product}`;
+        `${picking.pv} • ${picking.product}`;
 
 
     const form =
@@ -1532,7 +1532,7 @@ function setupQualityForm() {
 
     const rejectionOptions =
         document.querySelectorAll(
-            'input[name="rejectionType"]'
+            'input[name="reprovacao"]'
         );
 
 
@@ -1564,7 +1564,7 @@ function updateRejectionFields() {
 
     const selected =
         document.querySelector(
-            'input[name="rejectionType"]:checked'
+            'input[name="reprovacao"]:checked'
         );
 
 
@@ -1577,7 +1577,7 @@ function updateRejectionFields() {
     if (
         selected
         &&
-        selected.value === "partial"
+        selected.value === "parcial"
     ) {
 
         group.classList.remove(
@@ -1599,21 +1599,21 @@ function updateRejectionFields() {
    SALVAR ALERTA
 ========================================================= */
 
-function submitQualityAlert(event) {
+async function submitQualityAlert(event) {
 
     event.preventDefault();
 
 
-    const order =
-        findOrder(currentOrderId);
+    const picking =
+        findPicking(currentPickingId);
 
 
-    if (!order) return;
+    if (!picking) return;
 
 
     const selectedRejection =
         document.querySelector(
-            'input[name="rejectionType"]:checked'
+            'input[name="reprovacao"]:checked'
         );
 
 
@@ -1629,37 +1629,37 @@ function submitQualityAlert(event) {
     }
 
 
-    const rejectionType =
+    const reprovacao =
         selectedRejection.value;
 
 
-    const rejectedQuantity =
+    const quantidade_nao_conforme =
         Number(
             document.getElementById(
-                "rejectedQuantity"
+                "quantidade_nao_conforme"
             ).value
         );
 
 
-    const description =
+    const descricao_geral =
         document.getElementById(
-            "qualityDescription"
+            "descricao_geral"
         ).value.trim();
 
 
-    const specified =
+    const especificado_quality =
         document.getElementById(
-            "qualitySpecified"
+            "especificado_quality"
         ).value.trim();
 
 
-    const found =
+    const encontrado_quality =
         document.getElementById(
-            "qualityFound"
+            "encontrado_quality"
         ).value.trim();
 
 
-    if (!description) {
+    if (!descricao_geral) {
 
         showToast(
             "Informe a descrição do problema.",
@@ -1672,12 +1672,12 @@ function submitQualityAlert(event) {
 
 
     if (
-        rejectionType === "partial"
+        reprovacao === "parcial"
         &&
         (
-            !rejectedQuantity
+            !quantidade_nao_conforme
             ||
-            rejectedQuantity <= 0
+            quantidade_nao_conforme <= 0
         )
     ) {
 
@@ -1690,41 +1690,53 @@ function submitQualityAlert(event) {
 
     }
 
+    // ------------------------------------------------
+    // Monta os dados do frontend que serão enviados para o backend
+    // ------------------------------------------------
 
-    order.qualityAlert = {
-
-        rejectionType,
-
-        rejectedQuantity:
-            rejectionType === "partial"
-                ? rejectedQuantity
-                : order.receivedQuantity,
-
-        description,
-
-        specified,
-
-        found,
-
-        createdAt:
-            new Date().toISOString()
-
+    const quality_alert_data = {
+        picking_id: picking.id,
+        reprovacao,
+        quantidade_nao_conforme:
+            reprovacao === "parcial"
+                ? quantidade_nao_conforme
+                : picking.receivedQuantity,
+        descricao_geral,
+        especificado_quality,
+        encontrado_quality
     };
 
+    // ------------------------------------------------
+    // Envia os dados para o FastAPI
+    // ------------------------------------------------
+    
+    try{
+        const response = await fetch("/api/quality-alert", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(quality_alert_data)});
 
-    closeModal(
-        "qualityModal"
-    );
+        if (!response.ok) {
+            showToast("Erro ao registrar alerta de qualidade.", "!");
+            return;
+        }
 
+        const resultado = await response.json();
 
-    render();
+        // ------------------------------------------------
+        // Atualiza a tela após confirmado envio para o backend
+        // ------------------------------------------------
 
+        picking.qualityAlert = quality_alert_data;
 
-    showToast(
-        "ALERTA DE QUALIDADE REGISTRADO",
-        "✓"
-    );
+        closeModal("qualityModal");
 
+        render();
+
+        showToast("ALERTA DE QUALIDADE REGISTRADO", "✓");
+    }
+
+    catch (error) {
+        console.error("Erro ao registrar alerta de qualidade:", error);
+        showToast("Erro ao registrar alerta de qualidade.", "!");
+    }
 }
 
 
@@ -1732,10 +1744,10 @@ function submitQualityAlert(event) {
    IMPRESSÃO
 ========================================================= */
 
-async function printLabel(order) {
+async function printLabel(picking) {
     try {
         const response = await fetch(
-            `/api/recebimento-qualidade/${order.id}/imprimir-etiqueta`,
+            `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
             {
                 method: "POST",
                 headers: {
@@ -1754,7 +1766,7 @@ async function printLabel(order) {
         }
 
         showToast(
-            `ETIQUETA DO ${order.pv} ENVIADA PARA IMPRESSÃO`,
+            `ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`,
             "✓"
         );
 

@@ -26,3 +26,14 @@ class ApiResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None
+
+class QualityAlert(BaseModel):
+    """Modelo de Alerta de Qualidade."""
+
+    picking_id: int
+    reprovacao: str
+    quantidade_nao_conforme: int
+    descricao_geral: str
+    especificado_quality: str
+    encontrado_quality: str
+

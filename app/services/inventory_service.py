@@ -353,7 +353,6 @@ class InventoryService:
 
         return {"success": True, "picking_id": picking_id, "result": result}
 
-
     # ========================================================
     # MÉTODO PARA FILTRAR PICKING POR NOTA FISCAL
     # ========================================================
@@ -366,3 +365,27 @@ class InventoryService:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings com a origem solicitada")) from error
 
         return result
+
+     
+    # ========================================================
+    # MÉTODO PARA Criar o Alerta de Qualidade
+    # ========================================================
+    
+    def create_quality_alert(client, quality_alert_data):
+        """
+        Cria um alerta de qualidade no Odoo.
+        """
+        vals = {
+                "picking_id": quality_alert_data.picking_id,
+                "reprovacao": quality_alert_data.reprovacao,
+                "quantidade_nao_conforme": quality_alert_data.quantidade_nao_conforme,
+                "descricao_geral": quality_alert_data.descricao_geral,
+                "especificado_quality": quality_alert_data.especificado_quality,
+                "encontrado_quality": quality_alert_data.encontrado_quality,
+               }
+
+        print(vals)
+        try:
+            quality_alert = client.execute("quality.alert", "create", [vals])
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao criar alerta de qualidade") from error
