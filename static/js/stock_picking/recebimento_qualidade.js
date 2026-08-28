@@ -783,46 +783,78 @@ function createPickingCard(picking) {
     ====================================================== */
 
     const quantityInput =
-        article.querySelector(
-            ".quantity-input"
-        );
-
+    article.querySelector(".quantity-input");
 
     quantityInput.addEventListener(
         "change",
-        () => {
+        async () => {
 
-            const value =
-                Number(
-                    quantityInput.value
+        const value =
+            Number(quantityInput.value);
+
+        if (
+            Number.isNaN(value) ||
+            value < 0
+        ) {
+
+            quantityInput.value =
+                picking.receivedQuantity;
+
+            return;
+        }
+
+        picking.receivedQuantity = value;
+
+        try {
+
+            const response = await fetch(
+                "/api/received_quantity",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        picking_id: picking.id,
+                        received_quantity: value
+                    })
+                }
+            );
+
+            const data =
+                await response.json();
+
+            console.log(response, data);
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Erro ao atualizar quantidade."
                 );
-
-
-            if (
-                Number.isNaN(value)
-                ||
-                value < 0
-            ) {
-
-                quantityInput.value =
-                    picking.receivedQuantity;
-
-                return;
-
             }
-
-
-            picking.receivedQuantity =
-                value;
-
 
             showToast(
                 "Quantidade atualizada.",
                 "✓"
             );
 
+        } catch (error) {
+
+            console.error(
+                "Erro ao atualizar quantidade:",
+                error
+            );
+
+            showToast(
+                "Erro ao atualizar quantidade.",
+                "✕"
+            );
         }
-    );
+    }
+);
+
 
 
     return article;

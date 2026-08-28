@@ -37,3 +37,9 @@ class QualityAlert(BaseModel):
     especificado_quality: str
     encontrado_quality: str
 
+class ReceivedQuantity(BaseModel):
+    """Modelo para atualizar a quantidade recebida."""
+
+    picking_id: int
+    received_quantity: float
+

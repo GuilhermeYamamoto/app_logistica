@@ -389,3 +389,48 @@ class InventoryService:
             quality_alert = client.execute("quality.alert", "create", [vals])
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao criar alerta de qualidade") from error
+
+
+
+    # ================================================================
+    # MÉTODO PARA ATUALIZAR A QUANTIDADE DE ITENS RECEBIDOS NO PICKING
+    # ================================================================
+
+    def update_received_quantity(client, data):
+
+        print("Picking:", data.picking_id)
+        print("Quantidade:", data.received_quantity)
+
+        try:
+            move_lines = client.execute("stock.move.line","search",
+                [
+                    ("picking_id", "=", data.picking_id)      
+                ]
+            )
+
+            print("Move lines:", move_lines)
+
+            if not move_lines:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Nenhuma linha de movimentação encontrada para o picking."
+                )
+
+            client.execute("stock.move.line","write", move_lines,
+                {
+                    "qty_done": data.received_quantity
+                }
+            )
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+
+            print(error)
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Erro ao atualizar a quantidade "
+                    "de itens recebidos"
+                )
+            ) from error
+

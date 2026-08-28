@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
-from app.models.schemas import QualityAlert
+from app.models.schemas import QualityAlert, ReceivedQuantity
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -66,3 +66,17 @@ def create_quality_alert(quality_alert_data: QualityAlert = Body(...), client=De
     """
     create_quality_alert = InventoryService.create_quality_alert(client, quality_alert_data)
     return {"success": True, "message": "Alerta de qualidade criado com sucesso."}
+
+
+@router.post("/api/received_quantity")
+def received_quantity(
+    data: ReceivedQuantity = Body(...), client=Depends(get_odoo_client)):
+    """
+    Atualiza a quantidade recebida para um picking no Odoo.
+    """
+    InventoryService.update_received_quantity(client,data)
+
+    return {
+        "success": True,
+        "message": "Quantidade recebida atualizada com sucesso."
+    }
