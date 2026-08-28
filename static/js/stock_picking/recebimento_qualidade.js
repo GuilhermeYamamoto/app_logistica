@@ -14,7 +14,9 @@ let currentFilter = "pendentes";
 
 let searchTerm = "";
 
-let currentPickingId = null;
+let filteredPickingIds = null;
+
+let currentOrderId = null;
 
 let currentPhotoIndex = null;
 
@@ -102,8 +104,6 @@ async function loadPickings() {
                 null
             ],
 
-            packageConfirmed: false,
-
             qualityAlert: null
 
         }));
@@ -173,20 +173,31 @@ function setupDashboard() {
 function setupSearch() {
 
     searchInput.addEventListener(
-        "input",
-        () => {
+        "keydown",
+        event => {
+
+            if (event.key !== "Enter") {
+                return;
+            }
 
             searchTerm =
                 searchInput.value
-                    .trim()
-                    .toLowerCase();
+                    .trim();
 
-            clearSearch.style.display =
-                searchTerm
-                    ? "block"
-                    : "none";
+            if (!searchTerm) {
 
-            render();
+                filteredPickingIds = null;
+
+                clearSearch.style.display =
+                    "none";
+
+                render();
+
+                return;
+
+            }
+
+            filterByNF(searchTerm);
 
         }
     );
@@ -200,6 +211,8 @@ function setupSearch() {
 
             searchTerm = "";
 
+            filteredPickingIds = null;
+
             clearSearch.style.display =
                 "none";
 
@@ -209,6 +222,66 @@ function setupSearch() {
 
         }
     );
+
+}
+
+
+async function filterByNF(nfNumber) {
+
+    try {
+
+        clearSearch.style.display =
+            "block";
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings?nf_number=${encodeURIComponent(nfNumber)}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível consultar a nota fiscal."
+            );
+
+        }
+
+
+        filteredPickingIds =
+            data.map(
+                picking => picking.id
+            );
+
+
+        render();
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao filtrar por NF:",
+            error
+        );
+
+
+        filteredPickingIds = [];
+
+        render();
+
+
+        showToast(
+            error.message ||
+            "Não foi possível consultar a nota fiscal.",
+            "!"
+        );
+
+    }
 
 }
 
@@ -233,8 +306,6 @@ function getPickingStatus(picking) {
         picking.photos.every(
             photo => photo !== null
         )
-        &&
-        picking.packageConfirmed
     ) {
 
         return {
@@ -246,21 +317,6 @@ function getPickingStatus(picking) {
 
 
     if (
-        picking.photos.every(
-            photo => photo !== null
-        )
-    ) {
-
-        return {
-            label: "AGUARDANDO PACOTE",
-            className: "status-package"
-        };
-
-    }
-
-
-    if (
-        picking.photos.some(
             photo => photo !== null
         )
     ) {
@@ -304,14 +360,11 @@ function belongsToFilter(picking) {
             return (
                 !picking.validated
                 &&
-                (
-                    picking.photos.some(
-                        photo => photo !== null
-                    )
-                    ||
-                    picking.packageConfirmed
+                order.photos.some(
+                    photo => photo !== null
                 )
             );
+
 
 
         case "concluidos":
@@ -345,11 +398,9 @@ function render() {
                 belongsToFilter(picking);
 
             const matchesSearch =
-                !searchTerm
+                filteredPickingIds === null
                 ||
-                picking.pv
-                    .toLowerCase()
-                    .includes(searchTerm);
+                filteredPickingIds.includes(order.id);
 
             return (
                 matchesFilter
@@ -463,14 +514,11 @@ function updateDashboard() {
             picking =>
                 !picking.validated
                 &&
-                (
-                    picking.photos.some(
-                        photo => photo !== null
-                    )
-                    ||
-                    picking.packageConfirmed
+                order.photos.some(
+                    photo => photo !== null
                 )
         ).length;
+
 
 
     const completed =
@@ -563,14 +611,9 @@ function createPickingCard(picking) {
         );
 
 
-    const packageAvailable =
+    const validationAvailable =
         photosComplete;
 
-
-    const validationAvailable =
-        photosComplete
-        &&
-        picking.packageConfirmed;
 
 
     article.innerHTML = `
@@ -811,13 +854,6 @@ function handleAction(
         case "photos":
 
             openPhotoModal(picking);
-
-            break;
-
-
-        case "package":
-
-            openPackageModal(picking);
 
             break;
 

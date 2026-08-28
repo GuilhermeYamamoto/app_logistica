@@ -120,6 +120,7 @@ class InventoryService:
                             "validated": (picking["state"] == "done"),
                             "state": picking["state"],
                             "scheduledDate": picking["scheduled_date"],
+                            "nf_number": picking["parent_dfe_nfe_infnfe_ide_nnf"] if "parent_dfe_nfe_infnfe_ide_nnf" in picking else None,
                         })
 
         return {"picking_type_id": picking_type_id, "records": records}
@@ -327,11 +328,17 @@ class InventoryService:
                 detail=f"Erro ao imprimir etiqueta: {str(e)}",
             )
 
+
+
+    # ========================================================
+    # MÉTODO PARA VALIDAR PICKING
+    # ========================================================
+
     def button_validate(client, picking_id):
         result = None
 
         try:
-            result = client.execute("stock.picking", "button_validate", [picking_id])
+            result = client.execute("stock.picking", "action_validate_with_backorder", [picking_id])
 
         except xmlrpc.client.Fault as e:
             error_message = str(e)
@@ -346,6 +353,24 @@ class InventoryService:
 
         return {"success": True, "picking_id": picking_id, "result": result}
 
+    # ========================================================
+    # MÉTODO PARA FILTRAR PICKING POR NOTA FISCAL
+    # ========================================================
+
+    def filter_nf(client, nf_number):
+        try:
+            result = client.execute("stock.picking", "search_read", [("parent_dfe_nfe_infnfe_ide_nnf", "=", nf_number)])
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings com a origem solicitada")) from error
+
+        return result
+
+     
+    # ========================================================
+    # MÉTODO PARA Criar o Alerta de Qualidade
+    # ========================================================
+    
     def create_quality_alert(client, quality_alert_data):
         """
         Cria um alerta de qualidade no Odoo.
