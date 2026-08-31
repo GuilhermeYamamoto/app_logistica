@@ -257,15 +257,15 @@ estado de autenticacao entre usuarios.
 | Produtos | `product.template` | Catalogo de produtos |
 | Contatos | `res.partner` | Clientes e fornecedores |
 
-Cada cartao aponta para `/modelos/{model}`, exceto Inventario, que aponta para
+Cada cartao aponta para `/{model}`, exceto Inventario, que aponta para
 `/inventario` e apresenta as etapas antes da listagem de registros. A pagina
 dos demais modelos usa
-`frontend/static/js/modelo.js` para buscar os registros por API.
+`static/js/base/modelo.js` para buscar os registros por API.
 
 A consulta e realizada por:
 
 ```http
-GET /api/modelos/{model}
+GET /api/{model}
 ```
 
 Internamente, a aplicacao executa:
@@ -366,8 +366,8 @@ de demonstração não são usados.
 | GET | `/inventario` | Exibe as etapas de Inventario |
 | GET | `/inventario/etapas/{stage_key}` | Renderiza o template da etapa |
 | GET | `/api/inventario/etapas/{stage_key}` | Lista transferencias pendentes da etapa |
-| GET | `/modelos/{model}` | Exibe a pagina de um modelo |
-| GET | `/api/modelos/{model}` | Lista registros do modelo via XML-RPC |
+| GET | `/{model}` | Exibe a pagina de um modelo |
+| GET | `/api/{model}` | Lista registros do modelo via XML-RPC |
 
 ## Logout
 
