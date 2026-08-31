@@ -14,8 +14,8 @@ app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 # Incluir routers
 app.include_router(auth.router)
 app.include_router(index.router)
-app.include_router(models.router)
 app.include_router(stock_picking.router)
+app.include_router(models.router)
 
 
 @app.get("/health")

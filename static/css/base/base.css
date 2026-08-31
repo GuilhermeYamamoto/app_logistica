@@ -1,0 +1,167 @@
+:root {
+    --odoo-purple: #714b67;
+    --odoo-purple-hover: #875a7b;
+    --odoo-background: #f0eeee;
+    --odoo-surface: #ffffff;
+    --odoo-text: #4c4c4c;
+    --odoo-muted: #777777;
+    --odoo-border: #d8dadd;
+    --odoo-focus: rgba(113, 75, 103, 0.22);
+}
+
+body {
+    background: var(--odoo-background);
+    color: var(--odoo-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.home-page {
+    min-height: 100vh;
+    padding: 0 32px 48px;
+}
+
+.home-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 0 -32px 32px;
+    padding: 18px 32px;
+    background: var(--odoo-purple);
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+.eyebrow {
+    margin: 0 0 3px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.home-header h1 {
+    margin: 0 0 4px;
+    color: white;
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.home-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 14px;
+}
+
+.logout-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 3px;
+    background: transparent;
+    color: white;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s;
+}
+
+.logout-button:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.logout-button:focus-visible,
+.module-card:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.module-card {
+    display: flex;
+    min-height: 142px;
+    padding: 20px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 2px;
+    background: var(--odoo-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: inherit;
+    flex-direction: column;
+    text-decoration: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.module-card:hover {
+    border-color: var(--odoo-purple-hover);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16);
+}
+
+.module-card h2 {
+    margin: 0 0 8px;
+    color: var(--odoo-purple);
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.module-card p {
+    margin: 0;
+    color: var(--odoo-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.module-card span {
+    margin-top: auto;
+    padding-top: 18px;
+    color: var(--odoo-purple);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+}
+
+.module-card > h2 + #modelStatus {
+    margin: 0 0 16px;
+    color: var(--odoo-muted);
+    font-size: 14px;
+}
+
+#recordList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#recordList li {
+    padding: 10px 0;
+    border-top: 1px solid #eeeeee;
+    color: var(--odoo-text);
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .home-page {
+        padding: 0 16px 32px;
+    }
+
+    .home-header {
+        align-items: flex-start;
+        flex-direction: column;
+        margin: 0 -16px 24px;
+        padding: 16px;
+    }
+
+    .module-grid {
+        grid-template-columns: 1fr;
+    }
+}

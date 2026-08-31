@@ -30,7 +30,7 @@ def get_module(model: str) -> Dict[str, Any]:
     return module
 
 
-@router.get("/modelos/{model}", response_class=HTMLResponse)
+@router.get("/{model}", response_class=HTMLResponse)
 async def model_page(
     request: Request,
     model: str,
@@ -45,15 +45,13 @@ async def model_page(
     )
 
 
-@router.get("/api/modelos/{model}")
+@router.get("/api/{model}")
 async def list_records(
     request: Request,
     model: str,
     client=Depends(get_odoo_client),
 ):
     """Lista registros de um modelo."""
-    module = get_module(model)
-
     try:
         records = client.execute(
             model,

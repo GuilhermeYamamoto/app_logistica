@@ -3,7 +3,7 @@ const recordList = document.getElementById("recordList");
 
 async function loadRecords() {
     try {
-        const response = await fetch(`/api/modelos/${encodeURIComponent(model)}`);
+        const response = await fetch(`/api/${encodeURIComponent(model)}`);
         const data = await response.json();
 
         if (!response.ok) {
