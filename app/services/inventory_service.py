@@ -65,10 +65,21 @@ class InventoryService:
         ]
 
 
-    # ========================================================
-    # LISTAR OS PICKINGS DE CADA ETAPA DO INVENTARIO
-    # ========================================================
 
+    ####################################
+    #  LISTAR OS PICKINGS DE CADA ETAPA
+    ####################################
+    #
+    #  Consulta os pickings do Odoo pertencentes ao tipo de operação
+    #  informado. Também consulta os movimentos relacionados a cada
+    #  picking para obter os produtos e as quantidades esperadas e
+    #  recebidas.
+    #
+    #  Ao final, organiza os dados em um formato simplificado para
+    #  utilização pelo frontend.
+    #
+    ####################################
+    
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
 
@@ -127,10 +138,18 @@ class InventoryService:
 
       
 
-    # ========================================================
-    # IMPRESSÃO DA ETIQUETA DE QUALIDADE
-    # ========================================================
-
+    ####################################
+    #  IMPRESSÃO DA ETIQUETA DE QUALIDADE
+    ####################################
+    #
+    #  Solicita ao Odoo a geração do documento da etiqueta de qualidade
+    #  para o picking informado.
+    #
+    #  Após receber os dados do documento e da impressora, envia o
+    #  arquivo para o dispositivo IoT responsável pela impressão.
+    #
+    ####################################
+    
     async def print_report_qualidade(client, picking_id):
         try:
             print("==========================================")
@@ -330,10 +349,18 @@ class InventoryService:
 
 
 
-    # ========================================================
-    # MÉTODO PARA VALIDAR PICKING
-    # ========================================================
-
+    ####################################
+    #  MÉTODO PARA VALIDAR PICKING
+    ####################################
+    #
+    #  Executa a validação do picking no Odoo.
+    #
+    #  Utiliza o método de validação com possibilidade de backorder.
+    #  Caso o Odoo valide o picking, mas apresente erro ao serializar
+    #  o retorno, a operação é considerada concluída mesmo sem retorno.
+    #
+    ####################################
+    
     def button_validate(client, picking_id):
         result = None
 
@@ -353,9 +380,19 @@ class InventoryService:
 
         return {"success": True, "picking_id": picking_id, "result": result}
 
-    # ========================================================
-    # MÉTODO PARA FILTRAR PICKING POR NOTA FISCAL
-    # ========================================================
+
+
+    ####################################
+    #  MÉTODO PARA FILTRAR PICKING POR NF
+    ####################################
+    #
+    #  Consulta os pickings no Odoo utilizando o número da nota fiscal
+    #  informado como filtro.
+    #
+    #  Retorna os registros encontrados diretamente para a camada que
+    #  realizou a chamada do serviço.
+    #
+    ####################################
 
     def filter_nf(client, nf_number):
         try:
@@ -367,10 +404,18 @@ class InventoryService:
         return result
 
 
-    # ========================================================
-    # MÉTODO PARA LISTAR CAUSAS DE NÃO CONFORMIDADE
-    # ========================================================
 
+    ####################################
+    #  MÉTODO PARA LISTAR CAUSAS DE NÃO CONFORMIDADE
+    ####################################
+    #
+    #  Consulta no Odoo as causas de não conformidade cadastradas.
+    #
+    #  Os registros são retornados contendo o ID e o nome da causa,
+    #  permitindo que sejam utilizados na criação de alertas de qualidade.
+    #
+    ####################################
+    
     @staticmethod
     def list_quality_causes(client):
 
@@ -402,10 +447,19 @@ class InventoryService:
             for cause in causes
         ]
 
+
      
-    # ========================================================
-    # MÉTODO PARA Criar o Alerta de Qualidade
-    # ========================================================
+    ####################################
+    #  MÉTODO PARA CRIAR ALERTA DE QUALIDADE
+    ####################################
+    #
+    #  Cria um novo alerta de qualidade no Odoo utilizando os dados
+    #  recebidos da aplicação.
+    #
+    #  Os dados são organizados no formato esperado pelo modelo
+    #  quality.alert, incluindo as causas de não conformidade associadas.
+    #
+    ####################################
     
     def create_quality_alert(client, quality_alert_data):
         """
@@ -438,10 +492,21 @@ class InventoryService:
 
 
 
-    # ================================================================
-    # MÉTODO PARA ATUALIZAR A QUANTIDADE DE ITENS RECEBIDOS NO PICKING
-    # ================================================================
-
+    ####################################
+    #  MÉTODO PARA ATUALIZAR QUANTIDADE RECEBIDA
+    ####################################
+    #
+    #  Atualiza no Odoo a quantidade efetivamente recebida em um picking.
+    #
+    #  Primeiro localiza as linhas de movimentação relacionadas ao picking.
+    #  Em seguida, atualiza o campo qty_done dessas linhas com a quantidade
+    #  recebida informada.
+    #
+    #  Caso nenhuma linha de movimentação seja encontrada, a operação
+    #  é interrompida e retorna um erro.
+    #
+    ####################################
+    
     def update_received_quantity(client, data):
 
         print("Picking:", data.picking_id)
