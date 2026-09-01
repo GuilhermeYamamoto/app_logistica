@@ -366,6 +366,42 @@ class InventoryService:
 
         return result
 
+
+    # ========================================================
+    # MÉTODO PARA LISTAR CAUSAS DE NÃO CONFORMIDADE
+    # ========================================================
+
+    @staticmethod
+    def list_quality_causes(client):
+
+        try:
+
+            causes = client.execute("x_causas_nao_conformid", "search_read", [],
+                fields=[
+                    "x_name"
+                ],
+                order="x_name asc"
+            )
+
+        except (KeyError, OSError, xmlrpc.client.Error
+        ) as error:
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail=(
+                    "Não foi possível consultar "
+                    "as causas de não conformidade."
+                )
+            ) from error
+
+
+        return [
+            {
+                "id": cause["id"],
+                "name": cause.get("x_name") or "Sem descrição"
+            }
+            for cause in causes
+        ]
+
      
     # ========================================================
     # MÉTODO PARA Criar o Alerta de Qualidade
@@ -375,20 +411,30 @@ class InventoryService:
         """
         Cria um alerta de qualidade no Odoo.
         """
+
         vals = {
-                "picking_id": quality_alert_data.picking_id,
-                "reprovacao": quality_alert_data.reprovacao,
-                "quantidade_nao_conforme": quality_alert_data.quantidade_nao_conforme,
-                "descricao_geral": quality_alert_data.descricao_geral,
-                "especificado_quality": quality_alert_data.especificado_quality,
-                "encontrado_quality": quality_alert_data.encontrado_quality,
-               }
+            "picking_id": quality_alert_data.picking_id,
+            "reprovacao": quality_alert_data.reprovacao,
+            "quantidade_nao_conforme": quality_alert_data.quantidade_nao_conforme,
+            "descricao_geral": quality_alert_data.descricao_geral,
+            "especificado_quality": quality_alert_data.especificado_quality,
+            "encontrado_quality": quality_alert_data.encontrado_quality,
+            "causas_qa_id": [(6, 0, quality_alert_data.causas_qa_id)],
+        }
+
 
         print(vals)
+
+
         try:
             quality_alert = client.execute("quality.alert", "create", [vals])
+
+            return quality_alert
+        
         except (KeyError, OSError, xmlrpc.client.Error) as error:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao criar alerta de qualidade") from error
+
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, 
+                                detail="Erro ao criar alerta de qualidade") from error
 
 
 
@@ -433,4 +479,3 @@ class InventoryService:
                     "de itens recebidos"
                 )
             ) from error
-

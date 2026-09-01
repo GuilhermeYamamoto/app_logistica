@@ -59,6 +59,14 @@ async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
 async def filter_nf(nf_number: str, client=Depends(get_odoo_client)):
     return InventoryService.filter_nf(client, nf_number)
 
+@router.get("/api/quality-alert/causas")
+def list_quality_causes(client=Depends(get_odoo_client)):
+    """
+    Retorna as causas de não conformidade disponíveis no Odoo.
+    """
+
+    return InventoryService.list_quality_causes(client)
+
 @router.post("/api/quality-alert")
 def create_quality_alert(quality_alert_data: QualityAlert = Body(...), client=Depends(get_odoo_client)):
     """

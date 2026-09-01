@@ -31,6 +31,7 @@ class QualityAlert(BaseModel):
     """Modelo de Alerta de Qualidade."""
 
     picking_id: int
+    causas_qa_id: list[int] = []
     reprovacao: str
     quantidade_nao_conforme: int
     descricao_geral: str
@@ -42,4 +43,3 @@ class ReceivedQuantity(BaseModel):
 
     picking_id: int
     received_quantity: float
-
