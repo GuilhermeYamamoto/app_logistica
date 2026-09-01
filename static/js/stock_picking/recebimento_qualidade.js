@@ -22,6 +22,11 @@ let currentPhotoIndex = null;
 
 let toastTimeout = null;
 
+let qualityCauses = [];
+
+let selectedQualityCauses = [];
+
+
 
 /*
    ELEMENTOS
@@ -52,6 +57,7 @@ const qualityRecordsElement =
     document.getElementById("qualityRecords");
 
 
+
 /* =========================================================
    INICIALIZAÇÃO
 ========================================================= */
@@ -71,6 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupQualityForm();
 
     setupQuantityValidation();
+
+    setupQualityCauses();
 
     loadPickings();
 
@@ -1542,6 +1550,9 @@ function openQualityModal(picking) {
     form.reset();
 
 
+    resetQualityCauses();
+
+
     document.getElementById(
         "partialQuantityGroup"
     ).classList.add(
@@ -1623,6 +1634,550 @@ function updateRejectionFields() {
         );
 
     }
+
+}
+
+
+
+/* =========================================================
+   CAUSAS DA NÃO CONFORMIDADE
+========================================================= */
+
+function setupQualityCauses() {
+
+    const causesSelector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+    const causesDropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+
+    if (
+        !causesSelector ||
+        !causesDropdown
+    ) {
+
+        console.error(
+            "Elementos do seletor de causas não encontrados."
+        );
+
+        return;
+
+    }
+
+
+    causesSelector.addEventListener(
+        "click",
+        event => {
+
+            event.stopPropagation();
+
+            const isOpen =
+                !causesDropdown.classList.contains(
+                    "hidden"
+                );
+
+
+            if (isOpen) {
+
+                closeCausesDropdown();
+
+            } else {
+
+                openCausesDropdown();
+
+            }
+
+        }
+    );
+
+
+    causesSelector.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key === "Enter"
+                ||
+                event.key === " "
+            ) {
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+                const isOpen =
+                    !causesDropdown.classList.contains(
+                        "hidden"
+                    );
+
+
+                if (isOpen) {
+
+                    closeCausesDropdown();
+
+                } else {
+
+                    openCausesDropdown();
+
+                }
+
+            }
+
+        }
+    );
+
+
+    document.addEventListener(
+        "click",
+        event => {
+
+            if (
+                !causesSelector.contains(
+                    event.target
+                )
+                &&
+                !causesDropdown.contains(
+                    event.target
+                )
+            ) {
+
+                closeCausesDropdown();
+
+            }
+
+        }
+    );
+
+
+    loadQualityCauses();
+
+}
+
+
+async function loadQualityCauses() {
+
+    const causesList =
+        document.getElementById(
+            "causesList"
+        );
+
+
+    if (!causesList) {
+
+        console.error(
+            "Elemento causesList não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    causesList.innerHTML = `
+        <div class="causes-loading">
+            CARREGANDO CAUSAS...
+        </div>
+    `;
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/quality-alert/causas"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível carregar as causas."
+            );
+
+        }
+
+
+        if (!Array.isArray(data)) {
+
+            throw new Error(
+                "Formato inválido das causas."
+            );
+
+        }
+
+
+        qualityCauses = data;
+
+        renderQualityCauses();
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao carregar causas de não conformidade:",
+            error
+        );
+
+
+        causesList.innerHTML = `
+            <div class="causes-error">
+                Não foi possível carregar as causas.
+            </div>
+        `;
+
+    }
+
+}
+
+
+function renderQualityCauses() {
+
+    const causesList =
+        document.getElementById(
+            "causesList"
+        );
+
+
+    if (!causesList) {
+        return;
+    }
+
+
+    causesList.innerHTML = "";
+
+
+    if (qualityCauses.length === 0) {
+
+        causesList.innerHTML = `
+            <div class="causes-empty">
+                Nenhuma causa cadastrada no Odoo.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    qualityCauses.forEach(
+        cause => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type = "button";
+
+            button.className =
+                "cause-option";
+
+
+            button.dataset.causeId =
+                cause.id;
+
+
+            button.innerHTML = `
+
+                <span class="cause-check">
+                    ✓
+                </span>
+
+                <span class="cause-option-name">
+                    ${escapeHtml(cause.name)}
+                </span>
+
+            `;
+
+
+            button.addEventListener(
+                "click",
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    toggleQualityCause(
+                        cause.id
+                    );
+
+                }
+            );
+
+
+            causesList.appendChild(
+                button
+            );
+
+        }
+    );
+
+
+    updateQualityCausesInterface();
+
+}
+
+
+function openCausesDropdown() {
+
+    const causesDropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+    const causesSelector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+
+    if (
+        !causesDropdown ||
+        !causesSelector
+    ) {
+        return;
+    }
+
+
+    causesDropdown.classList.remove(
+        "hidden"
+    );
+
+
+    causesSelector.classList.add(
+        "open"
+    );
+
+
+    updateQualityCausesInterface();
+
+}
+
+
+function closeCausesDropdown() {
+
+    const causesDropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+    const causesSelector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+
+    if (!causesDropdown) {
+        return;
+    }
+
+
+    causesDropdown.classList.add(
+        "hidden"
+    );
+
+
+    if (causesSelector) {
+
+        causesSelector.classList.remove(
+            "open"
+        );
+
+    }
+
+}
+
+
+function toggleQualityCause(causeId) {
+
+    const numericCauseId =
+        Number(causeId);
+
+
+    const index =
+        selectedQualityCauses.indexOf(
+            numericCauseId
+        );
+
+
+    if (index === -1) {
+
+        selectedQualityCauses.push(
+            numericCauseId
+        );
+
+    } else {
+
+        selectedQualityCauses.splice(
+            index,
+            1
+        );
+
+    }
+
+
+    updateQualityCausesInterface();
+
+}
+
+
+function updateQualityCausesInterface() {
+
+    const selectedCausesContainer =
+        document.getElementById(
+            "selectedCauses"
+        );
+
+
+    if (!selectedCausesContainer) {
+        return;
+    }
+
+
+    /*
+     * Atualiza os checks da lista.
+     */
+
+    document
+        .querySelectorAll(
+            ".cause-option"
+        )
+        .forEach(
+            option => {
+
+                const causeId =
+                    Number(
+                        option.dataset.causeId
+                    );
+
+
+                const selected =
+                    selectedQualityCauses.includes(
+                        causeId
+                    );
+
+
+                option.classList.toggle(
+                    "selected",
+                    selected
+                );
+
+            }
+        );
+
+
+    /*
+     * Atualiza as causas exibidas
+     * dentro da caixa principal.
+     */
+
+    selectedCausesContainer.innerHTML = "";
+
+
+    if (
+        selectedQualityCauses.length === 0
+    ) {
+
+        const placeholder =
+            document.createElement(
+                "span"
+            );
+
+
+        placeholder.className =
+            "cause-placeholder";
+
+
+        placeholder.textContent =
+            "Selecione uma ou mais causas...";
+
+
+        selectedCausesContainer.appendChild(
+            placeholder
+        );
+
+
+        return;
+
+    }
+
+
+    selectedQualityCauses.forEach(
+        causeId => {
+
+            const cause =
+                qualityCauses.find(
+                    item =>
+                        Number(item.id) ===
+                        causeId
+                );
+
+
+            if (!cause) {
+                return;
+            }
+
+
+            const selectedCause =
+                document.createElement(
+                    "span"
+                );
+
+
+            selectedCause.className =
+                "selected-cause";
+
+
+            selectedCause.textContent =
+                cause.name;
+
+
+            selectedCausesContainer.appendChild(
+                selectedCause
+            );
+
+        }
+    );
+
+}
+
+
+function resetQualityCauses() {
+
+    selectedQualityCauses = [];
+
+    updateQualityCausesInterface();
+
+    closeCausesDropdown();
+
+}
+
+
+function escapeHtml(value) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        value ?? "";
+
+
+    return div.innerHTML;
 
 }
 
@@ -1728,13 +2283,21 @@ async function submitQualityAlert(event) {
 
     const quality_alert_data = {
         picking_id: picking.id,
+
+        causas_qa_id:
+            selectedQualityCauses,
+
         reprovacao,
+
         quantidade_nao_conforme:
             reprovacao === "parcial"
                 ? quantidade_nao_conforme
                 : picking.receivedQuantity,
+
         descricao_geral,
+
         especificado_quality,
+
         encontrado_quality
     };
 
@@ -1756,7 +2319,13 @@ async function submitQualityAlert(event) {
         // Atualiza a tela após confirmado envio para o backend
         // ------------------------------------------------
 
-        picking.qualityAlert = quality_alert_data;
+        picking.qualityAlert = {
+            ...quality_alert_data,
+
+            causas_qa_id: [
+                ...selectedQualityCauses
+            ]
+        };
 
         closeModal("qualityModal");
 
