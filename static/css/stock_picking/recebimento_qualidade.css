@@ -761,6 +761,11 @@ button {
     transition: width .25s ease;
 }
 
+
+/* =========================================================
+   GRID DE FOTOS
+========================================================= */
+
 .photo-grid {
     display: grid;
 
@@ -769,25 +774,34 @@ button {
     gap: 12px;
 
     padding: 0 26px;
+
+    max-height: 480px;
+
+    overflow-y: auto;
 }
 
-.photo-slot {
+
+/* =========================================================
+   BOTÃO ADICIONAR FOTO
+========================================================= */
+
+.add-photo-button {
     position: relative;
 
     min-height: 220px;
 
     background: #edf2f8;
 
-    border: 4px solid #d9e1eb;
+    border: 4px dashed #cbd5e1;
 
     border-radius: 13px;
 
-    overflow: hidden;
-
     display: flex;
+
     flex-direction: column;
 
     align-items: center;
+
     justify-content: center;
 
     color: #657083;
@@ -799,20 +813,55 @@ button {
     transition: .15s ease;
 }
 
-.photo-slot:hover {
+.add-photo-button:hover {
     border-color: var(--blue);
+
+    background: #f3f6ff;
+
+    color: var(--blue);
 }
 
-.photo-slot.has-photo {
-    border-color: var(--green);
-}
-
-.camera-icon {
+.add-photo-button .camera-icon {
     font-size: 42px;
 }
 
+
+/* =========================================================
+   FOTO REGISTRADA NA SESSÃO
+========================================================= */
+
+.photo-slot {
+    position: relative;
+
+    min-height: 220px;
+
+    background: #edf2f8;
+
+    border: 4px solid var(--green);
+
+    border-radius: 13px;
+
+    overflow: hidden;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: #657083;
+
+    font-weight: 900;
+}
+
+
+/* =========================================================
+   PREVIEW
+========================================================= */
+
 .photo-preview {
     position: absolute;
+
     inset: 0;
 
     width: 100%;
@@ -820,17 +869,55 @@ button {
 
     object-fit: cover;
 
-    display: none;
-}
-
-.photo-slot.has-photo .photo-preview {
     display: block;
 }
 
-.photo-slot.has-photo .camera-icon,
-.photo-slot.has-photo > span {
-    display: none;
+
+/* =========================================================
+   BOTÃO EXCLUIR FOTO
+========================================================= */
+
+.remove-photo-button {
+    position: absolute;
+
+    z-index: 5;
+
+    top: 8px;
+    right: 8px;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 50%;
+
+    background: rgba(20, 25, 35, .78);
+
+    color: white;
+
+    font-size: 25px;
+
+    font-weight: 900;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    line-height: 1;
+
+    transition: .15s ease;
 }
+
+.remove-photo-button:hover {
+    background: var(--red);
+
+    transform: scale(1.05);
+}
+
+
+/* =========================================================
+   MENSAGEM DAS FOTOS
+========================================================= */
 
 .photo-message {
     margin: 15px 26px 0;
@@ -1387,9 +1474,11 @@ button {
 
     .photo-grid {
         grid-template-columns: 1fr;
+        max-height: 430px;
     }
 
-    .photo-slot {
+    .photo-slot,
+    .add-photo-button {
         min-height: 180px;
     }
 

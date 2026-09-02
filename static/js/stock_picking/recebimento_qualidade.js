@@ -20,6 +20,10 @@ let currentPickingId = null;
 
 let currentPhotoIndex = null;
 
+let photoSession = [];
+
+let photosSaving = false;
+
 let toastTimeout = null;
 
 let qualityCauses = [];
@@ -106,11 +110,13 @@ async function loadPickings() {
 
             ...picking,
 
-            photos: [
-                null,
-                null,
-                null
-            ],
+            photos: [],
+
+            photosRegistered:
+                Boolean(picking.photosRegistered),
+
+            photoCount:
+                Number(picking.photoCount || 0),
 
             qualityAlert: null
 
@@ -614,14 +620,8 @@ function createPickingCard(picking) {
         getPickingStatus(picking);
 
 
-    const photosComplete =
-        picking.photos.every(
-            photo => photo !== null
-        );
-
-
     const validationAvailable =
-        photosComplete;
+        picking.photosRegistered === true;
 
 
 
@@ -694,16 +694,20 @@ function createPickingCard(picking) {
         <div class="picking-actions">
 
             <button
-                class="main-action photo-action"
+                class="main-action photo-action
+                    ${picking.photosRegistered ? "disabled" : ""}"
                 data-action="photos"
                 data-picking-id="${picking.id}"
+                ${picking.photosRegistered ? "disabled" : ""}
             >
 
                 <span class="action-icon-small">
                     📷
                 </span>
 
-                FOTOS
+                ${picking.photosRegistered
+                    ? "FOTOS REGISTRADAS"
+                    : "FOTOS"}
 
             </button>
 
@@ -1019,33 +1023,32 @@ function closeModal(id) {
 
 function setupPhotoSlots() {
 
-    document
-        .querySelectorAll(".photo-slot")
-        .forEach(slot => {
+    const addPhotoButton =
+        document.getElementById(
+            "addPhotoButton"
+        );
 
-            slot.addEventListener(
-                "click",
-                () => {
+    if (!addPhotoButton) {
+        return;
+    }
 
-                    const index =
-                        Number(
-                            slot.dataset.photoIndex
-                        );
+    addPhotoButton.addEventListener(
+        "click",
+        () => {
 
+            if (photosSaving) {
+                return;
+            }
 
-                    currentPhotoIndex =
-                        index;
+            currentPhotoIndex =
+                photoSession.length;
 
+            photoInput.value = "";
 
-                    photoInput.value = "";
+            photoInput.click();
 
-
-                    photoInput.click();
-
-                }
-            );
-
-        });
+        }
+    );
 
 
     document
@@ -1054,47 +1057,11 @@ function setupPhotoSlots() {
         )
         .addEventListener(
             "click",
-            () => {
-
-                const picking =
-                    findPicking(
-                        currentPickingId
-                    );
-
-
-                if (!picking) return;
-
-
-                if (
-                    picking.photos.every(
-                        photo => photo !== null
-                    )
-                ) {
-
-                    closeModal(
-                        "photoModal"
-                    );
-
-
-                    showToast(
-                        "3 FOTOS REGISTRADAS",
-                        "✓"
-                    );
-
-
-                    render();
-
-                }
-
-            }
+            savePhotos
         );
 
 }
 
-
-/* =========================================================
-   SELEÇÃO / CAPTURA DE FOTO
-========================================================= */
 
 function setupPhotoInput() {
 
@@ -1106,40 +1073,14 @@ function setupPhotoInput() {
 }
 
 
-/* =========================================================
-   PROCESSAR FOTO
-========================================================= */
-
 function handlePhotoSelection(event) {
 
     const file =
         event.target.files[0];
 
-
     if (!file) {
-
         return;
-
     }
-
-
-    const picking =
-        findPicking(currentPickingId);
-
-
-    if (!picking) {
-
-        return;
-
-    }
-
-
-    if (currentPhotoIndex === null) {
-
-        return;
-
-    }
-
 
     if (
         !file.type.startsWith(
@@ -1156,35 +1097,28 @@ function handlePhotoSelection(event) {
 
     }
 
+    if (currentPhotoIndex === null) {
+        return;
+    }
 
     const reader =
         new FileReader();
 
-
     reader.onload = () => {
 
-        picking.photos[
-            currentPhotoIndex
-        ] = reader.result;
-
-
-        const photoNumber =
-            currentPhotoIndex + 1;
-
-
-        updatePhotoInterface();
-
-        render();
-
-
-        showToast(
-            `FOTO ${photoNumber} REGISTRADA`,
-            "✓"
+        photoSession.push(
+            reader.result
         );
-
 
         currentPhotoIndex =
             null;
+
+        updatePhotoInterface();
+
+        showToast(
+            `FOTO ${photoSession.length} ADICIONADA`,
+            "✓"
+        );
 
     };
 
@@ -1204,14 +1138,16 @@ function handlePhotoSelection(event) {
 }
 
 
-/* =========================================================
-   ABRIR MODAL DE FOTOS
-========================================================= */
-
 function openPhotoModal(picking) {
 
     currentPickingId =
         picking.id;
+
+    photoSession = [];
+
+    currentPhotoIndex = null;
+
+    photosSaving = false;
 
 
     document.getElementById(
@@ -1222,6 +1158,7 @@ function openPhotoModal(picking) {
 
     updatePhotoInterface();
 
+
     openModal(
         "photoModal"
     );
@@ -1229,75 +1166,274 @@ function openPhotoModal(picking) {
 }
 
 
-/* =========================================================
-   ATUALIZAR FOTOS
-========================================================= */
-
 function updatePhotoInterface() {
+
+    const grid =
+        document.getElementById(
+            "photoGrid"
+        );
+
+    const finishButton =
+        document.getElementById(
+            "finishPhotosButton"
+        );
+
+    const progressText =
+        document.getElementById(
+            "photoProgressText"
+        );
+
+    const progressBar =
+        document.getElementById(
+            "photoProgressBar"
+        );
+
+    const photoMessage =
+        document.getElementById(
+            "photoMessage"
+        );
+
+
+    if (
+        !grid ||
+        !finishButton ||
+        !progressText ||
+        !progressBar ||
+        !photoMessage
+    ) {
+        return;
+    }
+
+
+    grid.innerHTML = "";
+
+
+    photoSession.forEach(
+        (photo, index) => {
+
+            const slot =
+                document.createElement(
+                    "div"
+                );
+
+            slot.className =
+                "photo-slot";
+
+
+            const preview =
+                document.createElement(
+                    "img"
+                );
+
+            preview.className =
+                "photo-preview";
+
+            preview.src =
+                photo;
+
+            preview.alt =
+                `Foto ${index + 1}`;
+
+
+            const removeButton =
+                document.createElement(
+                    "button"
+                );
+
+            removeButton.type =
+                "button";
+
+            removeButton.className =
+                "remove-photo-button";
+
+            removeButton.textContent =
+                "×";
+
+            removeButton.title =
+                "Excluir foto";
+
+
+            removeButton.addEventListener(
+                "click",
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    removePhoto(index);
+
+                }
+            );
+
+
+            slot.appendChild(
+                preview
+            );
+
+            slot.appendChild(
+                removeButton
+            );
+
+            grid.appendChild(
+                slot
+            );
+
+        }
+    );
+
+
+    const addPhotoButton =
+        document.createElement(
+            "button"
+        );
+
+    addPhotoButton.type =
+        "button";
+
+    addPhotoButton.id =
+        "addPhotoButton";
+
+    addPhotoButton.className =
+        "add-photo-button";
+
+
+    addPhotoButton.innerHTML = `
+        <div class="camera-icon">
+            📷
+        </div>
+
+        <span>
+            ADICIONAR FOTO
+        </span>
+    `;
+
+
+    addPhotoButton.addEventListener(
+        "click",
+        () => {
+
+            if (photosSaving) {
+                return;
+            }
+
+            currentPhotoIndex =
+                photoSession.length;
+
+            photoInput.value = "";
+
+            photoInput.click();
+
+        }
+    );
+
+
+    grid.appendChild(
+        addPhotoButton
+    );
+
+
+    const completed =
+        photoSession.length;
+
+
+    progressText.textContent =
+        `${completed} FOTOS`;
+
+
+    /*
+     * Não existe mais limite superior.
+     *
+     * Para manter a barra visualmente útil,
+     * ela chega a 100% quando o mínimo de
+     * 3 fotos é atingido.
+     */
+
+    const progressPercentage =
+        Math.min(
+            (completed / 3) * 100,
+            100
+        );
+
+
+    progressBar.style.width =
+        `${progressPercentage}%`;
+
+
+    finishButton.disabled =
+        completed < 3 ||
+        photosSaving;
+
+
+    if (completed < 3) {
+
+        photoMessage.textContent =
+            `Faltam ${3 - completed} foto(s). É necessário registrar pelo menos 3 fotos.`;
+
+    } else {
+
+        photoMessage.textContent =
+            `✓ ${completed} fotos adicionadas. Você pode registrar as fotos.`;
+
+    }
+
+}
+
+
+function removePhoto(index) {
+
+    if (photosSaving) {
+        return;
+    }
+
+    if (
+        index < 0 ||
+        index >= photoSession.length
+    ) {
+        return;
+    }
+
+    photoSession.splice(
+        index,
+        1
+    );
+
+    updatePhotoInterface();
+
+    showToast(
+        "FOTO REMOVIDA",
+        "✓"
+    );
+
+}
+
+
+async function savePhotos() {
 
     const picking =
         findPicking(currentPickingId);
 
 
-    if (!picking) return;
+    if (!picking) {
+        return;
+    }
 
 
-    const completed =
-        picking.photos.filter(
-            photo => photo !== null
-        ).length;
+    if (photoSession.length < 3) {
 
-
-    document.getElementById(
-        "photoProgressText"
-    ).textContent =
-        `${completed} DE 3 FOTOS`;
-
-
-    document.getElementById(
-        "photoProgressBar"
-    ).style.width =
-        `${(completed / 3) * 100}%`;
-
-
-    document
-        .querySelectorAll(".photo-slot")
-        .forEach(
-            (slot, index) => {
-
-                const preview =
-                    slot.querySelector(
-                        ".photo-preview"
-                    );
-
-
-                const photo =
-                    picking.photos[index];
-
-
-                if (photo) {
-
-                    slot.classList.add(
-                        "has-photo"
-                    );
-
-                    preview.src =
-                        photo;
-
-                } else {
-
-                    slot.classList.remove(
-                        "has-photo"
-                    );
-
-                    preview.removeAttribute(
-                        "src"
-                    );
-
-                }
-
-            }
+        showToast(
+            "É necessário registrar pelo menos 3 fotos.",
+            "!"
         );
+
+        return;
+
+    }
+
+
+    if (photosSaving) {
+        return;
+    }
 
 
     const finishButton =
@@ -1306,23 +1442,123 @@ function updatePhotoInterface() {
         );
 
 
+    photosSaving = true;
+
+
+    const originalText =
+        finishButton.textContent;
+
+
     finishButton.disabled =
-        completed !== 3;
+        true;
+
+    finishButton.textContent =
+        "REGISTRANDO...";
 
 
-    if (completed === 3) {
+    try {
 
-        document.getElementById(
-            "photoMessage"
-        ).textContent =
-            "✓ 3 fotos registradas. Você pode concluir.";
+        const response =
+            await fetch(
+                "/api/recebimento-qualidade/pickings/photos",
+                {
+                    method: "POST",
 
-    } else {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-        document.getElementById(
-            "photoMessage"
-        ).textContent =
-            `Faltam ${3 - completed} foto(s). Clique em uma câmera para continuar.`;
+                    body: JSON.stringify({
+                        picking_id:
+                            picking.id,
+
+                        photos:
+                            photoSession
+                    })
+                }
+            );
+
+
+        let data = null;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível registrar as fotos."
+            );
+
+        }
+
+
+        /*
+         * As fotos só são consideradas
+         * definitivamente registradas
+         * depois da confirmação do backend.
+         */
+
+        picking.photosRegistered =
+            true;
+
+        picking.photoCount =
+            photoSession.length;
+
+
+        closeModal(
+            "photoModal"
+        );
+
+
+        photoSession = [];
+
+        currentPhotoIndex = null;
+
+
+        render();
+
+
+        showToast(
+            `${picking.photoCount} FOTOS REGISTRADAS COM SUCESSO`,
+            "✓"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao registrar fotos:",
+            error
+        );
+
+
+        showToast(
+            error.message ||
+            "Não foi possível registrar as fotos.",
+            "!"
+        );
+
+
+    } finally {
+
+        photosSaving = false;
+
+        finishButton.disabled =
+            photoSession.length < 3;
+
+        finishButton.textContent =
+            originalText;
 
     }
 
@@ -1400,20 +1636,14 @@ async function validatePicking() {
     if (!picking) return;
 
 
-    const photosComplete =
-        picking.photos.every(
-            photo => photo !== null
-        );
-
-
-    if (!photosComplete) {
+    if (!picking.photosRegistered) {
 
         closeModal(
             "validationModal"
         );
 
         showToast(
-            "É necessário registrar as 3 fotos.",
+            "É necessário registrar pelo menos 3 fotos antes de validar o pedido.",
             "!"
         );
 

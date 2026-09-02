@@ -85,7 +85,18 @@ class InventoryService:
 
         try:
 
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "!=", "cancel",)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "!=", "cancel"),],
+                fields=[
+                    "name",
+                    "origin",
+                    "partner_id",
+                    "state",
+                    "scheduled_date",
+                    "move_ids_without_package",
+                    "fotos_count",
+                ],
+                    order="scheduled_date asc, id asc",
+                )
             
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
 
@@ -120,6 +131,13 @@ class InventoryService:
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
             partner = picking["partner_id"]
 
+            photo_relation = picking.get("fotos_count") or []
+
+            if isinstance(photo_relation, (list, tuple)):
+                photo_count = len(photo_relation)
+            else:
+                photo_count = int(photo_relation or 0)
+
             records.append({
                             "id": picking["id"],
                             "pv": picking["name"],
@@ -131,6 +149,8 @@ class InventoryService:
                             "validated": (picking["state"] == "done"),
                             "state": picking["state"],
                             "scheduledDate": picking["scheduled_date"],
+                            "photoCount": photo_count,
+                            "photosRegistered": photo_count >= 3,
                             "nf_number": picking["parent_dfe_nfe_infnfe_ide_nnf"] if "parent_dfe_nfe_infnfe_ide_nnf" in picking else None,
                         })
 
@@ -543,4 +563,92 @@ class InventoryService:
                     "Erro ao atualizar a quantidade "
                     "de itens recebidos"
                 )
+            ) from error
+
+
+
+    ####################################
+    #  MÉTODO PARA SALVAR FOTOS DO PICKING
+    ####################################
+    #
+    #  Recebe as imagens em Base64 enviadas pelo frontend
+    #  e cria um registro para cada foto no modelo
+    #  stock.picking.picture.
+    #
+    #  As fotos somente chegam aqui quando o usuário
+    #  confirma "REGISTRAR FOTOS".
+    #
+    ####################################
+
+    @staticmethod
+    def save_picking_photos(client, data):
+
+        if not data.photos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma foto foi enviada."
+            )
+
+        if len(data.photos) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="É necessário registrar pelo menos 3 fotos."
+            )
+
+        try:
+
+            created_ids = []
+
+            for photo in data.photos:
+
+                if not photo:
+                    continue
+
+                image_base64 = photo
+
+                # Remove o prefixo:
+                # data:image/jpeg;base64,...
+                # deixando somente o conteúdo Base64.
+                if "," in image_base64:
+                    image_base64 = image_base64.split(",", 1)[1]
+
+                if not image_base64:
+                    continue
+
+                vals = {
+                    "picking_id": data.picking_id,
+                    "image": image_base64,
+                }
+
+                created_id = client.execute("stock.picking.picture", "create", [vals],)
+
+                created_ids.append(created_id)
+
+            if len(created_ids) < 3:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="É necessário registrar pelo menos 3 fotos válidas."
+                )
+
+            return {
+                "success": True,
+                "message": "Fotos registradas com sucesso.",
+                "picking_id": data.picking_id,
+                "photo_count": len(created_ids),
+                "photo_ids": created_ids,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+
+            print(
+                "Erro ao executar stock.picking.picture.create:",
+                error
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao registrar as fotos no Odoo."
             ) from error
