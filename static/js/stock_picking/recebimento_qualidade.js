@@ -60,6 +60,9 @@ const photoInput =
 const qualityRecordsElement =
     document.getElementById("qualityRecords");
 
+const themeToggle =
+    document.getElementById("themeToggle");
+
 
 
 /* =========================================================
@@ -67,6 +70,8 @@ const qualityRecordsElement =
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    setupTheme();
 
     setupDashboard();
 
@@ -87,6 +92,110 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPickings();
 
 });
+
+
+/* =========================================================
+   TEMA
+========================================================= */
+
+function setupTheme() {
+
+    if (!themeToggle) {
+        return;
+    }
+
+
+    const savedTheme =
+        localStorage.getItem("recebimentoQualidadeTheme");
+
+
+    const prefersDark =
+        window.matchMedia &&
+        window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches;
+
+
+    const initialTheme =
+        savedTheme ||
+        (prefersDark ? "dark" : "light");
+
+
+    applyTheme(initialTheme);
+
+
+    themeToggle.addEventListener(
+        "click",
+        toggleTheme
+    );
+
+}
+
+
+function applyTheme(theme) {
+
+    const isDark =
+        theme === "dark";
+
+
+    document.documentElement.dataset.theme =
+        isDark
+            ? "dark"
+            : "light";
+
+
+    if (!themeToggle) {
+        return;
+    }
+
+
+    themeToggle.textContent =
+        isDark
+            ? "☀️"
+            : "🌙";
+
+
+    themeToggle.setAttribute(
+        "aria-label",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+
+
+    themeToggle.setAttribute(
+        "title",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+
+}
+
+
+function toggleTheme() {
+
+    const currentTheme =
+        document.documentElement.dataset.theme ||
+        "light";
+
+
+    const newTheme =
+        currentTheme === "dark"
+            ? "light"
+            : "dark";
+
+
+    applyTheme(newTheme);
+
+
+    localStorage.setItem(
+        "recebimentoQualidadeTheme",
+        newTheme
+    );
+
+}
+
 
 
 async function loadPickings() {
