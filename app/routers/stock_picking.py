@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
-from app.models.schemas import QualityAlert, ReceivedQuantity
+from app.models.schemas import (QualityAlert, ReceivedQuantity, SavePickingPhotos,)
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -205,3 +205,30 @@ def received_quantity(
         "success": True,
         "message": "Quantidade recebida atualizada com sucesso."
     }
+
+
+
+####################################
+#  REGISTRO DAS FOTOS DO PICKING
+####################################
+#
+#  Recebe as fotos capturadas pelo frontend e envia ao Odoo.
+#
+#  As imagens somente são persistidas quando o usuário confirma
+#  o registro das fotos.
+#
+####################################
+
+@router.post("/api/recebimento-qualidade/pickings/photos")
+def save_picking_photos(
+    data: SavePickingPhotos = Body(...),
+    client=Depends(get_odoo_client),
+):
+    """
+    Registra as fotos de um picking no Odoo.
+    """
+
+    return InventoryService.save_picking_photos(
+        client,
+        data,
+    )

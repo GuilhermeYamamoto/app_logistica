@@ -43,3 +43,9 @@ class ReceivedQuantity(BaseModel):
 
     picking_id: int
     received_quantity: float
+
+class SavePickingPhotos(BaseModel):
+    """Modelo para registrar as fotos de um picking."""
+
+    picking_id: int
+    photos: list[str]
