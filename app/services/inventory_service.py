@@ -85,7 +85,7 @@ class InventoryService:
 
         try:
 
-            pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "!=", "cancel"),],
+            pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "=", "assigned"),],
                 fields=[
                     "name",
                     "origin",
