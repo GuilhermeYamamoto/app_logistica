@@ -811,6 +811,8 @@ button {
     font-weight: 900;
 
     transition: .15s ease;
+
+    cursor: pointer;
 }
 
 .add-photo-button:hover {
@@ -823,6 +825,20 @@ button {
 
 .add-photo-button .camera-icon {
     font-size: 42px;
+}
+
+.add-photo-button .gallery-icon {
+    font-size: 42px;
+}
+
+.photo-file-input {
+    position: fixed;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+    pointer-events: none;
 }
 
 

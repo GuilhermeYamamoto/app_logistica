@@ -54,8 +54,11 @@ const searchInput =
 const clearSearch =
     document.getElementById("clearSearch");
 
-const photoInput =
-    document.getElementById("photoInput");
+const photoCameraInput =
+    document.getElementById("photoCameraInput");
+
+const photoGalleryInput =
+    document.getElementById("photoGalleryInput");
 
 const qualityRecordsElement =
     document.getElementById("qualityRecords");
@@ -1023,34 +1026,6 @@ function closeModal(id) {
 
 function setupPhotoSlots() {
 
-    const addPhotoButton =
-        document.getElementById(
-            "addPhotoButton"
-        );
-
-    if (!addPhotoButton) {
-        return;
-    }
-
-    addPhotoButton.addEventListener(
-        "click",
-        () => {
-
-            if (photosSaving) {
-                return;
-            }
-
-            currentPhotoIndex =
-                photoSession.length;
-
-            photoInput.value = "";
-
-            photoInput.click();
-
-        }
-    );
-
-
     document
         .getElementById(
             "finishPhotosButton"
@@ -1065,10 +1040,31 @@ function setupPhotoSlots() {
 
 function setupPhotoInput() {
 
-    photoInput.addEventListener(
-        "change",
-        handlePhotoSelection
-    );
+    [photoCameraInput, photoGalleryInput]
+        .forEach(input => {
+
+            input.addEventListener(
+                "change",
+                handlePhotoSelection
+            );
+
+        });
+
+}
+
+
+function preparePhotoSelection(input) {
+
+    if (photosSaving) {
+        return false;
+    }
+
+    currentPhotoIndex =
+        photoSession.length;
+
+    input.value = "";
+
+    return true;
 
 }
 
@@ -1285,17 +1281,14 @@ function updatePhotoInterface() {
 
     const addPhotoButton =
         document.createElement(
-            "button"
+            "label"
         );
-
-    addPhotoButton.type =
-        "button";
-
-    addPhotoButton.id =
-        "addPhotoButton";
 
     addPhotoButton.className =
         "add-photo-button";
+
+    addPhotoButton.htmlFor =
+        "photoCameraInput";
 
 
     addPhotoButton.innerHTML = `
@@ -1304,25 +1297,22 @@ function updatePhotoInterface() {
         </div>
 
         <span>
-            ADICIONAR FOTO
+            TIRAR FOTO
         </span>
     `;
 
 
     addPhotoButton.addEventListener(
         "click",
-        () => {
+        event => {
 
-            if (photosSaving) {
-                return;
+            if (
+                !preparePhotoSelection(
+                    photoCameraInput
+                )
+            ) {
+                event.preventDefault();
             }
-
-            currentPhotoIndex =
-                photoSession.length;
-
-            photoInput.value = "";
-
-            photoInput.click();
 
         }
     );
@@ -1330,6 +1320,46 @@ function updatePhotoInterface() {
 
     grid.appendChild(
         addPhotoButton
+    );
+
+    const galleryButton =
+        document.createElement(
+            "label"
+        );
+
+    galleryButton.className =
+        "add-photo-button";
+
+    galleryButton.htmlFor =
+        "photoGalleryInput";
+
+    galleryButton.innerHTML = `
+        <div class="gallery-icon">
+            🖼️
+        </div>
+
+        <span>
+            ESCOLHER DA GALERIA
+        </span>
+    `;
+
+    galleryButton.addEventListener(
+        "click",
+        event => {
+
+            if (
+                !preparePhotoSelection(
+                    photoGalleryInput
+                )
+            ) {
+                event.preventDefault();
+            }
+
+        }
+    );
+
+    grid.appendChild(
+        galleryButton
     );
 
 

@@ -221,10 +221,9 @@
                 class="photo-grid"
             >
 
-                <button
-                    id="addPhotoButton"
+                <label
                     class="add-photo-button"
-                    type="button"
+                    for="photoCameraInput"
                 >
 
                     <div class="camera-icon">
@@ -232,10 +231,25 @@
                     </div>
 
                     <span>
-                        ADICIONAR FOTO
+                        TIRAR FOTO
                     </span>
 
-                </button>
+                </label>
+
+                <label
+                    class="add-photo-button"
+                    for="photoGalleryInput"
+                >
+
+                    <div class="gallery-icon">
+                        🖼️
+                    </div>
+
+                    <span>
+                        ESCOLHER DA GALERIA
+                    </span>
+
+                </label>
 
             </div>
 
@@ -272,19 +286,23 @@
     <!-- =====================================================
          SELETOR DE FOTO
          
-         No tablet:
-         solicita a câmera traseira.
-
-         No computador:
-         abre o explorador de arquivos.
+         Há um seletor para a câmera traseira e
+         outro para a galeria/arquivos.
     ====================================================== -->
 
     <input
         type="file"
-        id="photoInput"
+        id="photoCameraInput"
+        class="photo-file-input"
         accept="image/*"
         capture="environment"
-        hidden
+    >
+
+    <input
+        type="file"
+        id="photoGalleryInput"
+        class="photo-file-input"
+        accept="image/*"
     >
 
 
