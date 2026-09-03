@@ -1,6 +1,7 @@
 """Router de inventário."""
 
 import xmlrpc.client
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
@@ -15,6 +16,21 @@ from app.models.schemas import (QualityAlert, ReceivedQuantity, SavePickingPhoto
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
+
+
+def static_asset_version(path: str) -> int:
+    """Retorna a versão de cache de um arquivo estático."""
+    static_path = settings.STATIC_DIR.resolve()
+    asset_path = (static_path / path).resolve()
+
+    if not asset_path.is_relative_to(static_path):
+        raise ValueError("Caminho de arquivo estático inválido.")
+
+    return asset_path.stat().st_mtime_ns
+
+
+templates.env.globals["static_asset_version"] = static_asset_version
+
 
 # Lista das etapas disponíveis no fluxo de inventário.
 # As informações de cada etapa são definidas no InventoryService.

@@ -13,7 +13,10 @@
 
     <title>Recebimento Qualidade</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/recebimento_qualidade.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/stock_picking/recebimento_qualidade.css') }}?v={{ static_asset_version('css/stock_picking/recebimento_qualidade.css') }}"
+    >
 
 </head>
 
@@ -606,7 +609,9 @@
     <script id="qualityRecords" type="application/json">
         {{ records["records"] | tojson }}
     </script>
-    <script src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}"></script>
+    <script
+        src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
+    ></script>
 
 </body>
 
