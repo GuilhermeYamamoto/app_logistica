@@ -340,17 +340,44 @@ client.execute(
 
 ### Recebimento de Qualidade
 
-A tela `/recebimento-qualidade` obtém os dados reais em:
+A tela é acessada em:
 
-```http
-GET /api/recebimento-qualidade/pickings
+```text
+/inventario/recebimento-qualidade
 ```
 
-A API consulta `stock.picking` com `picking_type_id = 137`, exclui registros
-cancelados e busca as respectivas linhas em `stock.move`. A resposta contém
-fornecedor, referência, produtos e as quantidades esperada e recebida para
-cada picking. O navegador carrega esse endpoint na abertura da tela; os dados
-de demonstração não são usados.
+A rota consulta `stock.picking` com `picking_type_id = 137` e estado
+`assigned`, busca as respectivas linhas em `stock.move` e renderiza os
+registros no HTML. Cada picking contém fornecedor, referência, produtos e as
+quantidades esperada e recebida.
+
+#### Captura de fotos em dispositivos móveis
+
+O botão **TIRAR FOTO** é associado diretamente ao campo
+`photoCameraInput`, configurado com `accept="image/*"` e
+`capture="environment"`. Essa associação solicita preferencialmente a câmera
+traseira em navegadores e WebViews Android.
+
+Não há um botão separado para a galeria. O seletor nativo do sistema pode
+oferecer fontes alternativas, como a galeria, conforme as permissões e a
+configuração do dispositivo.
+
+O acionamento deve continuar sendo feito pelo `label` associado ao campo de
+arquivo. Abrir o seletor por `input.click()` pode ser bloqueado ou ignorar a
+preferência de câmera em alguns WebViews, pois não é tratado como uma ação
+direta do usuário.
+
+#### Versionamento dos arquivos estáticos
+
+O template de recebimento de qualidade adiciona um parâmetro `v` às URLs do
+CSS e do JavaScript. O valor é a data de modificação em nanossegundos do
+arquivo estático, gerada por `static_asset_version()` em
+`app/routers/stock_picking.py`.
+
+Após um deploy, uma alteração no arquivo gera uma URL diferente e impede que
+o navegador combine o HTML novo com um JavaScript antigo em cache. Isso é
+necessário porque versões incompatíveis podem interromper a inicialização da
+tela antes do carregamento dos pickings.
 
 ## Rotas
 
@@ -360,12 +387,11 @@ de demonstração não são usados.
 | GET | `/login` | Exibe o formulario de login |
 | POST | `/login` | Autentica no Odoo e cria a sessao |
 | POST | `/logout` | Remove a sessao e redireciona para login |
-| GET | `/recebimento-qualidade` | Exibe a tela de recebimento de qualidade |
-| GET | `/api/recebimento-qualidade/pickings` | Lista os pickings do tipo 137 |
+| GET | `/inventario/recebimento-qualidade` | Exibe a tela de recebimento de qualidade |
+| GET | `/api/recebimento-qualidade/pickings?nf_number={nf}` | Filtra pickings pela nota fiscal |
 | GET | `/inicio` | Exibe os modulos disponiveis |
 | GET | `/inventario` | Exibe as etapas de Inventario |
-| GET | `/inventario/etapas/{stage_key}` | Renderiza o template da etapa |
-| GET | `/api/inventario/etapas/{stage_key}` | Lista transferencias pendentes da etapa |
+| GET | `/inventario/{stage_key}` | Renderiza a tela da etapa e seus registros |
 | GET | `/{model}` | Exibe a pagina de um modelo |
 | GET | `/api/{model}` | Lista registros do modelo via XML-RPC |
 

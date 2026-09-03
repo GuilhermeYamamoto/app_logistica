@@ -57,9 +57,6 @@ const clearSearch =
 const photoCameraInput =
     document.getElementById("photoCameraInput");
 
-const photoGalleryInput =
-    document.getElementById("photoGalleryInput");
-
 const qualityRecordsElement =
     document.getElementById("qualityRecords");
 
@@ -1040,15 +1037,10 @@ function setupPhotoSlots() {
 
 function setupPhotoInput() {
 
-    [photoCameraInput, photoGalleryInput]
-        .forEach(input => {
-
-            input.addEventListener(
-                "change",
-                handlePhotoSelection
-            );
-
-        });
+    photoCameraInput.addEventListener(
+        "change",
+        handlePhotoSelection
+    );
 
 }
 
@@ -1321,47 +1313,6 @@ function updatePhotoInterface() {
     grid.appendChild(
         addPhotoButton
     );
-
-    const galleryButton =
-        document.createElement(
-            "label"
-        );
-
-    galleryButton.className =
-        "add-photo-button";
-
-    galleryButton.htmlFor =
-        "photoGalleryInput";
-
-    galleryButton.innerHTML = `
-        <div class="gallery-icon">
-            🖼️
-        </div>
-
-        <span>
-            ESCOLHER DA GALERIA
-        </span>
-    `;
-
-    galleryButton.addEventListener(
-        "click",
-        event => {
-
-            if (
-                !preparePhotoSelection(
-                    photoGalleryInput
-                )
-            ) {
-                event.preventDefault();
-            }
-
-        }
-    );
-
-    grid.appendChild(
-        galleryButton
-    );
-
 
     const completed =
         photoSession.length;

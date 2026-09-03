@@ -239,21 +239,6 @@
 
                 </label>
 
-                <label
-                    class="add-photo-button"
-                    for="photoGalleryInput"
-                >
-
-                    <div class="gallery-icon">
-                        🖼️
-                    </div>
-
-                    <span>
-                        ESCOLHER DA GALERIA
-                    </span>
-
-                </label>
-
             </div>
 
 
@@ -289,8 +274,8 @@
     <!-- =====================================================
          SELETOR DE FOTO
          
-         Há um seletor para a câmera traseira e
-         outro para a galeria/arquivos.
+         Solicita a câmera traseira. O navegador pode
+         disponibilizar outras fontes de imagem no seletor nativo.
     ====================================================== -->
 
     <input
@@ -300,14 +285,6 @@
         accept="image/*"
         capture="environment"
     >
-
-    <input
-        type="file"
-        id="photoGalleryInput"
-        class="photo-file-input"
-        accept="image/*"
-    >
-
 
     <!-- =====================================================
          MODAL DE ALERTA DE QUALIDADE
