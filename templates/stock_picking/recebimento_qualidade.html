@@ -284,8 +284,7 @@
         id="photoInput"
         accept="image/*"
         capture="environment"
-        aria-hidden="true"
-        style="position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none;"
+        hidden
     >
 
 
@@ -589,7 +588,7 @@
     <script id="qualityRecords" type="application/json">
         {{ records["records"] | tojson }}
     </script>
-    <script src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v=20260903"></script>
+    <script src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}"></script>
 
 </body>
 
