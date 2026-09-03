@@ -74,8 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupModalButtons();
 
-    setupPickingActions();
-
     setupPhotoSlots();
 
     setupPhotoInput();
@@ -762,6 +760,37 @@ function createPickingCard(picking) {
 
 
     /* =====================================================
+       AÇÕES
+    ====================================================== */
+
+    article
+        .querySelectorAll("[data-action]")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const action =
+                        button.dataset.action;
+
+                    const picking_id =
+                        Number(
+                            button.dataset.pickingId
+                        );
+
+                    handleAction(
+                        action,
+                        picking_id
+                    );
+
+                }
+            );
+
+        });
+
+
+    /* =====================================================
        QUANTIDADE
     ====================================================== */
 
@@ -848,35 +877,6 @@ function createPickingCard(picking) {
 /* =========================================================
    AÇÕES DOS PEDIDOS
 ========================================================= */
-
-function setupPickingActions() {
-
-    pickingsContainer.addEventListener(
-        "click",
-        event => {
-
-            const button =
-                event.target.closest(
-                    "[data-action]"
-                );
-
-            if (
-                !button
-                ||
-                button.disabled
-            ) {
-                return;
-            }
-
-            handleAction(
-                button.dataset.action,
-                Number(button.dataset.pickingId)
-            );
-
-        }
-    );
-
-}
 
 function handleAction(
     action,
