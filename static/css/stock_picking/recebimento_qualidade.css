@@ -73,9 +73,8 @@ button {
 }
 
 .topbar {
-    min-height: calc(90px + var(--safe-top));
+    min-height: calc(90px + max(20px, var(--safe-top)));
     height: auto;
-
     background: var(--blue);
     color: white;
 
@@ -84,15 +83,12 @@ button {
     justify-content: space-between;
 
     /*
-     * Aumenta o espaço no topo para não ficar atrás
-     * do relógio / barra de status / notch.
+     * Espaço reservado para a barra de status do Android.
+     * Garante pelo menos 20px mesmo quando o WebView
+     * não informa corretamente o safe-area-inset-top.
      */
-    padding-top: var(--safe-top);
+    padding-top: max(20px, var(--safe-top));
 
-    /*
-     * Mantém os 28px originais e respeita as laterais
-     * de dispositivos com notch.
-     */
     padding-left: max(28px, var(--safe-left));
     padding-right: max(28px, var(--safe-right));
 
@@ -1449,16 +1445,16 @@ button {
 }
 
 @media (max-width: 760px) {
-
     .topbar {
         height: auto;
 
-        padding: 15px;
+        padding-top: max(20px, var(--safe-top));
+        padding-right: max(15px, var(--safe-right));
+        padding-bottom: 15px;
+        padding-left: max(15px, var(--safe-left));
 
         flex-direction: column;
-
         align-items: stretch;
-
         gap: 13px;
     }
 
@@ -1468,7 +1464,6 @@ button {
 
     .dashboard {
         padding: 12px;
-
         grid-template-columns: repeat(2, 1fr);
     }
 
@@ -1501,7 +1496,6 @@ button {
     .modal-footer {
         flex-direction: column;
     }
-
 }
 
 @media (max-width: 480px) {
