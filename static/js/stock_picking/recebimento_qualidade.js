@@ -2577,6 +2577,35 @@ async function printLabel(picking) {
             );
         }
 
+        const {iot_url, payload} = data;
+
+        if (!iot_url || !payload) {
+            throw new Error(
+                "Resposta inválida do servidor para impressão: Faltando iot_url ou payload"
+            );
+        }
+
+        const iotResponse = await fetch(
+            iot_url,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        const iotBody = await iotResponse.json().catch(
+            () => ({raw: iotResponse.statusText})
+        );
+
+        if (!iotResponse.ok) {
+            throw new Error(
+                `Erro IoT: ${iotResponse.status} - ${JSON.stringify(iotBody)}`
+            );
+        }
+
         showToast(
             `ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`,
             "✓"
