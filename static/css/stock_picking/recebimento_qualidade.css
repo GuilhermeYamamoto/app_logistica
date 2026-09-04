@@ -81,6 +81,41 @@ button {
     display: none !important;
 }
 
+/* =========================================================
+   LOADING GLOBAL
+========================================================= */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(13, 22, 38, .58);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: wait;
+}
+
+.loading-overlay.hidden {
+    display: none !important;
+}
+
+.loading-spinner {
+    width: 58px;
+    height: 58px;
+    border: 6px solid rgba(255, 255, 255, .35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: loading-spin .75s linear infinite;
+}
+
+@keyframes loading-spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
 
 /* =========================================================
    TOPBAR

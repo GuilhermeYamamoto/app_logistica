@@ -271,7 +271,7 @@
 
     <!-- =====================================================
          SELETOR DE FOTO
-         
+
          Solicita a câmera traseira. O navegador pode
          disponibilizar outras fontes de imagem no seletor nativo.
     ====================================================== -->
@@ -283,6 +283,7 @@
         accept="image/*"
         capture="environment"
     >
+
 
     <!-- =====================================================
          MODAL DE ALERTA DE QUALIDADE
@@ -402,9 +403,11 @@
                             id="selectedCauses"
                             class="selected-causes"
                         >
+
                             <span class="cause-placeholder">
                                 Selecione uma ou mais causas...
                             </span>
+
                         </div>
 
                         <span class="cause-selector-arrow">
@@ -441,7 +444,6 @@
                     ></textarea>
 
                 </div>
-
 
 
                 <div class="form-group">
@@ -531,12 +533,15 @@
                 id="quantityWarning"
                 class="quantity-warning hidden"
             >
+
                 ⚠️ A quantidade recebida é menor que a
                 quantidade esperada.
+
                 <strong>
                     Tem certeza que deseja prosseguir
                     com a quantidade menor?
                 </strong>
+
             </div>
 
             <div class="modal-footer">
@@ -563,6 +568,25 @@
 
 
     <!-- =====================================================
+         LOADING GLOBAL
+    ====================================================== -->
+
+    <div
+        id="loadingOverlay"
+        class="loading-overlay hidden"
+        aria-hidden="true"
+    >
+
+        <div
+            class="loading-spinner"
+            role="status"
+            aria-label="Carregando"
+        ></div>
+
+    </div>
+
+
+    <!-- =====================================================
          TOAST
     ====================================================== -->
 
@@ -581,9 +605,11 @@
 
     </div>
 
+
     <script id="qualityRecords" type="application/json">
         {{ records["records"] | tojson }}
     </script>
+
     <script
         src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
     ></script>

@@ -30,6 +30,8 @@ let qualityCauses = [];
 
 let selectedQualityCauses = [];
 
+let actionInProgress = false;
+
 
 
 /*=========================================================
@@ -59,6 +61,9 @@ const photoCameraInput =
 
 const qualityRecordsElement =
     document.getElementById("qualityRecords");
+
+const loadingOverlay =
+    document.getElementById("loadingOverlay");
 
 
 
@@ -139,6 +144,50 @@ async function loadPickings() {
 
 
 /* =========================================================
+   LOADING GLOBAL
+========================================================= */
+
+function showLoading() {
+
+    actionInProgress = true;
+
+    if (!loadingOverlay) {
+        return;
+    }
+
+    loadingOverlay.classList.remove(
+        "hidden"
+    );
+
+    loadingOverlay.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+}
+
+
+function hideLoading() {
+
+    actionInProgress = false;
+
+    if (!loadingOverlay) {
+        return;
+    }
+
+    loadingOverlay.classList.add(
+        "hidden"
+    );
+
+    loadingOverlay.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+}
+
+
+/* =========================================================
    DASHBOARD
 ========================================================= */
 
@@ -154,6 +203,10 @@ function setupDashboard() {
         card.addEventListener(
             "click",
             () => {
+
+                if (actionInProgress) {
+                    return;
+                }
 
                 currentFilter =
                     card.dataset.filter;
@@ -221,6 +274,10 @@ function setupSearch() {
         "click",
         () => {
 
+            if (actionInProgress) {
+                return;
+            }
+
             searchInput.value = "";
 
             searchTerm = "";
@@ -241,6 +298,12 @@ function setupSearch() {
 
 
 async function filterByNF(nfNumber) {
+
+    if (actionInProgress) {
+        return;
+    }
+
+    showLoading();
 
     try {
 
@@ -294,6 +357,12 @@ async function filterByNF(nfNumber) {
             "Não foi possível consultar a nota fiscal.",
             "!"
         );
+
+    }
+
+    finally {
+
+        hideLoading();
 
     }
 
@@ -801,6 +870,10 @@ function createPickingCard(picking) {
         "change",
         async () => {
 
+        if (actionInProgress) {
+            return;
+        }
+
         const value =
             Number(quantityInput.value);
 
@@ -816,6 +889,8 @@ function createPickingCard(picking) {
         }
 
         picking.receivedQuantity = value;
+
+        showLoading();
 
         try {
 
@@ -863,7 +938,15 @@ function createPickingCard(picking) {
                 "Erro ao atualizar quantidade.",
                 "✕"
             );
+
         }
+
+        finally {
+
+            hideLoading();
+
+        }
+
     }
 );
 
@@ -882,6 +965,10 @@ function handleAction(
     action,
     picking_id
 ) {
+
+    if (actionInProgress) {
+        return;
+    }
 
     const picking =
         findPicking(picking_id);
@@ -1417,6 +1504,11 @@ async function savePhotos() {
     }
 
 
+    if (actionInProgress) {
+        return;
+    }
+
+
     const finishButton =
         document.getElementById(
             "finishPhotosButton"
@@ -1424,6 +1516,8 @@ async function savePhotos() {
 
 
     photosSaving = true;
+
+    showLoading();
 
 
     const originalText =
@@ -1541,10 +1635,11 @@ async function savePhotos() {
         finishButton.textContent =
             originalText;
 
+        hideLoading();
+
     }
 
 }
-
 
 /* =========================================================
    VALIDAÇÃO
@@ -1609,10 +1704,12 @@ function setupQuantityValidation() {
 
 }
 
+
 async function validatePicking() {
 
     const picking =
         findPicking(currentPickingId);
+
 
     if (!picking) return;
 
@@ -1632,20 +1729,31 @@ async function validatePicking() {
 
     }
 
-    
+
+    if (actionInProgress) {
+        return;
+    }
+
+
     const confirmButton =
         document.getElementById(
             "confirmValidation"
         );
 
 
-    confirmButton.disabled = true;
+    confirmButton.disabled =
+        true;
+
 
     const originalText =
         confirmButton.textContent;
 
+
     confirmButton.textContent =
         "VALIDANDO...";
+
+
+    showLoading();
 
 
     try {
@@ -1663,6 +1771,7 @@ async function validatePicking() {
 
 
         let data = null;
+
 
         try {
 
@@ -1691,7 +1800,8 @@ async function validatePicking() {
          * depois que o Odoo confirmou.
          */
 
-        picking.validated = true;
+        picking.validated =
+            true;
 
 
         closeModal(
@@ -1724,6 +1834,8 @@ async function validatePicking() {
 
 
     } finally {
+
+        hideLoading();
 
         confirmButton.disabled =
             false;
@@ -2401,6 +2513,10 @@ async function submitQualityAlert(event) {
 
     event.preventDefault();
 
+    if (actionInProgress) {
+        return;
+    }
+
 
     const picking =
         findPicking(currentPickingId);
@@ -2516,6 +2632,8 @@ async function submitQualityAlert(event) {
     // Envia os dados para o FastAPI
     // ------------------------------------------------
     
+    showLoading();
+    
     try{
         const response = await fetch("/api/quality-alert", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(quality_alert_data)});
 
@@ -2549,6 +2667,12 @@ async function submitQualityAlert(event) {
         console.error("Erro ao registrar alerta de qualidade:", error);
         showToast("Erro ao registrar alerta de qualidade.", "!");
     }
+
+    finally {
+
+        hideLoading();
+
+    }
 }
 
 
@@ -2557,53 +2681,82 @@ async function submitQualityAlert(event) {
 ========================================================= */
 
 async function printLabel(picking) {
-    try {
-        const response = await fetch(
-            `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            }
-        );
 
-        const data = await response.json();
+    if (actionInProgress) {
+        return;
+    }
+
+    showLoading();
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
 
         if (!response.ok) {
+
             throw new Error(
                 data?.detail ||
                 "Não foi possível imprimir a etiqueta."
             );
+
         }
 
-        const {iot_url, payload} = data;
+        const {
+            iot_url,
+            payload
+        } = data;
 
         if (!iot_url || !payload) {
+
             throw new Error(
                 "Resposta inválida do servidor para impressão: Faltando iot_url ou payload"
             );
+
         }
 
-        const iotResponse = await fetch(
-            iot_url,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            }
-        );
+        const iotResponse =
+            await fetch(
+                iot_url,
+                {
+                    method: "POST",
 
-        const iotBody = await iotResponse.json().catch(
-            () => ({raw: iotResponse.statusText})
-        );
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(
+                            payload
+                        )
+                }
+            );
+
+        const iotBody =
+            await iotResponse.json().catch(
+                () => ({
+                    raw:
+                        iotResponse.statusText
+                })
+            );
 
         if (!iotResponse.ok) {
+
             throw new Error(
                 `Erro IoT: ${iotResponse.status} - ${JSON.stringify(iotBody)}`
             );
+
         }
 
         showToast(
@@ -2611,7 +2764,9 @@ async function printLabel(picking) {
             "✓"
         );
 
+
     } catch (error) {
+
         console.error(
             "Erro ao imprimir etiqueta:",
             error
@@ -2622,7 +2777,15 @@ async function printLabel(picking) {
             "Não foi possível imprimir a etiqueta.",
             "!"
         );
+
     }
+
+    finally {
+
+        hideLoading();
+
+    }
+
 }
 
 
