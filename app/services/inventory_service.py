@@ -10,7 +10,6 @@ from app.core.auth import OdooClient
 
 import json
 import uuid
-import httpx
 
 
 class InventoryService:
@@ -165,8 +164,8 @@ class InventoryService:
     #  Solicita ao Odoo a geração do documento da etiqueta de qualidade
     #  para o picking informado.
     #
-    #  Após receber os dados do documento e da impressora, envia o
-    #  arquivo para o dispositivo IoT responsável pela impressão.
+    # Após receber os dados do documento e da impressora, retorna os
+    # dados para que o navegador envie o arquivo ao dispositivo IoT.
     #
     ####################################
     
@@ -278,41 +277,20 @@ class InventoryService:
             print("Session ID:", session_id)
 
             # ========================================================
-            # ENVIA PARA O IOT
+            # RETORNA OS DADOS PARA O NAVEGADOR
             # ========================================================
-
-            async with httpx.AsyncClient(timeout=30) as http:
-                response = await http.post(
-                    iot_url,
-                    json=payload,
-                )
-
-            print("Status IoT:", response.status_code)
-            print("Resposta IoT:", response.text)
-
-            response.raise_for_status()
-
-            # ========================================================
-            # RESPOSTA FINAL
-            # ========================================================
-
-            try:
-                iot_response = response.json()
-            except Exception:
-                iot_response = {
-                    "raw_response": response.text
-                }
 
             print("==========================================")
-            print("IMPRESSÃO ENVIADA COM SUCESSO")
+            print("DADOS DE IMPRESSÃO GERADOS COM SUCESSO")
             print("==========================================")
 
             return {
                 "success": True,
-                "message": "Etiqueta enviada para impressão.",
+                "message": "Dados da etiqueta gerados para impressão.",
                 "picking_id": picking_id,
                 "session_id": session_id,
-                "iot_response": iot_response,
+                "iot_url": iot_url,
+                "payload": payload,
             }
 
         # ============================================================
@@ -328,21 +306,6 @@ class InventoryService:
             raise HTTPException(
                 status_code=502,
                 detail=f"Erro ao executar impressão no Odoo: {str(e)}",
-            )
-
-        # ============================================================
-        # ERRO DE COMUNICAÇÃO COM IOT
-        # ============================================================
-
-        except httpx.HTTPError as e:
-            print("==========================================")
-            print("ERRO DE COMUNICAÇÃO COM IOT")
-            print(e)
-            print("==========================================")
-
-            raise HTTPException(
-                status_code=502,
-                detail=f"Erro de comunicação com o IoT: {str(e)}",
             )
 
         # ============================================================
