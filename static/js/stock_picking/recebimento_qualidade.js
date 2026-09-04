@@ -2768,7 +2768,7 @@ async function submitQualityAlert(event) {
 
         const response =
             await fetch(
-                "/api/recebimento-qualidade/alerta",
+                    "/api/quality-alert/causas",
                 {
                     method: "POST",
 
