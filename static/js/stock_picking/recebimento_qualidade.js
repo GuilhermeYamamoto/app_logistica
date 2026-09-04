@@ -65,6 +65,9 @@ const qualityRecordsElement =
 const loadingOverlay =
     document.getElementById("loadingOverlay");
 
+const themeToggle =
+    document.getElementById("themeToggle");
+
 
 
 /* =========================================================
@@ -72,6 +75,8 @@ const loadingOverlay =
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    setupTheme();
 
     setupDashboard();
 
@@ -92,6 +97,91 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPickings();
 
 });
+
+
+/* =========================================================
+   TEMA
+========================================================= */
+
+function setupTheme() {
+
+    if (!themeToggle) {
+        return;
+    }
+
+    const savedTheme =
+        localStorage.getItem("recebimentoQualidadeTheme");
+
+    const prefersDark =
+        window.matchMedia &&
+        window.matchMedia(
+            "(prefers-color-scheme: dark)"
+        ).matches;
+
+    const initialTheme =
+        savedTheme ||
+        (prefersDark ? "dark" : "light");
+
+    applyTheme(initialTheme);
+
+    themeToggle.addEventListener(
+        "click",
+        toggleTheme
+    );
+}
+
+function applyTheme(theme) {
+
+    const isDark =
+        theme === "dark";
+
+    document.documentElement.dataset.theme =
+        isDark
+            ? "dark"
+            : "light";
+
+    if (!themeToggle) {
+        return;
+    }
+
+    themeToggle.textContent =
+        isDark
+            ? "☀️"
+            : "🌙";
+
+    themeToggle.setAttribute(
+        "aria-label",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+
+    themeToggle.setAttribute(
+        "title",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+}
+
+function toggleTheme() {
+
+    const currentTheme =
+        document.documentElement.dataset.theme ||
+        "light";
+
+    const newTheme =
+        currentTheme === "dark"
+            ? "light"
+            : "dark";
+
+    applyTheme(newTheme);
+
+    localStorage.setItem(
+        "recebimentoQualidadeTheme",
+        newTheme
+    );
+}
 
 
 async function loadPickings() {
@@ -608,31 +698,60 @@ function updateDashboard() {
     const completed =
         pickings.filter(
             picking => picking.validated
-        ).length; 
+        ).length;
 
 
-/*    document.getElementById(
-        "totalCount"
-    ).textContent =
-        formatCount(total); */
+    const totalElement =
+        document.getElementById(
+            "totalCount"
+        );
+
+    const pendingElement =
+        document.getElementById(
+            "pendingCount"
+        );
+
+    const progressElement =
+        document.getElementById(
+            "progressCount"
+        );
+
+    const completedElement =
+        document.getElementById(
+            "completedCount"
+        );
 
 
-    document.getElementById(
-        "pendingCount"
-    ).textContent =
-        formatCount(pending);
+    if (totalElement) {
+
+        totalElement.textContent =
+            formatCount(total);
+
+    }
 
 
-    document.getElementById(
-        "progressCount"
-    ).textContent =
-        formatCount(progress);
+    if (pendingElement) {
+
+        pendingElement.textContent =
+            formatCount(pending);
+
+    }
 
 
-/*    document.getElementById(
-        "completedCount"
-    ).textContent =
-        formatCount(completed); */
+    if (progressElement) {
+
+        progressElement.textContent =
+            formatCount(progress);
+
+    }
+
+
+    if (completedElement) {
+
+        completedElement.textContent =
+            formatCount(completed);
+
+    }
 
 }
 
@@ -645,22 +764,26 @@ function renderSectionTitle() {
 
     const titles = {
 
-        todos: "TODOS OS PEDIDOS",
+        todos:
+            "TODOS OS PEDIDOS",
 
-        pendentes: "PEDIDOS PENDENTES",
+        pendentes:
+            "PEDIDOS PENDENTES",
 
-        andamento: "PEDIDOS EM ANDAMENTO",
+        andamento:
+            "PEDIDOS EM ANDAMENTO",
 
-        concluidos: "PEDIDOS CONCLUÍDOS"
+        concluidos:
+            "PEDIDOS CONCLUÍDOS"
 
     };
 
 
     currentSection.textContent =
-        titles[currentFilter];
+        titles[currentFilter] ||
+        "PEDIDOS";
 
 }
-
 
 /* =========================================================
    CARD DO PEDIDO
@@ -864,91 +987,91 @@ function createPickingCard(picking) {
     ====================================================== */
 
     const quantityInput =
-    article.querySelector(".quantity-input");
+        article.querySelector(".quantity-input");
 
     quantityInput.addEventListener(
         "change",
         async () => {
 
-        if (actionInProgress) {
-            return;
-        }
-
-        const value =
-            Number(quantityInput.value);
-
-        if (
-            Number.isNaN(value) ||
-            value < 0
-        ) {
-
-            quantityInput.value =
-                picking.receivedQuantity;
-
-            return;
-        }
-
-        picking.receivedQuantity = value;
-
-        showLoading();
-
-        try {
-
-            const response = await fetch(
-                "/api/received_quantity",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        picking_id: picking.id,
-                        received_quantity: value
-                    })
-                }
-            );
-
-            const data =
-                await response.json();
-
-            console.log(response, data);
-
-            if (!response.ok) {
-                throw new Error(
-                    data.detail ||
-                    "Erro ao atualizar quantidade."
-                );
+            if (actionInProgress) {
+                return;
             }
 
-            showToast(
-                "Quantidade atualizada.",
-                "✓"
-            );
+            const value =
+                Number(quantityInput.value);
 
-        } catch (error) {
+            if (
+                Number.isNaN(value) ||
+                value < 0
+            ) {
 
-            console.error(
-                "Erro ao atualizar quantidade:",
-                error
-            );
+                quantityInput.value =
+                    picking.receivedQuantity;
 
-            showToast(
-                "Erro ao atualizar quantidade.",
-                "✕"
-            );
+                return;
+            }
+
+            picking.receivedQuantity = value;
+
+            showLoading();
+
+            try {
+
+                const response = await fetch(
+                    "/api/received_quantity",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            picking_id: picking.id,
+                            received_quantity: value
+                        })
+                    }
+                );
+
+                const data =
+                    await response.json();
+
+                console.log(response, data);
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Erro ao atualizar quantidade."
+                    );
+                }
+
+                showToast(
+                    "Quantidade atualizada.",
+                    "✓"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao atualizar quantidade:",
+                    error
+                );
+
+                showToast(
+                    "Erro ao atualizar quantidade.",
+                    "✕"
+                );
+
+            }
+
+            finally {
+
+                hideLoading();
+
+            }
 
         }
-
-        finally {
-
-            hideLoading();
-
-        }
-
-    }
-);
+    );
 
 
 
@@ -1514,7 +1637,6 @@ async function savePhotos() {
             "finishPhotosButton"
         );
 
-
     photosSaving = true;
 
     showLoading();
@@ -1640,6 +1762,7 @@ async function savePhotos() {
     }
 
 }
+
 
 /* =========================================================
    VALIDAÇÃO
@@ -1903,11 +2026,41 @@ function setupQualityForm() {
 
 
     rejectionOptions.forEach(
-        input => {
+        option => {
 
-            input.addEventListener(
+            option.addEventListener(
                 "change",
-                updateRejectionFields
+                () => {
+
+                    const partialGroup =
+                        document.getElementById(
+                            "partialQuantityGroup"
+                        );
+
+
+                    if (
+                        option.value === "parcial"
+                        &&
+                        option.checked
+                    ) {
+
+                        partialGroup.classList.remove(
+                            "hidden"
+                        );
+
+                    } else if (
+                        option.value === "total"
+                        &&
+                        option.checked
+                    ) {
+
+                        partialGroup.classList.add(
+                            "hidden"
+                        );
+
+                    }
+
+                }
             );
 
         }
@@ -1926,100 +2079,45 @@ function setupQualityForm() {
 }
 
 
-function updateRejectionFields() {
-
-    const selected =
-        document.querySelector(
-            'input[name="reprovacao"]:checked'
-        );
-
-
-    const group =
-        document.getElementById(
-            "partialQuantityGroup"
-        );
-
-
-    if (
-        selected
-        &&
-        selected.value === "parcial"
-    ) {
-
-        group.classList.remove(
-            "hidden"
-        );
-
-    } else {
-
-        group.classList.add(
-            "hidden"
-        );
-
-    }
-
-}
-
-
-
 /* =========================================================
    CAUSAS DA NÃO CONFORMIDADE
 ========================================================= */
 
 function setupQualityCauses() {
 
-    const causesSelector =
+    const selector =
         document.getElementById(
             "causas_nao_conformidade"
         );
 
-    const causesDropdown =
+
+    const dropdown =
         document.getElementById(
             "causesDropdown"
         );
 
 
     if (
-        !causesSelector ||
-        !causesDropdown
+        !selector ||
+        !dropdown
     ) {
-
-        console.error(
-            "Elementos do seletor de causas não encontrados."
-        );
-
         return;
-
     }
 
 
-    causesSelector.addEventListener(
+    selector.addEventListener(
         "click",
         event => {
 
             event.stopPropagation();
 
-            const isOpen =
-                !causesDropdown.classList.contains(
-                    "hidden"
-                );
-
-
-            if (isOpen) {
-
-                closeCausesDropdown();
-
-            } else {
-
-                openCausesDropdown();
-
-            }
+            toggleCausesDropdown();
 
         }
     );
 
 
-    causesSelector.addEventListener(
+    selector.addEventListener(
         "keydown",
         event => {
 
@@ -2031,23 +2129,16 @@ function setupQualityCauses() {
 
                 event.preventDefault();
 
-                event.stopPropagation();
+                toggleCausesDropdown();
 
-                const isOpen =
-                    !causesDropdown.classList.contains(
-                        "hidden"
-                    );
+            }
 
 
-                if (isOpen) {
+            if (
+                event.key === "Escape"
+            ) {
 
-                    closeCausesDropdown();
-
-                } else {
-
-                    openCausesDropdown();
-
-                }
+                closeCausesDropdown();
 
             }
 
@@ -2060,13 +2151,9 @@ function setupQualityCauses() {
         event => {
 
             if (
-                !causesSelector.contains(
-                    event.target
-                )
+                !selector.contains(event.target)
                 &&
-                !causesDropdown.contains(
-                    event.target
-                )
+                !dropdown.contains(event.target)
             ) {
 
                 closeCausesDropdown();
@@ -2082,6 +2169,87 @@ function setupQualityCauses() {
 }
 
 
+function toggleCausesDropdown() {
+
+    const dropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+
+    const selector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+
+    if (
+        !dropdown ||
+        !selector
+    ) {
+        return;
+    }
+
+
+    const isHidden =
+        dropdown.classList.contains(
+            "hidden"
+        );
+
+
+    if (isHidden) {
+
+        dropdown.classList.remove(
+            "hidden"
+        );
+
+        selector.classList.add(
+            "open"
+        );
+
+    } else {
+
+        closeCausesDropdown();
+
+    }
+
+}
+
+
+function closeCausesDropdown() {
+
+    const dropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+
+    const selector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+
+    if (dropdown) {
+
+        dropdown.classList.add(
+            "hidden"
+        );
+
+    }
+
+
+    if (selector) {
+
+        selector.classList.remove(
+            "open"
+        );
+
+    }
+
+}
+
+
 async function loadQualityCauses() {
 
     const causesList =
@@ -2091,28 +2259,21 @@ async function loadQualityCauses() {
 
 
     if (!causesList) {
-
-        console.error(
-            "Elemento causesList não encontrado."
-        );
-
         return;
-
     }
 
 
-    causesList.innerHTML = `
-        <div class="causes-loading">
-            CARREGANDO CAUSAS...
-        </div>
-    `;
+    causesList.innerHTML =
+        `<div class="causes-loading">
+            Carregando causas...
+        </div>`;
 
 
     try {
 
         const response =
             await fetch(
-                "/api/quality-alert/causas"
+                "/api/recebimento-qualidade/causas"
             );
 
 
@@ -2130,16 +2291,11 @@ async function loadQualityCauses() {
         }
 
 
-        if (!Array.isArray(data)) {
+        qualityCauses =
+            Array.isArray(data)
+                ? data
+                : [];
 
-            throw new Error(
-                "Formato inválido das causas."
-            );
-
-        }
-
-
-        qualityCauses = data;
 
         renderQualityCauses();
 
@@ -2147,16 +2303,18 @@ async function loadQualityCauses() {
     } catch (error) {
 
         console.error(
-            "Erro ao carregar causas de não conformidade:",
+            "Erro ao carregar causas:",
             error
         );
 
 
-        causesList.innerHTML = `
-            <div class="causes-error">
+        qualityCauses = [];
+
+
+        causesList.innerHTML =
+            `<div class="causes-error">
                 Não foi possível carregar as causas.
-            </div>
-        `;
+            </div>`;
 
     }
 
@@ -2179,13 +2337,14 @@ function renderQualityCauses() {
     causesList.innerHTML = "";
 
 
-    if (qualityCauses.length === 0) {
+    if (
+        qualityCauses.length === 0
+    ) {
 
-        causesList.innerHTML = `
-            <div class="causes-empty">
-                Nenhuma causa cadastrada no Odoo.
-            </div>
-        `;
+        causesList.innerHTML =
+            `<div class="causes-empty">
+                Nenhuma causa encontrada.
+            </div>`;
 
         return;
 
@@ -2195,45 +2354,65 @@ function renderQualityCauses() {
     qualityCauses.forEach(
         cause => {
 
-            const button =
+            const causeId =
+                getCauseId(cause);
+
+
+            const causeName =
+                getCauseName(cause);
+
+
+            const option =
                 document.createElement(
                     "button"
                 );
 
 
-            button.type = "button";
+            option.type =
+                "button";
 
-            button.className =
+
+            option.className =
                 "cause-option";
 
 
-            button.dataset.causeId =
-                cause.id;
+            if (
+                selectedQualityCauses.some(
+                    selected =>
+                        String(
+                            getCauseId(selected)
+                        )
+                        ===
+                        String(causeId)
+                )
+            ) {
+
+                option.classList.add(
+                    "selected"
+                );
+
+            }
 
 
-            button.innerHTML = `
+            option.innerHTML = `
 
                 <span class="cause-check">
                     ✓
                 </span>
 
                 <span class="cause-option-name">
-                    ${escapeHtml(cause.name)}
+                    ${escapeHtml(causeName)}
                 </span>
 
             `;
 
 
-            button.addEventListener(
+            option.addEventListener(
                 "click",
-                event => {
-
-                    event.preventDefault();
-
-                    event.stopPropagation();
+                () => {
 
                     toggleQualityCause(
-                        cause.id
+                        cause
                     );
 
                 }
@@ -2241,172 +2420,69 @@ function renderQualityCauses() {
 
 
             causesList.appendChild(
-                button
+                option
             );
 
         }
     );
 
-
-    updateQualityCausesInterface();
-
 }
 
 
-function openCausesDropdown() {
+function toggleQualityCause(cause) {
 
-    const causesDropdown =
-        document.getElementById(
-            "causesDropdown"
-        );
-
-    const causesSelector =
-        document.getElementById(
-            "causas_nao_conformidade"
-        );
+    const causeId =
+        getCauseId(cause);
 
 
-    if (
-        !causesDropdown ||
-        !causesSelector
-    ) {
-        return;
-    }
-
-
-    causesDropdown.classList.remove(
-        "hidden"
-    );
-
-
-    causesSelector.classList.add(
-        "open"
-    );
-
-
-    updateQualityCausesInterface();
-
-}
-
-
-function closeCausesDropdown() {
-
-    const causesDropdown =
-        document.getElementById(
-            "causesDropdown"
-        );
-
-    const causesSelector =
-        document.getElementById(
-            "causas_nao_conformidade"
+    const existingIndex =
+        selectedQualityCauses.findIndex(
+            selected =>
+                String(
+                    getCauseId(selected)
+                )
+                ===
+                String(causeId)
         );
 
 
-    if (!causesDropdown) {
-        return;
-    }
+    if (existingIndex >= 0) {
 
-
-    causesDropdown.classList.add(
-        "hidden"
-    );
-
-
-    if (causesSelector) {
-
-        causesSelector.classList.remove(
-            "open"
-        );
-
-    }
-
-}
-
-
-function toggleQualityCause(causeId) {
-
-    const numericCauseId =
-        Number(causeId);
-
-
-    const index =
-        selectedQualityCauses.indexOf(
-            numericCauseId
-        );
-
-
-    if (index === -1) {
-
-        selectedQualityCauses.push(
-            numericCauseId
+        selectedQualityCauses.splice(
+            existingIndex,
+            1
         );
 
     } else {
 
-        selectedQualityCauses.splice(
-            index,
-            1
+        selectedQualityCauses.push(
+            cause
         );
 
     }
 
 
-    updateQualityCausesInterface();
+    renderQualityCauses();
+
+    renderSelectedQualityCauses();
 
 }
 
 
-function updateQualityCausesInterface() {
+function renderSelectedQualityCauses() {
 
-    const selectedCausesContainer =
+    const selectedContainer =
         document.getElementById(
             "selectedCauses"
         );
 
 
-    if (!selectedCausesContainer) {
+    if (!selectedContainer) {
         return;
     }
 
 
-    /*
-     * Atualiza os checks da lista.
-     */
-
-    document
-        .querySelectorAll(
-            ".cause-option"
-        )
-        .forEach(
-            option => {
-
-                const causeId =
-                    Number(
-                        option.dataset.causeId
-                    );
-
-
-                const selected =
-                    selectedQualityCauses.includes(
-                        causeId
-                    );
-
-
-                option.classList.toggle(
-                    "selected",
-                    selected
-                );
-
-            }
-        );
-
-
-    /*
-     * Atualiza as causas exibidas
-     * dentro da caixa principal.
-     */
-
-    selectedCausesContainer.innerHTML = "";
+    selectedContainer.innerHTML = "";
 
 
     if (
@@ -2427,10 +2503,9 @@ function updateQualityCausesInterface() {
             "Selecione uma ou mais causas...";
 
 
-        selectedCausesContainer.appendChild(
+        selectedContainer.appendChild(
             placeholder
         );
-
 
         return;
 
@@ -2438,37 +2513,24 @@ function updateQualityCausesInterface() {
 
 
     selectedQualityCauses.forEach(
-        causeId => {
+        cause => {
 
-            const cause =
-                qualityCauses.find(
-                    item =>
-                        Number(item.id) ===
-                        causeId
-                );
-
-
-            if (!cause) {
-                return;
-            }
-
-
-            const selectedCause =
+            const item =
                 document.createElement(
                     "span"
                 );
 
 
-            selectedCause.className =
+            item.className =
                 "selected-cause";
 
 
-            selectedCause.textContent =
-                cause.name;
+            item.textContent =
+                getCauseName(cause);
 
 
-            selectedCausesContainer.appendChild(
-                selectedCause
+            selectedContainer.appendChild(
+                item
             );
 
         }
@@ -2481,37 +2543,97 @@ function resetQualityCauses() {
 
     selectedQualityCauses = [];
 
-    updateQualityCausesInterface();
+    renderSelectedQualityCauses();
+
+    renderQualityCauses();
 
     closeCausesDropdown();
 
 }
 
 
-function escapeHtml(value) {
+function getCauseId(cause) {
 
-    const div =
-        document.createElement(
-            "div"
-        );
+    if (
+        cause === null
+        ||
+        cause === undefined
+    ) {
+
+        return null;
+
+    }
 
 
-    div.textContent =
-        value ?? "";
+    if (
+        typeof cause !== "object"
+    ) {
+
+        return cause;
+
+    }
 
 
-    return div.innerHTML;
+    return (
+        cause.id
+        ??
+        cause.value
+        ??
+        cause.code
+        ??
+        cause.name
+    );
+
+}
+
+
+function getCauseName(cause) {
+
+    if (
+        cause === null
+        ||
+        cause === undefined
+    ) {
+
+        return "";
+
+    }
+
+
+    if (
+        typeof cause !== "object"
+    ) {
+
+        return String(cause);
+
+    }
+
+
+    return String(
+        cause.name
+        ??
+        cause.label
+        ??
+        cause.display_name
+        ??
+        cause.description
+        ??
+        cause.id
+        ??
+        ""
+    );
 
 }
 
 
 /* =========================================================
-   SALVAR ALERTA
+   ENVIO DO ALERTA DE QUALIDADE
 ========================================================= */
 
 async function submitQualityAlert(event) {
 
     event.preventDefault();
+
 
     if (actionInProgress) {
         return;
@@ -2522,81 +2644,69 @@ async function submitQualityAlert(event) {
         findPicking(currentPickingId);
 
 
-    if (!picking) return;
+    if (!picking) {
+        return;
+    }
 
 
-    const selectedRejection =
+    const rejection =
         document.querySelector(
             'input[name="reprovacao"]:checked'
         );
 
 
-    if (!selectedRejection) {
-
-        showToast(
-            "Selecione o tipo de reprovação.",
-            "!"
-        );
-
-        return;
-
-    }
+    const rejectionType =
+        rejection
+            ? rejection.value
+            : "total";
 
 
-    const reprovacao =
-        selectedRejection.value;
-
-
-    const quantidade_nao_conforme =
-        Number(
-            document.getElementById(
-                "quantidade_nao_conforme"
-            ).value
+    const partialQuantityInput =
+        document.getElementById(
+            "quantidade_nao_conforme"
         );
 
 
-    const descricao_geral =
-        document.getElementById(
-            "descricao_geral"
-        ).value.trim();
+    let rejectedQuantity =
+        null;
 
 
-    const especificado_quality =
-        document.getElementById(
-            "especificado_quality"
-        ).value.trim();
+    if (
+        rejectionType === "parcial"
+    ) {
+
+        rejectedQuantity =
+            Number(
+                partialQuantityInput.value
+            );
 
 
-    const encontrado_quality =
-        document.getElementById(
-            "encontrado_quality"
-        ).value.trim();
+        if (
+            Number.isNaN(
+                rejectedQuantity
+            )
+            ||
+            rejectedQuantity <= 0
+        ) {
 
+            showToast(
+                "Informe uma quantidade reprovada válida.",
+                "!"
+            );
 
-    if (!descricao_geral) {
+            return;
 
-        showToast(
-            "Informe a descrição do problema.",
-            "!"
-        );
-
-        return;
+        }
 
     }
 
 
     if (
-        reprovacao === "parcial"
-        &&
-        (
-            !quantidade_nao_conforme
-            ||
-            quantidade_nao_conforme <= 0
-        )
+        selectedQualityCauses.length === 0
     ) {
 
         showToast(
-            "Informe a quantidade reprovada.",
+            "Selecione pelo menos uma causa da não conformidade.",
             "!"
         );
 
@@ -2604,163 +2714,161 @@ async function submitQualityAlert(event) {
 
     }
 
-    // ------------------------------------------------
-    // Monta os dados do frontend que serão enviados para o backend
-    // ------------------------------------------------
 
-    const quality_alert_data = {
-        picking_id: picking.id,
-
-        causas_qa_id:
-            selectedQualityCauses,
-
-        reprovacao,
-
-        quantidade_nao_conforme:
-            reprovacao === "parcial"
-                ? quantidade_nao_conforme
-                : picking.receivedQuantity,
-
-        descricao_geral,
-
-        especificado_quality,
-
-        encontrado_quality
-    };
-
-    // ------------------------------------------------
-    // Envia os dados para o FastAPI
-    // ------------------------------------------------
-    
-    showLoading();
-    
-    try{
-        const response = await fetch("/api/quality-alert", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(quality_alert_data)});
-
-        if (!response.ok) {
-            showToast("Erro ao registrar alerta de qualidade.", "!");
-            return;
-        }
-
-        const resultado = await response.json();
-
-        // ------------------------------------------------
-        // Atualiza a tela após confirmado envio para o backend
-        // ------------------------------------------------
-
-        picking.qualityAlert = {
-            ...quality_alert_data,
-
-            causas_qa_id: [
-                ...selectedQualityCauses
-            ]
-        };
-
-        closeModal("qualityModal");
-
-        render();
-
-        showToast("ALERTA DE QUALIDADE REGISTRADO", "✓");
-    }
-
-    catch (error) {
-        console.error("Erro ao registrar alerta de qualidade:", error);
-        showToast("Erro ao registrar alerta de qualidade.", "!");
-    }
-
-    finally {
-
-        hideLoading();
-
-    }
-}
+    const description =
+        document
+            .getElementById(
+                "descricao_geral"
+            )
+            .value
+            .trim();
 
 
-/* =========================================================
-   IMPRESSÃO
-========================================================= */
+    const specified =
+        document
+            .getElementById(
+                "especificado_quality"
+            )
+            .value
+            .trim();
 
-async function printLabel(picking) {
 
-    if (actionInProgress) {
-        return;
-    }
+    const found =
+        document
+            .getElementById(
+                "encontrado_quality"
+            )
+            .value
+            .trim();
+
+
+    const submitButton =
+        document
+            .querySelector(
+                "#qualityForm .quality-button"
+            );
+
+
+    const originalText =
+        submitButton.textContent;
+
+
+    submitButton.disabled =
+        true;
+
+
+    submitButton.textContent =
+        "REGISTRANDO...";
+
 
     showLoading();
+
 
     try {
 
         const response =
             await fetch(
-                `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
+                "/api/recebimento-qualidade/alerta",
                 {
                     method: "POST",
+
                     headers: {
-                        "Content-Type": "application/json"
-                    }
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        picking_id:
+                            picking.id,
+
+                        reprovacao:
+                            rejectionType,
+
+                        quantidade_nao_conforme:
+                            rejectedQuantity,
+
+                        causas:
+                            selectedQualityCauses.map(
+                                cause => ({
+                                    id:
+                                        getCauseId(
+                                            cause
+                                        ),
+
+                                    name:
+                                        getCauseName(
+                                            cause
+                                        )
+                                })
+                            ),
+
+                        descricao_geral:
+                            description,
+
+                        especificado:
+                            specified,
+
+                        encontrado:
+                            found
+                    })
                 }
             );
 
-        const data =
-            await response.json();
+
+        let data = null;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
 
         if (!response.ok) {
 
             throw new Error(
                 data?.detail ||
-                "Não foi possível imprimir a etiqueta."
+                "Não foi possível registrar o alerta de qualidade."
             );
 
         }
 
-        const {
-            iot_url,
-            payload
-        } = data;
 
-        if (!iot_url || !payload) {
+        picking.qualityAlert =
+            {
+                reprovacao:
+                    rejectionType,
 
-            throw new Error(
-                "Resposta inválida do servidor para impressão: Faltando iot_url ou payload"
-            );
+                quantidade:
+                    rejectedQuantity,
 
-        }
+                causas:
+                    [...selectedQualityCauses],
 
-        const iotResponse =
-            await fetch(
-                iot_url,
-                {
-                    method: "POST",
+                descricao:
+                    description,
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                especificado:
+                    specified,
 
-                    body:
-                        JSON.stringify(
-                            payload
-                        )
-                }
-            );
+                encontrado:
+                    found
+            };
 
-        const iotBody =
-            await iotResponse.json().catch(
-                () => ({
-                    raw:
-                        iotResponse.statusText
-                })
-            );
 
-        if (!iotResponse.ok) {
+        closeModal(
+            "qualityModal"
+        );
 
-            throw new Error(
-                `Erro IoT: ${iotResponse.status} - ${JSON.stringify(iotBody)}`
-            );
-
-        }
 
         showToast(
-            `ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`,
+            "ALERTA DE QUALIDADE REGISTRADO COM SUCESSO",
             "✓"
         );
 
@@ -2768,23 +2876,234 @@ async function printLabel(picking) {
     } catch (error) {
 
         console.error(
-            "Erro ao imprimir etiqueta:",
+            "Erro ao registrar alerta:",
             error
         );
 
+
         showToast(
             error.message ||
-            "Não foi possível imprimir a etiqueta.",
+            "Não foi possível registrar o alerta de qualidade.",
             "!"
         );
 
-    }
 
-    finally {
+    } finally {
 
         hideLoading();
 
+        submitButton.disabled =
+            false;
+
+        submitButton.textContent =
+            originalText;
+
     }
+
+}
+
+
+/* =========================================================
+   IMPRESSÃO
+========================================================= */
+
+function printLabel(picking) {
+
+    if (!picking) {
+        return;
+    }
+
+
+    if (actionInProgress) {
+        return;
+    }
+
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank",
+            "width=600,height=500"
+        );
+
+
+    if (!printWindow) {
+
+        showToast(
+            "Não foi possível abrir a janela de impressão.",
+            "!"
+        );
+
+        return;
+
+    }
+
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+
+        <html lang="pt-BR">
+
+        <head>
+
+            <meta charset="UTF-8">
+
+            <title>
+                Etiqueta ${escapeHtml(picking.pv)}
+            </title>
+
+            <style>
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    padding: 25px;
+                    font-family:
+                        Arial,
+                        Helvetica,
+                        sans-serif;
+                    color: #111;
+                }
+
+                .label {
+                    width: 100%;
+                    border: 2px solid #111;
+                    padding: 25px;
+                }
+
+                h1 {
+                    margin: 0 0 20px;
+                    font-size: 28px;
+                }
+
+                .row {
+                    margin-bottom: 12px;
+                }
+
+                .row strong {
+                    display: inline-block;
+                    min-width: 110px;
+                }
+
+            </style>
+
+        </head>
+
+        <body>
+
+            <div class="label">
+
+                <h1>
+                    RECEBIMENTO
+                </h1>
+
+                <div class="row">
+
+                    <strong>
+                        PV:
+                    </strong>
+
+                    ${escapeHtml(picking.pv)}
+
+                </div>
+
+                <div class="row">
+
+                    <strong>
+                        Cliente:
+                    </strong>
+
+                    ${escapeHtml(picking.client)}
+
+                </div>
+
+                <div class="row">
+
+                    <strong>
+                        Produto:
+                    </strong>
+
+                    ${escapeHtml(picking.product)}
+
+                </div>
+
+                <div class="row">
+
+                    <strong>
+                        Quantidade:
+                    </strong>
+
+                    ${escapeHtml(
+                        String(
+                            picking.receivedQuantity
+                        )
+                    )}
+
+                </div>
+
+            </div>
+
+        </body>
+
+        </html>
+    `);
+
+
+    printWindow.document.close();
+
+
+    printWindow.onload =
+        () => {
+
+            printWindow.focus();
+
+            printWindow.print();
+
+        };
+
+}
+
+/* =========================================================
+   UTILITÁRIOS
+========================================================= */
+
+function escapeHtml(value) {
+
+    if (
+        value === null
+        ||
+        value === undefined
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(value)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
 
@@ -2814,6 +3133,19 @@ function showToast(
         document.getElementById(
             "toastIcon"
         );
+
+
+    if (
+        !toast
+        ||
+        !toastMessage
+        ||
+        !toastIcon
+    ) {
+
+        return;
+
+    }
 
 
     toastMessage.textContent =
