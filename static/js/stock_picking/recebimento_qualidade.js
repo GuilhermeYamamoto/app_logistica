@@ -1,14 +1,9 @@
 /* =========================================================
-   RECEBIMENTO QUALIDADE - V6
+   RECEBIMENTO QUALIDADE - V7
+   PULL TO REFRESH
 ========================================================= */
-
 
 let pickings = [];
-
-
-/* =========================================================
-   ESTADO DA INTERFACE
-========================================================= */
 
 let currentFilter = "pendentes";
 
@@ -33,8 +28,26 @@ let selectedQualityCauses = [];
 let actionInProgress = false;
 
 
+/* =========================================================
+   PULL TO REFRESH
+========================================================= */
 
-/*=========================================================
+let pullStartY = null;
+
+let pullCurrentY = null;
+
+let pullDistance = 0;
+
+let pullRefreshing = false;
+
+let pullTriggered = false;
+
+const PULL_THRESHOLD = 90;
+
+const PULL_MAX_DISTANCE = 130;
+
+
+/* =========================================================
    ELEMENTOS
 ========================================================= */
 
@@ -69,7 +82,6 @@ const themeToggle =
     document.getElementById("themeToggle");
 
 
-
 /* =========================================================
    INICIALIZAÇÃO
 ========================================================= */
@@ -93,6 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupQuantityValidation();
 
     setupQualityCauses();
+
+    setupPullToRefresh();
 
     loadPickings();
 
@@ -130,6 +144,7 @@ function setupTheme() {
     );
 }
 
+
 function applyTheme(theme) {
 
     const isDark =
@@ -164,6 +179,7 @@ function applyTheme(theme) {
     );
 }
 
+
 function toggleTheme() {
 
     const currentTheme =
@@ -184,6 +200,10 @@ function toggleTheme() {
 }
 
 
+/* =========================================================
+   CARGA INICIAL
+========================================================= */
+
 async function loadPickings() {
 
     try {
@@ -201,21 +221,7 @@ async function loadPickings() {
 
         }
 
-        pickings = records.map(picking => ({
-
-            ...picking,
-
-            photos: [],
-
-            photosRegistered:
-                Boolean(picking.photosRegistered),
-
-            photoCount:
-                Number(picking.photoCount || 0),
-
-            qualityAlert: null
-
-        }));
+        setPickings(records);
 
     } catch (error) {
 
@@ -229,6 +235,1009 @@ async function loadPickings() {
     }
 
     render();
+
+}
+
+
+/* =========================================================
+   NORMALIZAÇÃO DOS PICKINGS
+========================================================= */
+
+function setPickings(records) {
+
+    pickings =
+        records.map(picking => ({
+
+            ...picking,
+
+            photos: [],
+
+            photosRegistered:
+                Boolean(picking.photosRegistered),
+
+            photoCount:
+                Number(picking.photoCount || 0),
+
+            qualityAlert:
+                null
+
+        }));
+
+}
+
+
+/* =========================================================
+   REFRESH DOS PICKINGS
+========================================================= */
+
+async function refreshPickings() {
+
+    if (pullRefreshing) {
+        return;
+    }
+
+    if (actionInProgress) {
+        return;
+    }
+
+    const pickingTypeId =
+        getCurrentPickingTypeId();
+
+    if (!pickingTypeId) {
+
+        showToast(
+            "Não foi possível identificar a etapa do recebimento.",
+            "!"
+        );
+
+        return;
+
+    }
+
+    pullRefreshing = true;
+
+    showPullRefreshingState();
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/refresh?picking_type_id=${encodeURIComponent(pickingTypeId)}`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache"
+                    },
+
+                    cache: "no-store"
+                }
+            );
+
+        let data = null;
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível atualizar os recebimentos."
+            );
+
+        }
+
+        const records =
+            Array.isArray(data)
+                ? data
+                : data?.records;
+
+        if (!Array.isArray(records)) {
+
+            throw new Error(
+                "O servidor retornou dados inválidos."
+            );
+
+        }
+
+        /*
+         * Preserva alguns dados locais importantes
+         * enquanto substituímos a lista pelo retorno
+         * atualizado do backend.
+         */
+
+        const previousById =
+            new Map(
+                pickings.map(
+                    picking => [
+                        picking.id,
+                        picking
+                    ]
+                )
+            );
+
+        pickings =
+            records.map(
+                picking => {
+
+                    const previous =
+                        previousById.get(
+                            picking.id
+                        );
+
+                    return {
+
+                        ...picking,
+
+                        photos:
+                            previous?.photos || [],
+
+                        photosRegistered:
+                            Boolean(
+                                picking.photosRegistered
+                            ),
+
+                        photoCount:
+                            Number(
+                                picking.photoCount || 0
+                            ),
+
+                        qualityAlert:
+                            previous?.qualityAlert ||
+                            null
+
+                    };
+
+                }
+            );
+
+        /*
+         * Uma nova consulta torna a pesquisa
+         * por NF anterior potencialmente obsoleta.
+         *
+         * Por segurança, limpamos o filtro.
+         */
+
+        filteredPickingIds = null;
+
+        if (searchInput) {
+            searchInput.value = "";
+        }
+
+        searchTerm = "";
+
+        if (clearSearch) {
+
+            clearSearch.style.display =
+                "none";
+
+        }
+
+        render();
+
+        showPullSuccessState();
+
+        showToast(
+            "RECEBIMENTOS ATUALIZADOS",
+            "✓"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao atualizar recebimentos:",
+            error
+        );
+
+        showPullErrorState();
+
+        showToast(
+            error.message ||
+            "Não foi possível atualizar os recebimentos.",
+            "!"
+        );
+
+    } finally {
+
+        pullRefreshing = false;
+
+        setTimeout(
+            resetPullIndicator,
+            300
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   IDENTIFICAÇÃO DO PICKING TYPE
+========================================================= */
+
+function getCurrentPickingTypeId() {
+
+    /*
+     * Primeira opção:
+     * o template pode disponibilizar
+     * data-picking-type-id no body.
+     */
+
+    const bodyValue =
+        document.body?.dataset?.pickingTypeId;
+
+    if (bodyValue) {
+
+        const parsed =
+            Number(bodyValue);
+
+        if (
+            Number.isInteger(parsed) &&
+            parsed > 0
+        ) {
+
+            return parsed;
+
+        }
+
+    }
+
+
+    /*
+     * Segunda opção:
+     * procurar no elemento de registros.
+     */
+
+    const elementValue =
+        qualityRecordsElement?.dataset?.pickingTypeId;
+
+    if (elementValue) {
+
+        const parsed =
+            Number(elementValue);
+
+        if (
+            Number.isInteger(parsed) &&
+            parsed > 0
+        ) {
+
+            return parsed;
+
+        }
+
+    }
+
+
+    /*
+     * Recebimento Qualidade utiliza
+     * picking_type_id = 137.
+     */
+
+    return 137;
+
+}
+
+
+/* =========================================================
+   PULL TO REFRESH - CONFIGURAÇÃO
+========================================================= */
+
+function setupPullToRefresh() {
+
+    if (!document.body) {
+        return;
+    }
+
+    createPullIndicator();
+
+    document.addEventListener(
+        "touchstart",
+        handlePullTouchStart,
+        {
+            passive: true
+        }
+    );
+
+    document.addEventListener(
+        "touchmove",
+        handlePullTouchMove,
+        {
+            passive: false
+        }
+    );
+
+    document.addEventListener(
+        "touchend",
+        handlePullTouchEnd,
+        {
+            passive: true
+        }
+    );
+
+    document.addEventListener(
+        "touchcancel",
+        handlePullTouchCancel,
+        {
+            passive: true
+        }
+    );
+
+}
+
+
+/* =========================================================
+   CRIA INDICADOR
+========================================================= */
+
+function createPullIndicator() {
+
+    if (
+        document.getElementById(
+            "pullToRefreshIndicator"
+        )
+    ) {
+        return;
+    }
+
+    const indicator =
+        document.createElement("div");
+
+    indicator.id =
+        "pullToRefreshIndicator";
+
+    indicator.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+    indicator.innerHTML = `
+
+        <div class="pull-refresh-spinner">
+            ↻
+        </div>
+
+        <div
+            id="pullToRefreshText"
+            class="pull-refresh-text"
+        >
+            PUXE PARA ATUALIZAR
+        </div>
+
+    `;
+
+    document.body.prepend(
+        indicator
+    );
+
+    injectPullRefreshStyles();
+
+}
+
+
+/* =========================================================
+   ESTILOS DO PULL TO REFRESH
+========================================================= */
+
+function injectPullRefreshStyles() {
+
+    if (
+        document.getElementById(
+            "pullToRefreshStyles"
+        )
+    ) {
+        return;
+    }
+
+    const style =
+        document.createElement("style");
+
+    style.id =
+        "pullToRefreshStyles";
+
+    style.textContent = `
+
+        #pullToRefreshIndicator {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            z-index: 9999;
+
+            width: 170px;
+            min-height: 44px;
+
+            transform:
+                translate(-50%, -100%);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+
+            padding: 8px 14px;
+
+            border-radius:
+                0 0 14px 14px;
+
+            background:
+                var(--card-bg, #ffffff);
+
+            color:
+                var(--text-color, #222222);
+
+            box-shadow:
+                0 4px 14px
+                rgba(0, 0, 0, 0.15);
+
+            font-size: 12px;
+            font-weight: 700;
+
+            pointer-events: none;
+
+            opacity: 0;
+
+            transition:
+                opacity 0.2s ease,
+                transform 0.15s ease;
+
+        }
+
+
+        #pullToRefreshIndicator.visible {
+
+            opacity: 1;
+
+        }
+
+
+        .pull-refresh-spinner {
+
+            width: 24px;
+            height: 24px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 20px;
+
+        }
+
+
+        #pullToRefreshIndicator.refreshing
+        .pull-refresh-spinner {
+
+            animation:
+                pullRefreshSpin 0.8s
+                linear infinite;
+
+        }
+
+
+        .pull-refresh-text {
+
+            white-space: nowrap;
+
+        }
+
+
+        @keyframes pullRefreshSpin {
+
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+
+        }
+
+
+        @media
+        (prefers-color-scheme: dark) {
+
+            #pullToRefreshIndicator {
+
+                background:
+                    var(
+                        --card-bg,
+                        #1f1f1f
+                    );
+
+                color:
+                    var(
+                        --text-color,
+                        #ffffff
+                    );
+
+            }
+
+        }
+
+    `;
+
+    document.head.appendChild(
+        style
+    );
+
+}
+
+
+/* =========================================================
+   TOUCH START
+========================================================= */
+
+function handlePullTouchStart(event) {
+
+    if (
+        pullRefreshing ||
+        actionInProgress
+    ) {
+        return;
+    }
+
+    if (
+        event.touches.length !== 1
+    ) {
+        return;
+    }
+
+    if (
+        !isPullAllowed()
+    ) {
+        return;
+    }
+
+    const target =
+        event.target;
+
+    if (
+        isInteractiveElement(target)
+    ) {
+        return;
+    }
+
+    pullStartY =
+        event.touches[0].clientY;
+
+    pullCurrentY =
+        pullStartY;
+
+    pullDistance = 0;
+
+    pullTriggered = false;
+
+}
+
+
+/* =========================================================
+   TOUCH MOVE
+========================================================= */
+
+function handlePullTouchMove(event) {
+
+    if (
+        pullStartY === null ||
+        pullRefreshing
+    ) {
+        return;
+    }
+
+    if (
+        event.touches.length !== 1
+    ) {
+        return;
+    }
+
+    if (
+        !isPullAllowed()
+    ) {
+        resetPullGesture();
+        return;
+    }
+
+    const currentY =
+        event.touches[0].clientY;
+
+    pullCurrentY =
+        currentY;
+
+    const delta =
+        currentY - pullStartY;
+
+    if (delta <= 0) {
+
+        pullDistance = 0;
+
+        updatePullIndicator(
+            0
+        );
+
+        return;
+
+    }
+
+    /*
+     * Resistência do gesto.
+     */
+
+    pullDistance =
+        Math.min(
+            delta * 0.55,
+            PULL_MAX_DISTANCE
+        );
+
+    if (
+        pullDistance > 5
+    ) {
+
+        /*
+         * Impede o navegador de executar
+         * o gesto nativo de atualização
+         * enquanto estamos efetivamente
+         * tratando o Pull to Refresh.
+         */
+
+        event.preventDefault();
+
+    }
+
+    pullTriggered =
+        pullDistance >=
+        PULL_THRESHOLD;
+
+    updatePullIndicator(
+        pullDistance
+    );
+
+}
+
+
+/* =========================================================
+   TOUCH END
+========================================================= */
+
+function handlePullTouchEnd() {
+
+    if (
+        pullStartY === null
+    ) {
+        return;
+    }
+
+    const shouldRefresh =
+        pullTriggered &&
+        pullDistance >= PULL_THRESHOLD &&
+        !pullRefreshing &&
+        !actionInProgress;
+
+    resetPullGesture();
+
+    if (
+        shouldRefresh
+    ) {
+
+        refreshPickings();
+
+    } else {
+
+        hidePullIndicator();
+
+    }
+
+}
+
+
+/* =========================================================
+   TOUCH CANCEL
+========================================================= */
+
+function handlePullTouchCancel() {
+
+    resetPullGesture();
+
+    hidePullIndicator();
+
+}
+
+
+/* =========================================================
+   VERIFICA SE PODE FAZER PULL
+========================================================= */
+
+function isPullAllowed() {
+
+    if (
+        window.scrollY > 0
+    ) {
+        return false;
+    }
+
+    if (
+        pullRefreshing ||
+        actionInProgress ||
+        photosSaving
+    ) {
+        return false;
+    }
+
+    /*
+     * Se algum modal estiver aberto,
+     * não permitimos o Pull to Refresh.
+     */
+
+    const openModal =
+        document.querySelector(
+            ".modal-overlay:not(.hidden)"
+        );
+
+    if (openModal) {
+        return false;
+    }
+
+    return true;
+
+}
+
+
+/* =========================================================
+   ELEMENTOS INTERATIVOS
+========================================================= */
+
+function isInteractiveElement(
+    target
+) {
+
+    if (
+        !target ||
+        !target.closest
+    ) {
+        return false;
+    }
+
+    return Boolean(
+        target.closest(
+            "input, textarea, select, button, label, a, [contenteditable='true'], .causesDropdown, #causesDropdown"
+        )
+    );
+
+}
+
+
+/* =========================================================
+   INDICADOR
+========================================================= */
+
+function updatePullIndicator(
+    distance
+) {
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    const text =
+        document.getElementById(
+            "pullToRefreshText"
+        );
+
+    if (
+        !indicator ||
+        !text
+    ) {
+        return;
+    }
+
+    if (
+        distance <= 0
+    ) {
+
+        indicator.classList.remove(
+            "visible"
+        );
+
+        indicator.style.transform =
+            "translate(-50%, -100%)";
+
+        return;
+
+    }
+
+    indicator.classList.add(
+        "visible"
+    );
+
+    const visibleDistance =
+        Math.min(
+            distance,
+            PULL_MAX_DISTANCE
+        );
+
+    indicator.style.transform =
+        `translate(-50%, ${visibleDistance - 55}px)`;
+
+    if (
+        distance >= PULL_THRESHOLD
+    ) {
+
+        text.textContent =
+            "SOLTE PARA ATUALIZAR";
+
+    } else {
+
+        text.textContent =
+            "PUXE PARA ATUALIZAR";
+
+    }
+
+}
+
+
+/* =========================================================
+   ESTADOS DO INDICADOR
+========================================================= */
+
+function showPullRefreshingState() {
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    const text =
+        document.getElementById(
+            "pullToRefreshText"
+        );
+
+    if (
+        !indicator ||
+        !text
+    ) {
+        return;
+    }
+
+    indicator.classList.add(
+        "visible",
+        "refreshing"
+    );
+
+    indicator.style.transform =
+        "translate(-50%, 10px)";
+
+    text.textContent =
+        "ATUALIZANDO...";
+
+}
+
+
+function showPullSuccessState() {
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    const text =
+        document.getElementById(
+            "pullToRefreshText"
+        );
+
+    if (
+        !indicator ||
+        !text
+    ) {
+        return;
+    }
+
+    indicator.classList.remove(
+        "refreshing"
+    );
+
+    text.textContent =
+        "ATUALIZADO ✓";
+
+}
+
+
+function showPullErrorState() {
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    const text =
+        document.getElementById(
+            "pullToRefreshText"
+        );
+
+    if (
+        !indicator ||
+        !text
+    ) {
+        return;
+    }
+
+    indicator.classList.remove(
+        "refreshing"
+    );
+
+    text.textContent =
+        "ERRO AO ATUALIZAR";
+
+}
+
+
+function hidePullIndicator() {
+
+    if (
+        pullRefreshing
+    ) {
+        return;
+    }
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    if (!indicator) {
+        return;
+    }
+
+    indicator.classList.remove(
+        "visible",
+        "refreshing"
+    );
+
+    indicator.style.transform =
+        "translate(-50%, -100%)";
+
+}
+
+
+function resetPullIndicator() {
+
+    const indicator =
+        document.getElementById(
+            "pullToRefreshIndicator"
+        );
+
+    if (!indicator) {
+        return;
+    }
+
+    indicator.classList.remove(
+        "visible",
+        "refreshing"
+    );
+
+    indicator.style.transform =
+        "translate(-50%, -100%)";
+
+}
+
+
+function resetPullGesture() {
+
+    pullStartY = null;
+
+    pullCurrentY = null;
+
+    pullDistance = 0;
+
+    pullTriggered = false;
 
 }
 
@@ -329,6 +1338,10 @@ function setupDashboard() {
 
 function setupSearch() {
 
+    if (!searchInput) {
+        return;
+    }
+
     searchInput.addEventListener(
         "keydown",
         event => {
@@ -359,6 +1372,10 @@ function setupSearch() {
         }
     );
 
+
+    if (!clearSearch) {
+        return;
+    }
 
     clearSearch.addEventListener(
         "click",
@@ -476,9 +1493,9 @@ function getPickingStatus(picking) {
 
 
     if (
-        picking.photos.every(
-            photo => photo !== null
-        )
+        picking.photosRegistered === true
+        &&
+        Number(picking.photoCount || 0) >= 3
     ) {
 
         return {
@@ -490,9 +1507,7 @@ function getPickingStatus(picking) {
 
 
     if (
-        picking.photos.some(
-            photo => photo !== null
-        )
+        Number(picking.photoCount || 0) > 0
     ) {
 
         return {
@@ -512,7 +1527,7 @@ function getPickingStatus(picking) {
 
 
 /* =========================================================
-   REGRAS DOS FILTROS
+   FILTROS
 ========================================================= */
 
 function belongsToFilter(picking) {
@@ -534,11 +1549,8 @@ function belongsToFilter(picking) {
             return (
                 !picking.validated
                 &&
-                picking.photos.some(
-                    photo => photo !== null
-                )
+                Number(picking.photoCount || 0) > 0
             );
-
 
 
         case "concluidos":
@@ -674,7 +1686,7 @@ function formatCount(number) {
 function updateDashboard() {
 
     const total =
-        pickings.length; 
+        pickings.length;
 
 
     const pending =
@@ -688,11 +1700,8 @@ function updateDashboard() {
             picking =>
                 !picking.validated
                 &&
-                picking.photos.some(
-                    photo => photo !== null
-                )
+                Number(picking.photoCount || 0) > 0
         ).length;
-
 
 
     const completed =
@@ -757,7 +1766,7 @@ function updateDashboard() {
 
 
 /* =========================================================
-   TÍTULO DA SEÇÃO
+   TÍTULO
 ========================================================= */
 
 function renderSectionTitle() {
@@ -785,8 +1794,9 @@ function renderSectionTitle() {
 
 }
 
+
 /* =========================================================
-   CARD DO PEDIDO
+   CARD
 ========================================================= */
 
 function createPickingCard(picking) {
@@ -816,7 +1826,6 @@ function createPickingCard(picking) {
         picking.photosRegistered === true;
 
 
-
     article.innerHTML = `
 
         <div class="picking-main">
@@ -824,7 +1833,7 @@ function createPickingCard(picking) {
             <div class="picking-identification">
 
                 <strong>
-                    ${picking.pv}
+                    ${escapeHtml(picking.pv)}
                 </strong>
 
                 <div class="picking-status ${status.className}">
@@ -837,7 +1846,7 @@ function createPickingCard(picking) {
             <div class="client-info">
 
                 <strong>
-                    ${picking.client}
+                    ${escapeHtml(picking.client)}
                 </strong>
 
                 <span>
@@ -875,7 +1884,7 @@ function createPickingCard(picking) {
                 </strong>
 
                 <h3>
-                    ${picking.product}
+                    ${escapeHtml(picking.product)}
                 </h3>
 
             </div>
@@ -951,10 +1960,6 @@ function createPickingCard(picking) {
     `;
 
 
-    /* =====================================================
-       AÇÕES
-    ====================================================== */
-
     article
         .querySelectorAll("[data-action]")
         .forEach(button => {
@@ -981,10 +1986,6 @@ function createPickingCard(picking) {
 
         });
 
-
-    /* =====================================================
-       QUANTIDADE
-    ====================================================== */
 
     const quantityInput =
         article.querySelector(".quantity-input");
@@ -1036,13 +2037,13 @@ function createPickingCard(picking) {
                 const data =
                     await response.json();
 
-                console.log(response, data);
-
                 if (!response.ok) {
+
                     throw new Error(
                         data.detail ||
                         "Erro ao atualizar quantidade."
                     );
+
                 }
 
                 showToast(
@@ -1074,14 +2075,13 @@ function createPickingCard(picking) {
     );
 
 
-
     return article;
 
 }
 
 
 /* =========================================================
-   AÇÕES DOS PEDIDOS
+   AÇÕES
 ========================================================= */
 
 function handleAction(
@@ -1176,35 +2176,35 @@ function setupModalButtons() {
 
 
     document
-    .querySelectorAll(".modal-overlay")
-    .forEach(overlay => {
+        .querySelectorAll(".modal-overlay")
+        .forEach(overlay => {
 
-        overlay.addEventListener(
-            "click",
-            event => {
+            overlay.addEventListener(
+                "click",
+                event => {
 
-                if (
-                    event.target === overlay
-                    &&
-                    overlay.id !== "photoModal"
-                ) {
+                    if (
+                        event.target === overlay
+                        &&
+                        overlay.id !== "photoModal"
+                    ) {
 
-                    closeModal(
-                        overlay.id
-                    );
+                        closeModal(
+                            overlay.id
+                        );
+
+                    }
 
                 }
+            );
 
-            }
-        );
-
-    });
+        });
 
 }
 
 
 /* =========================================================
-   ABRIR / FECHAR
+   ABRIR / FECHAR MODAL
 ========================================================= */
 
 function openModal(id) {
@@ -1526,6 +2526,7 @@ function updatePhotoInterface() {
         addPhotoButton
     );
 
+
     const completed =
         photoSession.length;
 
@@ -1533,14 +2534,6 @@ function updatePhotoInterface() {
     progressText.textContent =
         `${completed} FOTOS`;
 
-
-    /*
-     * Não existe mais limite superior.
-     *
-     * Para manter a barra visualmente útil,
-     * ela chega a 100% quando o mínimo de
-     * 3 fotos é atingido.
-     */
 
     const progressPercentage =
         Math.min(
@@ -1639,6 +2632,7 @@ async function savePhotos() {
             "finishPhotosButton"
         );
 
+
     photosSaving = true;
 
     showLoading();
@@ -1701,12 +2695,6 @@ async function savePhotos() {
 
         }
 
-
-        /*
-         * As fotos só são consideradas
-         * definitivamente registradas
-         * depois da confirmação do backend.
-         */
 
         picking.photosRegistered =
             true;
@@ -1920,11 +2908,6 @@ async function validatePicking() {
         }
 
 
-        /*
-         * Só altera o estado local
-         * depois que o Odoo confirmou.
-         */
-
         picking.validated =
             true;
 
@@ -2015,10 +2998,6 @@ function openQualityModal(picking) {
 }
 
 
-/* =========================================================
-   FORMULÁRIO DE QUALIDADE
-========================================================= */
-
 function setupQualityForm() {
 
     const rejectionOptions =
@@ -2082,7 +3061,7 @@ function setupQualityForm() {
 
 
 /* =========================================================
-   CAUSAS DA NÃO CONFORMIDADE
+   CAUSAS
 ========================================================= */
 
 function setupQualityCauses() {
@@ -2639,7 +3618,7 @@ function getCauseName(cause) {
 
 
 /* =========================================================
-   ENVIO DO ALERTA DE QUALIDADE
+   ENVIO ALERTA
 ========================================================= */
 
 async function submitQualityAlert(event) {
@@ -2780,7 +3759,7 @@ async function submitQualityAlert(event) {
 
         const response =
             await fetch(
-                    "/api/quality-alert/causas",
+                "/api/quality-alert/causas",
                 {
                     method: "POST",
 
@@ -3013,47 +3992,27 @@ function printLabel(picking) {
                 </h1>
 
                 <div class="row">
-
-                    <strong>
-                        PV:
-                    </strong>
-
+                    <strong>PV:</strong>
                     ${escapeHtml(picking.pv)}
-
                 </div>
 
                 <div class="row">
-
-                    <strong>
-                        Cliente:
-                    </strong>
-
+                    <strong>Cliente:</strong>
                     ${escapeHtml(picking.client)}
-
                 </div>
 
                 <div class="row">
-
-                    <strong>
-                        Produto:
-                    </strong>
-
+                    <strong>Produto:</strong>
                     ${escapeHtml(picking.product)}
-
                 </div>
 
                 <div class="row">
-
-                    <strong>
-                        Quantidade:
-                    </strong>
-
+                    <strong>Quantidade:</strong>
                     ${escapeHtml(
                         String(
                             picking.receivedQuantity
                         )
                     )}
-
                 </div>
 
             </div>
@@ -3078,8 +4037,9 @@ function printLabel(picking) {
 
 }
 
+
 /* =========================================================
-   UTILITÁRIOS
+   UTILITÁRIO
 ========================================================= */
 
 function escapeHtml(value) {
