@@ -2259,21 +2259,28 @@ async function loadQualityCauses() {
 
 
     if (!causesList) {
+
+        console.error(
+            "Elemento causesList não encontrado."
+        );
+
         return;
+
     }
 
 
-    causesList.innerHTML =
-        `<div class="causes-loading">
-            Carregando causas...
-        </div>`;
+    causesList.innerHTML = `
+        <div class="causes-loading">
+            CARREGANDO CAUSAS...
+        </div>
+    `;
 
 
     try {
 
         const response =
             await fetch(
-                "/api/recebimento-qualidade/causas"
+                "/api/quality-alert/causas"
             );
 
 
@@ -2291,11 +2298,16 @@ async function loadQualityCauses() {
         }
 
 
-        qualityCauses =
-            Array.isArray(data)
-                ? data
-                : [];
+        if (!Array.isArray(data)) {
 
+            throw new Error(
+                "Formato inválido das causas."
+            );
+
+        }
+
+
+        qualityCauses = data;
 
         renderQualityCauses();
 
@@ -2303,18 +2315,16 @@ async function loadQualityCauses() {
     } catch (error) {
 
         console.error(
-            "Erro ao carregar causas:",
+            "Erro ao carregar causas de não conformidade:",
             error
         );
 
 
-        qualityCauses = [];
-
-
-        causesList.innerHTML =
-            `<div class="causes-error">
+        causesList.innerHTML = `
+            <div class="causes-error">
                 Não foi possível carregar as causas.
-            </div>`;
+            </div>
+        `;
 
     }
 
