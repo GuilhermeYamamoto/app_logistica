@@ -1176,27 +1176,29 @@ function setupModalButtons() {
 
 
     document
-        .querySelectorAll(".modal-overlay")
-        .forEach(overlay => {
+    .querySelectorAll(".modal-overlay")
+    .forEach(overlay => {
 
-            overlay.addEventListener(
-                "click",
-                event => {
+        overlay.addEventListener(
+            "click",
+            event => {
 
-                    if (
-                        event.target === overlay
-                    ) {
+                if (
+                    event.target === overlay
+                    &&
+                    overlay.id !== "photoModal"
+                ) {
 
-                        closeModal(
-                            overlay.id
-                        );
-
-                    }
+                    closeModal(
+                        overlay.id
+                    );
 
                 }
-            );
 
-        });
+            }
+        );
+
+    });
 
 }
 
