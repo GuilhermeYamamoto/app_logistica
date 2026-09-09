@@ -93,7 +93,8 @@ class InventoryService:
                     "scheduled_date",
                     "move_ids_without_package",
                     "fotos_count",
-                    "pedido_compra_id"
+                    "pedido_compra_id",
+                    "parent_dfe_nfe_infnfe_ide_nnf"
                 ],
                     order="scheduled_date asc, id asc",
                 )
@@ -130,6 +131,7 @@ class InventoryService:
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
             partner = picking["pedido_compra_id"]
+            nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
             photo_relation = picking.get("fotos_count") or []
 
@@ -139,10 +141,11 @@ class InventoryService:
                 photo_count = int(photo_relation or 0)
 
             records.append({
+                            "nf_number": nf_number,
                             "id": picking["id"],
-                            "pv": picking["name"],
+                            "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
                             "reference": picking["name"],
-                            "client": (partner if partner else "Sem fornecedor"),
+                            "client": (partner[1] if partner[1] else "Sem fornecedor"),
                             "product": (", ".join(product_names) or "Sem produtos"),
                             "expectedQuantity": expected_quantity,
                             "receivedQuantity": received_quantity,
@@ -151,7 +154,6 @@ class InventoryService:
                             "scheduledDate": picking["scheduled_date"],
                             "photoCount": photo_count,
                             "photosRegistered": photo_count >= 3,
-                            "nf_number": picking["parent_dfe_nfe_infnfe_ide_nnf"] if "parent_dfe_nfe_infnfe_ide_nnf" in picking else None,
                         })
 
         return {"picking_type_id": picking_type_id, "records": records}
