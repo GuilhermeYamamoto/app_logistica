@@ -799,7 +799,7 @@ function createPickingCard(picking) {
                 </strong>
 
                 <span>
-                    Cliente
+                    Fornecedor
                 </span>
 
             </div>

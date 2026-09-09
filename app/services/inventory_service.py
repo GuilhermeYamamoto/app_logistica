@@ -93,6 +93,7 @@ class InventoryService:
                     "scheduled_date",
                     "move_ids_without_package",
                     "fotos_count",
+                    "pedido_compra_id"
                 ],
                     order="scheduled_date asc, id asc",
                 )
@@ -128,7 +129,7 @@ class InventoryService:
             product_names = [move["product_id"][1] for move in moves if move["product_id"]]
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
-            partner = picking["partner_id"]
+            partner = picking["pedido_compra_id"]
 
             photo_relation = picking.get("fotos_count") or []
 
@@ -141,7 +142,7 @@ class InventoryService:
                             "id": picking["id"],
                             "pv": picking["name"],
                             "reference": picking["name"],
-                            "client": (partner[1] if partner else "Sem fornecedor"),
+                            "client": (partner if partner else "Sem fornecedor"),
                             "product": (", ".join(product_names) or "Sem produtos"),
                             "expectedQuantity": expected_quantity,
                             "receivedQuantity": received_quantity,
