@@ -1,9 +1,14 @@
 /* =========================================================
-   RECEBIMENTO QUALIDADE - V7
-   PULL TO REFRESH
+   RECEBIMENTO QUALIDADE - V6
 ========================================================= */
 
+
 let pickings = [];
+
+
+/* =========================================================
+   ESTADO DA INTERFACE
+========================================================= */
 
 let currentFilter = "pendentes";
 
@@ -28,26 +33,8 @@ let selectedQualityCauses = [];
 let actionInProgress = false;
 
 
-/* =========================================================
-   PULL TO REFRESH
-========================================================= */
 
-let pullStartY = null;
-
-let pullCurrentY = null;
-
-let pullDistance = 0;
-
-let pullRefreshing = false;
-
-let pullTriggered = false;
-
-const PULL_THRESHOLD = 90;
-
-const PULL_MAX_DISTANCE = 130;
-
-
-/* =========================================================
+/*=========================================================
    ELEMENTOS
 ========================================================= */
 
@@ -78,8 +65,6 @@ const qualityRecordsElement =
 const loadingOverlay =
     document.getElementById("loadingOverlay");
 
-const themeToggle =
-    document.getElementById("themeToggle");
 
 
 /* =========================================================
@@ -87,8 +72,6 @@ const themeToggle =
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-
-    setupTheme();
 
     setupDashboard();
 
@@ -106,103 +89,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupQualityCauses();
 
-    setupPullToRefresh();
-
     loadPickings();
 
 });
 
-
-/* =========================================================
-   TEMA
-========================================================= */
-
-function setupTheme() {
-
-    if (!themeToggle) {
-        return;
-    }
-
-    const savedTheme =
-        localStorage.getItem("recebimentoQualidadeTheme");
-
-    const prefersDark =
-        window.matchMedia &&
-        window.matchMedia(
-            "(prefers-color-scheme: dark)"
-        ).matches;
-
-    const initialTheme =
-        savedTheme ||
-        (prefersDark ? "dark" : "light");
-
-    applyTheme(initialTheme);
-
-    themeToggle.addEventListener(
-        "click",
-        toggleTheme
-    );
-}
-
-
-function applyTheme(theme) {
-
-    const isDark =
-        theme === "dark";
-
-    document.documentElement.dataset.theme =
-        isDark
-            ? "dark"
-            : "light";
-
-    if (!themeToggle) {
-        return;
-    }
-
-    themeToggle.textContent =
-        isDark
-            ? "☀️"
-            : "🌙";
-
-    themeToggle.setAttribute(
-        "aria-label",
-        isDark
-            ? "Ativar modo claro"
-            : "Ativar modo escuro"
-    );
-
-    themeToggle.setAttribute(
-        "title",
-        isDark
-            ? "Ativar modo claro"
-            : "Ativar modo escuro"
-    );
-}
-
-
-function toggleTheme() {
-
-    const currentTheme =
-        document.documentElement.dataset.theme ||
-        "light";
-
-    const newTheme =
-        currentTheme === "dark"
-            ? "light"
-            : "dark";
-
-    applyTheme(newTheme);
-
-    localStorage.setItem(
-        "recebimentoQualidadeTheme",
-        newTheme
-    );
-}
-
-
-/* =========================================================
-   CARGA INICIAL
-========================================================= */
 
 async function loadPickings() {
 
@@ -221,7 +111,21 @@ async function loadPickings() {
 
         }
 
-        setPickings(records);
+        pickings = records.map(picking => ({
+
+            ...picking,
+
+            photos: [],
+
+            photosRegistered:
+                Boolean(picking.photosRegistered),
+
+            photoCount:
+                Number(picking.photoCount || 0),
+
+            qualityAlert: null
+
+        }));
 
     } catch (error) {
 
@@ -235,1009 +139,6 @@ async function loadPickings() {
     }
 
     render();
-
-}
-
-
-/* =========================================================
-   NORMALIZAÇÃO DOS PICKINGS
-========================================================= */
-
-function setPickings(records) {
-
-    pickings =
-        records.map(picking => ({
-
-            ...picking,
-
-            photos: [],
-
-            photosRegistered:
-                Boolean(picking.photosRegistered),
-
-            photoCount:
-                Number(picking.photoCount || 0),
-
-            qualityAlert:
-                null
-
-        }));
-
-}
-
-
-/* =========================================================
-   REFRESH DOS PICKINGS
-========================================================= */
-
-async function refreshPickings() {
-
-    if (pullRefreshing) {
-        return;
-    }
-
-    if (actionInProgress) {
-        return;
-    }
-
-    const pickingTypeId =
-        getCurrentPickingTypeId();
-
-    if (!pickingTypeId) {
-
-        showToast(
-            "Não foi possível identificar a etapa do recebimento.",
-            "!"
-        );
-
-        return;
-
-    }
-
-    pullRefreshing = true;
-
-    showPullRefreshingState();
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/recebimento-qualidade/pickings/refresh?picking_type_id=${encodeURIComponent(pickingTypeId)}`,
-                {
-                    method: "GET",
-
-                    headers: {
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache"
-                    },
-
-                    cache: "no-store"
-                }
-            );
-
-        let data = null;
-
-        try {
-
-            data =
-                await response.json();
-
-        } catch (error) {
-
-            data = null;
-
-        }
-
-        if (!response.ok) {
-
-            throw new Error(
-                data?.detail ||
-                "Não foi possível atualizar os recebimentos."
-            );
-
-        }
-
-        const records =
-            Array.isArray(data)
-                ? data
-                : data?.records;
-
-        if (!Array.isArray(records)) {
-
-            throw new Error(
-                "O servidor retornou dados inválidos."
-            );
-
-        }
-
-        /*
-         * Preserva alguns dados locais importantes
-         * enquanto substituímos a lista pelo retorno
-         * atualizado do backend.
-         */
-
-        const previousById =
-            new Map(
-                pickings.map(
-                    picking => [
-                        picking.id,
-                        picking
-                    ]
-                )
-            );
-
-        pickings =
-            records.map(
-                picking => {
-
-                    const previous =
-                        previousById.get(
-                            picking.id
-                        );
-
-                    return {
-
-                        ...picking,
-
-                        photos:
-                            previous?.photos || [],
-
-                        photosRegistered:
-                            Boolean(
-                                picking.photosRegistered
-                            ),
-
-                        photoCount:
-                            Number(
-                                picking.photoCount || 0
-                            ),
-
-                        qualityAlert:
-                            previous?.qualityAlert ||
-                            null
-
-                    };
-
-                }
-            );
-
-        /*
-         * Uma nova consulta torna a pesquisa
-         * por NF anterior potencialmente obsoleta.
-         *
-         * Por segurança, limpamos o filtro.
-         */
-
-        filteredPickingIds = null;
-
-        if (searchInput) {
-            searchInput.value = "";
-        }
-
-        searchTerm = "";
-
-        if (clearSearch) {
-
-            clearSearch.style.display =
-                "none";
-
-        }
-
-        render();
-
-        showPullSuccessState();
-
-        showToast(
-            "RECEBIMENTOS ATUALIZADOS",
-            "✓"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Erro ao atualizar recebimentos:",
-            error
-        );
-
-        showPullErrorState();
-
-        showToast(
-            error.message ||
-            "Não foi possível atualizar os recebimentos.",
-            "!"
-        );
-
-    } finally {
-
-        pullRefreshing = false;
-
-        setTimeout(
-            resetPullIndicator,
-            300
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   IDENTIFICAÇÃO DO PICKING TYPE
-========================================================= */
-
-function getCurrentPickingTypeId() {
-
-    /*
-     * Primeira opção:
-     * o template pode disponibilizar
-     * data-picking-type-id no body.
-     */
-
-    const bodyValue =
-        document.body?.dataset?.pickingTypeId;
-
-    if (bodyValue) {
-
-        const parsed =
-            Number(bodyValue);
-
-        if (
-            Number.isInteger(parsed) &&
-            parsed > 0
-        ) {
-
-            return parsed;
-
-        }
-
-    }
-
-
-    /*
-     * Segunda opção:
-     * procurar no elemento de registros.
-     */
-
-    const elementValue =
-        qualityRecordsElement?.dataset?.pickingTypeId;
-
-    if (elementValue) {
-
-        const parsed =
-            Number(elementValue);
-
-        if (
-            Number.isInteger(parsed) &&
-            parsed > 0
-        ) {
-
-            return parsed;
-
-        }
-
-    }
-
-
-    /*
-     * Recebimento Qualidade utiliza
-     * picking_type_id = 137.
-     */
-
-    return 137;
-
-}
-
-
-/* =========================================================
-   PULL TO REFRESH - CONFIGURAÇÃO
-========================================================= */
-
-function setupPullToRefresh() {
-
-    if (!document.body) {
-        return;
-    }
-
-    createPullIndicator();
-
-    document.addEventListener(
-        "touchstart",
-        handlePullTouchStart,
-        {
-            passive: true
-        }
-    );
-
-    document.addEventListener(
-        "touchmove",
-        handlePullTouchMove,
-        {
-            passive: false
-        }
-    );
-
-    document.addEventListener(
-        "touchend",
-        handlePullTouchEnd,
-        {
-            passive: true
-        }
-    );
-
-    document.addEventListener(
-        "touchcancel",
-        handlePullTouchCancel,
-        {
-            passive: true
-        }
-    );
-
-}
-
-
-/* =========================================================
-   CRIA INDICADOR
-========================================================= */
-
-function createPullIndicator() {
-
-    if (
-        document.getElementById(
-            "pullToRefreshIndicator"
-        )
-    ) {
-        return;
-    }
-
-    const indicator =
-        document.createElement("div");
-
-    indicator.id =
-        "pullToRefreshIndicator";
-
-    indicator.setAttribute(
-        "aria-hidden",
-        "true"
-    );
-
-    indicator.innerHTML = `
-
-        <div class="pull-refresh-spinner">
-            ↻
-        </div>
-
-        <div
-            id="pullToRefreshText"
-            class="pull-refresh-text"
-        >
-            PUXE PARA ATUALIZAR
-        </div>
-
-    `;
-
-    document.body.prepend(
-        indicator
-    );
-
-    injectPullRefreshStyles();
-
-}
-
-
-/* =========================================================
-   ESTILOS DO PULL TO REFRESH
-========================================================= */
-
-function injectPullRefreshStyles() {
-
-    if (
-        document.getElementById(
-            "pullToRefreshStyles"
-        )
-    ) {
-        return;
-    }
-
-    const style =
-        document.createElement("style");
-
-    style.id =
-        "pullToRefreshStyles";
-
-    style.textContent = `
-
-        #pullToRefreshIndicator {
-            position: fixed;
-            top: 0;
-            left: 50%;
-            z-index: 9999;
-
-            width: 170px;
-            min-height: 44px;
-
-            transform:
-                translate(-50%, -100%);
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-
-            padding: 8px 14px;
-
-            border-radius:
-                0 0 14px 14px;
-
-            background:
-                var(--card-bg, #ffffff);
-
-            color:
-                var(--text-color, #222222);
-
-            box-shadow:
-                0 4px 14px
-                rgba(0, 0, 0, 0.15);
-
-            font-size: 12px;
-            font-weight: 700;
-
-            pointer-events: none;
-
-            opacity: 0;
-
-            transition:
-                opacity 0.2s ease,
-                transform 0.15s ease;
-
-        }
-
-
-        #pullToRefreshIndicator.visible {
-
-            opacity: 1;
-
-        }
-
-
-        .pull-refresh-spinner {
-
-            width: 24px;
-            height: 24px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            font-size: 20px;
-
-        }
-
-
-        #pullToRefreshIndicator.refreshing
-        .pull-refresh-spinner {
-
-            animation:
-                pullRefreshSpin 0.8s
-                linear infinite;
-
-        }
-
-
-        .pull-refresh-text {
-
-            white-space: nowrap;
-
-        }
-
-
-        @keyframes pullRefreshSpin {
-
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-
-        }
-
-
-        @media
-        (prefers-color-scheme: dark) {
-
-            #pullToRefreshIndicator {
-
-                background:
-                    var(
-                        --card-bg,
-                        #1f1f1f
-                    );
-
-                color:
-                    var(
-                        --text-color,
-                        #ffffff
-                    );
-
-            }
-
-        }
-
-    `;
-
-    document.head.appendChild(
-        style
-    );
-
-}
-
-
-/* =========================================================
-   TOUCH START
-========================================================= */
-
-function handlePullTouchStart(event) {
-
-    if (
-        pullRefreshing ||
-        actionInProgress
-    ) {
-        return;
-    }
-
-    if (
-        event.touches.length !== 1
-    ) {
-        return;
-    }
-
-    if (
-        !isPullAllowed()
-    ) {
-        return;
-    }
-
-    const target =
-        event.target;
-
-    if (
-        isInteractiveElement(target)
-    ) {
-        return;
-    }
-
-    pullStartY =
-        event.touches[0].clientY;
-
-    pullCurrentY =
-        pullStartY;
-
-    pullDistance = 0;
-
-    pullTriggered = false;
-
-}
-
-
-/* =========================================================
-   TOUCH MOVE
-========================================================= */
-
-function handlePullTouchMove(event) {
-
-    if (
-        pullStartY === null ||
-        pullRefreshing
-    ) {
-        return;
-    }
-
-    if (
-        event.touches.length !== 1
-    ) {
-        return;
-    }
-
-    if (
-        !isPullAllowed()
-    ) {
-        resetPullGesture();
-        return;
-    }
-
-    const currentY =
-        event.touches[0].clientY;
-
-    pullCurrentY =
-        currentY;
-
-    const delta =
-        currentY - pullStartY;
-
-    if (delta <= 0) {
-
-        pullDistance = 0;
-
-        updatePullIndicator(
-            0
-        );
-
-        return;
-
-    }
-
-    /*
-     * Resistência do gesto.
-     */
-
-    pullDistance =
-        Math.min(
-            delta * 0.55,
-            PULL_MAX_DISTANCE
-        );
-
-    if (
-        pullDistance > 5
-    ) {
-
-        /*
-         * Impede o navegador de executar
-         * o gesto nativo de atualização
-         * enquanto estamos efetivamente
-         * tratando o Pull to Refresh.
-         */
-
-        event.preventDefault();
-
-    }
-
-    pullTriggered =
-        pullDistance >=
-        PULL_THRESHOLD;
-
-    updatePullIndicator(
-        pullDistance
-    );
-
-}
-
-
-/* =========================================================
-   TOUCH END
-========================================================= */
-
-function handlePullTouchEnd() {
-
-    if (
-        pullStartY === null
-    ) {
-        return;
-    }
-
-    const shouldRefresh =
-        pullTriggered &&
-        pullDistance >= PULL_THRESHOLD &&
-        !pullRefreshing &&
-        !actionInProgress;
-
-    resetPullGesture();
-
-    if (
-        shouldRefresh
-    ) {
-
-        refreshPickings();
-
-    } else {
-
-        hidePullIndicator();
-
-    }
-
-}
-
-
-/* =========================================================
-   TOUCH CANCEL
-========================================================= */
-
-function handlePullTouchCancel() {
-
-    resetPullGesture();
-
-    hidePullIndicator();
-
-}
-
-
-/* =========================================================
-   VERIFICA SE PODE FAZER PULL
-========================================================= */
-
-function isPullAllowed() {
-
-    if (
-        window.scrollY > 0
-    ) {
-        return false;
-    }
-
-    if (
-        pullRefreshing ||
-        actionInProgress ||
-        photosSaving
-    ) {
-        return false;
-    }
-
-    /*
-     * Se algum modal estiver aberto,
-     * não permitimos o Pull to Refresh.
-     */
-
-    const openModal =
-        document.querySelector(
-            ".modal-overlay:not(.hidden)"
-        );
-
-    if (openModal) {
-        return false;
-    }
-
-    return true;
-
-}
-
-
-/* =========================================================
-   ELEMENTOS INTERATIVOS
-========================================================= */
-
-function isInteractiveElement(
-    target
-) {
-
-    if (
-        !target ||
-        !target.closest
-    ) {
-        return false;
-    }
-
-    return Boolean(
-        target.closest(
-            "input, textarea, select, button, label, a, [contenteditable='true'], .causesDropdown, #causesDropdown"
-        )
-    );
-
-}
-
-
-/* =========================================================
-   INDICADOR
-========================================================= */
-
-function updatePullIndicator(
-    distance
-) {
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    const text =
-        document.getElementById(
-            "pullToRefreshText"
-        );
-
-    if (
-        !indicator ||
-        !text
-    ) {
-        return;
-    }
-
-    if (
-        distance <= 0
-    ) {
-
-        indicator.classList.remove(
-            "visible"
-        );
-
-        indicator.style.transform =
-            "translate(-50%, -100%)";
-
-        return;
-
-    }
-
-    indicator.classList.add(
-        "visible"
-    );
-
-    const visibleDistance =
-        Math.min(
-            distance,
-            PULL_MAX_DISTANCE
-        );
-
-    indicator.style.transform =
-        `translate(-50%, ${visibleDistance - 55}px)`;
-
-    if (
-        distance >= PULL_THRESHOLD
-    ) {
-
-        text.textContent =
-            "SOLTE PARA ATUALIZAR";
-
-    } else {
-
-        text.textContent =
-            "PUXE PARA ATUALIZAR";
-
-    }
-
-}
-
-
-/* =========================================================
-   ESTADOS DO INDICADOR
-========================================================= */
-
-function showPullRefreshingState() {
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    const text =
-        document.getElementById(
-            "pullToRefreshText"
-        );
-
-    if (
-        !indicator ||
-        !text
-    ) {
-        return;
-    }
-
-    indicator.classList.add(
-        "visible",
-        "refreshing"
-    );
-
-    indicator.style.transform =
-        "translate(-50%, 10px)";
-
-    text.textContent =
-        "ATUALIZANDO...";
-
-}
-
-
-function showPullSuccessState() {
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    const text =
-        document.getElementById(
-            "pullToRefreshText"
-        );
-
-    if (
-        !indicator ||
-        !text
-    ) {
-        return;
-    }
-
-    indicator.classList.remove(
-        "refreshing"
-    );
-
-    text.textContent =
-        "ATUALIZADO ✓";
-
-}
-
-
-function showPullErrorState() {
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    const text =
-        document.getElementById(
-            "pullToRefreshText"
-        );
-
-    if (
-        !indicator ||
-        !text
-    ) {
-        return;
-    }
-
-    indicator.classList.remove(
-        "refreshing"
-    );
-
-    text.textContent =
-        "ERRO AO ATUALIZAR";
-
-}
-
-
-function hidePullIndicator() {
-
-    if (
-        pullRefreshing
-    ) {
-        return;
-    }
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    if (!indicator) {
-        return;
-    }
-
-    indicator.classList.remove(
-        "visible",
-        "refreshing"
-    );
-
-    indicator.style.transform =
-        "translate(-50%, -100%)";
-
-}
-
-
-function resetPullIndicator() {
-
-    const indicator =
-        document.getElementById(
-            "pullToRefreshIndicator"
-        );
-
-    if (!indicator) {
-        return;
-    }
-
-    indicator.classList.remove(
-        "visible",
-        "refreshing"
-    );
-
-    indicator.style.transform =
-        "translate(-50%, -100%)";
-
-}
-
-
-function resetPullGesture() {
-
-    pullStartY = null;
-
-    pullCurrentY = null;
-
-    pullDistance = 0;
-
-    pullTriggered = false;
 
 }
 
@@ -1338,10 +239,6 @@ function setupDashboard() {
 
 function setupSearch() {
 
-    if (!searchInput) {
-        return;
-    }
-
     searchInput.addEventListener(
         "keydown",
         event => {
@@ -1372,10 +269,6 @@ function setupSearch() {
         }
     );
 
-
-    if (!clearSearch) {
-        return;
-    }
 
     clearSearch.addEventListener(
         "click",
@@ -1493,9 +386,9 @@ function getPickingStatus(picking) {
 
 
     if (
-        picking.photosRegistered === true
-        &&
-        Number(picking.photoCount || 0) >= 3
+        picking.photos.every(
+            photo => photo !== null
+        )
     ) {
 
         return {
@@ -1507,7 +400,9 @@ function getPickingStatus(picking) {
 
 
     if (
-        Number(picking.photoCount || 0) > 0
+        picking.photos.some(
+            photo => photo !== null
+        )
     ) {
 
         return {
@@ -1527,7 +422,7 @@ function getPickingStatus(picking) {
 
 
 /* =========================================================
-   FILTROS
+   REGRAS DOS FILTROS
 ========================================================= */
 
 function belongsToFilter(picking) {
@@ -1549,8 +444,11 @@ function belongsToFilter(picking) {
             return (
                 !picking.validated
                 &&
-                Number(picking.photoCount || 0) > 0
+                picking.photos.some(
+                    photo => photo !== null
+                )
             );
+
 
 
         case "concluidos":
@@ -1686,7 +584,7 @@ function formatCount(number) {
 function updateDashboard() {
 
     const total =
-        pickings.length;
+        pickings.length; 
 
 
     const pending =
@@ -1700,103 +598,72 @@ function updateDashboard() {
             picking =>
                 !picking.validated
                 &&
-                Number(picking.photoCount || 0) > 0
+                picking.photos.some(
+                    photo => photo !== null
+                )
         ).length;
+
 
 
     const completed =
         pickings.filter(
             picking => picking.validated
-        ).length;
+        ).length; 
 
 
-    const totalElement =
-        document.getElementById(
-            "totalCount"
-        );
-
-    const pendingElement =
-        document.getElementById(
-            "pendingCount"
-        );
-
-    const progressElement =
-        document.getElementById(
-            "progressCount"
-        );
-
-    const completedElement =
-        document.getElementById(
-            "completedCount"
-        );
+/*    document.getElementById(
+        "totalCount"
+    ).textContent =
+        formatCount(total); */
 
 
-    if (totalElement) {
-
-        totalElement.textContent =
-            formatCount(total);
-
-    }
+    document.getElementById(
+        "pendingCount"
+    ).textContent =
+        formatCount(pending);
 
 
-    if (pendingElement) {
-
-        pendingElement.textContent =
-            formatCount(pending);
-
-    }
+    document.getElementById(
+        "progressCount"
+    ).textContent =
+        formatCount(progress);
 
 
-    if (progressElement) {
-
-        progressElement.textContent =
-            formatCount(progress);
-
-    }
-
-
-    if (completedElement) {
-
-        completedElement.textContent =
-            formatCount(completed);
-
-    }
+/*    document.getElementById(
+        "completedCount"
+    ).textContent =
+        formatCount(completed); */
 
 }
 
 
 /* =========================================================
-   TÍTULO
+   TÍTULO DA SEÇÃO
 ========================================================= */
 
 function renderSectionTitle() {
 
     const titles = {
 
-        todos:
-            "TODOS OS PEDIDOS",
+        todos: "TODOS OS PEDIDOS",
 
-        pendentes:
-            "PEDIDOS PENDENTES",
+        pendentes: "PEDIDOS PENDENTES",
 
-        andamento:
-            "PEDIDOS EM ANDAMENTO",
+        andamento: "PEDIDOS EM ANDAMENTO",
 
-        concluidos:
-            "PEDIDOS CONCLUÍDOS"
+        concluidos: "PEDIDOS CONCLUÍDOS"
 
     };
 
 
     currentSection.textContent =
-        titles[currentFilter] ||
-        "PEDIDOS";
+        titles[currentFilter];
 
 }
 
 
 /* =========================================================
-   CARD
+   CARD DO PEDIDO
 ========================================================= */
 
 function createPickingCard(picking) {
@@ -1826,6 +693,7 @@ function createPickingCard(picking) {
         picking.photosRegistered === true;
 
 
+
     article.innerHTML = `
 
         <div class="picking-main">
@@ -1833,7 +701,7 @@ function createPickingCard(picking) {
             <div class="picking-identification">
 
                 <strong>
-                    ${escapeHtml(picking.pv)}
+                    ${picking.pv}
                 </strong>
 
                 <div class="picking-status ${status.className}">
@@ -1846,7 +714,7 @@ function createPickingCard(picking) {
             <div class="client-info">
 
                 <strong>
-                    ${escapeHtml(picking.client)}
+                    ${picking.client}
                 </strong>
 
                 <span>
@@ -1884,7 +752,7 @@ function createPickingCard(picking) {
                 </strong>
 
                 <h3>
-                    ${escapeHtml(picking.product)}
+                    ${picking.product}
                 </h3>
 
             </div>
@@ -1960,6 +828,10 @@ function createPickingCard(picking) {
     `;
 
 
+    /* =====================================================
+       AÇÕES
+    ====================================================== */
+
     article
         .querySelectorAll("[data-action]")
         .forEach(button => {
@@ -1987,92 +859,97 @@ function createPickingCard(picking) {
         });
 
 
+    /* =====================================================
+       QUANTIDADE
+    ====================================================== */
+
     const quantityInput =
-        article.querySelector(".quantity-input");
+    article.querySelector(".quantity-input");
 
     quantityInput.addEventListener(
         "change",
         async () => {
 
-            if (actionInProgress) {
-                return;
-            }
+        if (actionInProgress) {
+            return;
+        }
 
-            const value =
-                Number(quantityInput.value);
+        const value =
+            Number(quantityInput.value);
 
-            if (
-                Number.isNaN(value) ||
-                value < 0
-            ) {
+        if (
+            Number.isNaN(value) ||
+            value < 0
+        ) {
 
-                quantityInput.value =
-                    picking.receivedQuantity;
+            quantityInput.value =
+                picking.receivedQuantity;
 
-                return;
-            }
+            return;
+        }
 
-            picking.receivedQuantity = value;
+        picking.receivedQuantity = value;
 
-            showLoading();
+        showLoading();
 
-            try {
+        try {
 
-                const response = await fetch(
-                    "/api/received_quantity",
-                    {
-                        method: "POST",
+            const response = await fetch(
+                "/api/received_quantity",
+                {
+                    method: "POST",
 
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-                        body: JSON.stringify({
-                            picking_id: picking.id,
-                            received_quantity: value
-                        })
-                    }
-                );
-
-                const data =
-                    await response.json();
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.detail ||
-                        "Erro ao atualizar quantidade."
-                    );
-
+                    body: JSON.stringify({
+                        picking_id: picking.id,
+                        received_quantity: value
+                    })
                 }
+            );
 
-                showToast(
-                    "Quantidade atualizada.",
-                    "✓"
+            const data =
+                await response.json();
+
+            console.log(response, data);
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Erro ao atualizar quantidade."
                 );
-
-            } catch (error) {
-
-                console.error(
-                    "Erro ao atualizar quantidade:",
-                    error
-                );
-
-                showToast(
-                    "Erro ao atualizar quantidade.",
-                    "✕"
-                );
-
             }
 
-            finally {
+            showToast(
+                "Quantidade atualizada.",
+                "✓"
+            );
 
-                hideLoading();
+        } catch (error) {
 
-            }
+            console.error(
+                "Erro ao atualizar quantidade:",
+                error
+            );
+
+            showToast(
+                "Erro ao atualizar quantidade.",
+                "✕"
+            );
 
         }
-    );
+
+        finally {
+
+            hideLoading();
+
+        }
+
+    }
+);
+
 
 
     return article;
@@ -2081,7 +958,7 @@ function createPickingCard(picking) {
 
 
 /* =========================================================
-   AÇÕES
+   AÇÕES DOS PEDIDOS
 ========================================================= */
 
 function handleAction(
@@ -2185,8 +1062,6 @@ function setupModalButtons() {
 
                     if (
                         event.target === overlay
-                        &&
-                        overlay.id !== "photoModal"
                     ) {
 
                         closeModal(
@@ -2204,7 +1079,7 @@ function setupModalButtons() {
 
 
 /* =========================================================
-   ABRIR / FECHAR MODAL
+   ABRIR / FECHAR
 ========================================================= */
 
 function openModal(id) {
@@ -2526,7 +1401,6 @@ function updatePhotoInterface() {
         addPhotoButton
     );
 
-
     const completed =
         photoSession.length;
 
@@ -2534,6 +1408,14 @@ function updatePhotoInterface() {
     progressText.textContent =
         `${completed} FOTOS`;
 
+
+    /*
+     * Não existe mais limite superior.
+     *
+     * Para manter a barra visualmente útil,
+     * ela chega a 100% quando o mínimo de
+     * 3 fotos é atingido.
+     */
 
     const progressPercentage =
         Math.min(
@@ -2696,6 +1578,12 @@ async function savePhotos() {
         }
 
 
+        /*
+         * As fotos só são consideradas
+         * definitivamente registradas
+         * depois da confirmação do backend.
+         */
+
         picking.photosRegistered =
             true;
 
@@ -2752,7 +1640,6 @@ async function savePhotos() {
     }
 
 }
-
 
 /* =========================================================
    VALIDAÇÃO
@@ -2908,6 +1795,11 @@ async function validatePicking() {
         }
 
 
+        /*
+         * Só altera o estado local
+         * depois que o Odoo confirmou.
+         */
+
         picking.validated =
             true;
 
@@ -2998,6 +1890,10 @@ function openQualityModal(picking) {
 }
 
 
+/* =========================================================
+   FORMULÁRIO DE QUALIDADE
+========================================================= */
+
 function setupQualityForm() {
 
     const rejectionOptions =
@@ -3007,41 +1903,11 @@ function setupQualityForm() {
 
 
     rejectionOptions.forEach(
-        option => {
+        input => {
 
-            option.addEventListener(
+            input.addEventListener(
                 "change",
-                () => {
-
-                    const partialGroup =
-                        document.getElementById(
-                            "partialQuantityGroup"
-                        );
-
-
-                    if (
-                        option.value === "parcial"
-                        &&
-                        option.checked
-                    ) {
-
-                        partialGroup.classList.remove(
-                            "hidden"
-                        );
-
-                    } else if (
-                        option.value === "total"
-                        &&
-                        option.checked
-                    ) {
-
-                        partialGroup.classList.add(
-                            "hidden"
-                        );
-
-                    }
-
-                }
+                updateRejectionFields
             );
 
         }
@@ -3060,45 +1926,100 @@ function setupQualityForm() {
 }
 
 
+function updateRejectionFields() {
+
+    const selected =
+        document.querySelector(
+            'input[name="reprovacao"]:checked'
+        );
+
+
+    const group =
+        document.getElementById(
+            "partialQuantityGroup"
+        );
+
+
+    if (
+        selected
+        &&
+        selected.value === "parcial"
+    ) {
+
+        group.classList.remove(
+            "hidden"
+        );
+
+    } else {
+
+        group.classList.add(
+            "hidden"
+        );
+
+    }
+
+}
+
+
+
 /* =========================================================
-   CAUSAS
+   CAUSAS DA NÃO CONFORMIDADE
 ========================================================= */
 
 function setupQualityCauses() {
 
-    const selector =
+    const causesSelector =
         document.getElementById(
             "causas_nao_conformidade"
         );
 
-
-    const dropdown =
+    const causesDropdown =
         document.getElementById(
             "causesDropdown"
         );
 
 
     if (
-        !selector ||
-        !dropdown
+        !causesSelector ||
+        !causesDropdown
     ) {
+
+        console.error(
+            "Elementos do seletor de causas não encontrados."
+        );
+
         return;
+
     }
 
 
-    selector.addEventListener(
+    causesSelector.addEventListener(
         "click",
         event => {
 
             event.stopPropagation();
 
-            toggleCausesDropdown();
+            const isOpen =
+                !causesDropdown.classList.contains(
+                    "hidden"
+                );
+
+
+            if (isOpen) {
+
+                closeCausesDropdown();
+
+            } else {
+
+                openCausesDropdown();
+
+            }
 
         }
     );
 
 
-    selector.addEventListener(
+    causesSelector.addEventListener(
         "keydown",
         event => {
 
@@ -3110,16 +2031,23 @@ function setupQualityCauses() {
 
                 event.preventDefault();
 
-                toggleCausesDropdown();
+                event.stopPropagation();
 
-            }
+                const isOpen =
+                    !causesDropdown.classList.contains(
+                        "hidden"
+                    );
 
 
-            if (
-                event.key === "Escape"
-            ) {
+                if (isOpen) {
 
-                closeCausesDropdown();
+                    closeCausesDropdown();
+
+                } else {
+
+                    openCausesDropdown();
+
+                }
 
             }
 
@@ -3132,9 +2060,13 @@ function setupQualityCauses() {
         event => {
 
             if (
-                !selector.contains(event.target)
+                !causesSelector.contains(
+                    event.target
+                )
                 &&
-                !dropdown.contains(event.target)
+                !causesDropdown.contains(
+                    event.target
+                )
             ) {
 
                 closeCausesDropdown();
@@ -3146,87 +2078,6 @@ function setupQualityCauses() {
 
 
     loadQualityCauses();
-
-}
-
-
-function toggleCausesDropdown() {
-
-    const dropdown =
-        document.getElementById(
-            "causesDropdown"
-        );
-
-
-    const selector =
-        document.getElementById(
-            "causas_nao_conformidade"
-        );
-
-
-    if (
-        !dropdown ||
-        !selector
-    ) {
-        return;
-    }
-
-
-    const isHidden =
-        dropdown.classList.contains(
-            "hidden"
-        );
-
-
-    if (isHidden) {
-
-        dropdown.classList.remove(
-            "hidden"
-        );
-
-        selector.classList.add(
-            "open"
-        );
-
-    } else {
-
-        closeCausesDropdown();
-
-    }
-
-}
-
-
-function closeCausesDropdown() {
-
-    const dropdown =
-        document.getElementById(
-            "causesDropdown"
-        );
-
-
-    const selector =
-        document.getElementById(
-            "causas_nao_conformidade"
-        );
-
-
-    if (dropdown) {
-
-        dropdown.classList.add(
-            "hidden"
-        );
-
-    }
-
-
-    if (selector) {
-
-        selector.classList.remove(
-            "open"
-        );
-
-    }
 
 }
 
@@ -3328,14 +2179,13 @@ function renderQualityCauses() {
     causesList.innerHTML = "";
 
 
-    if (
-        qualityCauses.length === 0
-    ) {
+    if (qualityCauses.length === 0) {
 
-        causesList.innerHTML =
-            `<div class="causes-empty">
-                Nenhuma causa encontrada.
-            </div>`;
+        causesList.innerHTML = `
+            <div class="causes-empty">
+                Nenhuma causa cadastrada no Odoo.
+            </div>
+        `;
 
         return;
 
@@ -3345,65 +2195,45 @@ function renderQualityCauses() {
     qualityCauses.forEach(
         cause => {
 
-            const causeId =
-                getCauseId(cause);
-
-
-            const causeName =
-                getCauseName(cause);
-
-
-            const option =
+            const button =
                 document.createElement(
                     "button"
                 );
 
 
-            option.type =
-                "button";
+            button.type = "button";
 
-
-            option.className =
+            button.className =
                 "cause-option";
 
 
-            if (
-                selectedQualityCauses.some(
-                    selected =>
-                        String(
-                            getCauseId(selected)
-                        )
-                        ===
-                        String(causeId)
-                )
-            ) {
-
-                option.classList.add(
-                    "selected"
-                );
-
-            }
+            button.dataset.causeId =
+                cause.id;
 
 
-            option.innerHTML = `
+            button.innerHTML = `
 
                 <span class="cause-check">
                     ✓
                 </span>
 
                 <span class="cause-option-name">
-                    ${escapeHtml(causeName)}
+                    ${escapeHtml(cause.name)}
                 </span>
 
             `;
 
 
-            option.addEventListener(
+            button.addEventListener(
                 "click",
-                () => {
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
 
                     toggleQualityCause(
-                        cause
+                        cause.id
                     );
 
                 }
@@ -3411,69 +2241,172 @@ function renderQualityCauses() {
 
 
             causesList.appendChild(
-                option
+                button
             );
 
         }
     );
 
+
+    updateQualityCausesInterface();
+
 }
 
 
-function toggleQualityCause(cause) {
+function openCausesDropdown() {
 
-    const causeId =
-        getCauseId(cause);
+    const causesDropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
 
-
-    const existingIndex =
-        selectedQualityCauses.findIndex(
-            selected =>
-                String(
-                    getCauseId(selected)
-                )
-                ===
-                String(causeId)
+    const causesSelector =
+        document.getElementById(
+            "causas_nao_conformidade"
         );
 
 
-    if (existingIndex >= 0) {
+    if (
+        !causesDropdown ||
+        !causesSelector
+    ) {
+        return;
+    }
 
-        selectedQualityCauses.splice(
-            existingIndex,
-            1
+
+    causesDropdown.classList.remove(
+        "hidden"
+    );
+
+
+    causesSelector.classList.add(
+        "open"
+    );
+
+
+    updateQualityCausesInterface();
+
+}
+
+
+function closeCausesDropdown() {
+
+    const causesDropdown =
+        document.getElementById(
+            "causesDropdown"
+        );
+
+    const causesSelector =
+        document.getElementById(
+            "causas_nao_conformidade"
+        );
+
+
+    if (!causesDropdown) {
+        return;
+    }
+
+
+    causesDropdown.classList.add(
+        "hidden"
+    );
+
+
+    if (causesSelector) {
+
+        causesSelector.classList.remove(
+            "open"
+        );
+
+    }
+
+}
+
+
+function toggleQualityCause(causeId) {
+
+    const numericCauseId =
+        Number(causeId);
+
+
+    const index =
+        selectedQualityCauses.indexOf(
+            numericCauseId
+        );
+
+
+    if (index === -1) {
+
+        selectedQualityCauses.push(
+            numericCauseId
         );
 
     } else {
 
-        selectedQualityCauses.push(
-            cause
+        selectedQualityCauses.splice(
+            index,
+            1
         );
 
     }
 
 
-    renderQualityCauses();
-
-    renderSelectedQualityCauses();
+    updateQualityCausesInterface();
 
 }
 
 
-function renderSelectedQualityCauses() {
+function updateQualityCausesInterface() {
 
-    const selectedContainer =
+    const selectedCausesContainer =
         document.getElementById(
             "selectedCauses"
         );
 
 
-    if (!selectedContainer) {
+    if (!selectedCausesContainer) {
         return;
     }
 
 
-    selectedContainer.innerHTML = "";
+    /*
+     * Atualiza os checks da lista.
+     */
+
+    document
+        .querySelectorAll(
+            ".cause-option"
+        )
+        .forEach(
+            option => {
+
+                const causeId =
+                    Number(
+                        option.dataset.causeId
+                    );
+
+
+                const selected =
+                    selectedQualityCauses.includes(
+                        causeId
+                    );
+
+
+                option.classList.toggle(
+                    "selected",
+                    selected
+                );
+
+            }
+        );
+
+
+    /*
+     * Atualiza as causas exibidas
+     * dentro da caixa principal.
+     */
+
+    selectedCausesContainer.innerHTML = "";
 
 
     if (
@@ -3494,9 +2427,10 @@ function renderSelectedQualityCauses() {
             "Selecione uma ou mais causas...";
 
 
-        selectedContainer.appendChild(
+        selectedCausesContainer.appendChild(
             placeholder
         );
+
 
         return;
 
@@ -3504,24 +2438,37 @@ function renderSelectedQualityCauses() {
 
 
     selectedQualityCauses.forEach(
-        cause => {
+        causeId => {
 
-            const item =
+            const cause =
+                qualityCauses.find(
+                    item =>
+                        Number(item.id) ===
+                        causeId
+                );
+
+
+            if (!cause) {
+                return;
+            }
+
+
+            const selectedCause =
                 document.createElement(
                     "span"
                 );
 
 
-            item.className =
+            selectedCause.className =
                 "selected-cause";
 
 
-            item.textContent =
-                getCauseName(cause);
+            selectedCause.textContent =
+                cause.name;
 
 
-            selectedContainer.appendChild(
-                item
+            selectedCausesContainer.appendChild(
+                selectedCause
             );
 
         }
@@ -3534,97 +2481,37 @@ function resetQualityCauses() {
 
     selectedQualityCauses = [];
 
-    renderSelectedQualityCauses();
-
-    renderQualityCauses();
+    updateQualityCausesInterface();
 
     closeCausesDropdown();
 
 }
 
 
-function getCauseId(cause) {
+function escapeHtml(value) {
 
-    if (
-        cause === null
-        ||
-        cause === undefined
-    ) {
-
-        return null;
-
-    }
+    const div =
+        document.createElement(
+            "div"
+        );
 
 
-    if (
-        typeof cause !== "object"
-    ) {
-
-        return cause;
-
-    }
+    div.textContent =
+        value ?? "";
 
 
-    return (
-        cause.id
-        ??
-        cause.value
-        ??
-        cause.code
-        ??
-        cause.name
-    );
-
-}
-
-
-function getCauseName(cause) {
-
-    if (
-        cause === null
-        ||
-        cause === undefined
-    ) {
-
-        return "";
-
-    }
-
-
-    if (
-        typeof cause !== "object"
-    ) {
-
-        return String(cause);
-
-    }
-
-
-    return String(
-        cause.name
-        ??
-        cause.label
-        ??
-        cause.display_name
-        ??
-        cause.description
-        ??
-        cause.id
-        ??
-        ""
-    );
+    return div.innerHTML;
 
 }
 
 
 /* =========================================================
-   ENVIO ALERTA
+   SALVAR ALERTA
 ========================================================= */
 
 async function submitQualityAlert(event) {
 
     event.preventDefault();
-
 
     if (actionInProgress) {
         return;
@@ -3635,69 +2522,19 @@ async function submitQualityAlert(event) {
         findPicking(currentPickingId);
 
 
-    if (!picking) {
-        return;
-    }
+    if (!picking) return;
 
 
-    const rejection =
+    const selectedRejection =
         document.querySelector(
             'input[name="reprovacao"]:checked'
         );
 
 
-    const rejectionType =
-        rejection
-            ? rejection.value
-            : "total";
-
-
-    const partialQuantityInput =
-        document.getElementById(
-            "quantidade_nao_conforme"
-        );
-
-
-    let rejectedQuantity =
-        null;
-
-
-    if (
-        rejectionType === "parcial"
-    ) {
-
-        rejectedQuantity =
-            Number(
-                partialQuantityInput.value
-            );
-
-
-        if (
-            Number.isNaN(
-                rejectedQuantity
-            )
-            ||
-            rejectedQuantity <= 0
-        ) {
-
-            showToast(
-                "Informe uma quantidade reprovada válida.",
-                "!"
-            );
-
-            return;
-
-        }
-
-    }
-
-
-    if (
-        selectedQualityCauses.length === 0
-    ) {
+    if (!selectedRejection) {
 
         showToast(
-            "Selecione pelo menos uma causa da não conformidade.",
+            "Selecione o tipo de reprovação.",
             "!"
         );
 
@@ -3706,191 +2543,136 @@ async function submitQualityAlert(event) {
     }
 
 
-    const description =
-        document
-            .getElementById(
-                "descricao_geral"
-            )
-            .value
-            .trim();
+    const reprovacao =
+        selectedRejection.value;
 
 
-    const specified =
-        document
-            .getElementById(
-                "especificado_quality"
-            )
-            .value
-            .trim();
-
-
-    const found =
-        document
-            .getElementById(
-                "encontrado_quality"
-            )
-            .value
-            .trim();
-
-
-    const submitButton =
-        document
-            .querySelector(
-                "#qualityForm .quality-button"
-            );
-
-
-    const originalText =
-        submitButton.textContent;
-
-
-    submitButton.disabled =
-        true;
-
-
-    submitButton.textContent =
-        "REGISTRANDO...";
-
-
-    showLoading();
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/quality-alert/causas",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        picking_id:
-                            picking.id,
-
-                        reprovacao:
-                            rejectionType,
-
-                        quantidade_nao_conforme:
-                            rejectedQuantity,
-
-                        causas:
-                            selectedQualityCauses.map(
-                                cause => ({
-                                    id:
-                                        getCauseId(
-                                            cause
-                                        ),
-
-                                    name:
-                                        getCauseName(
-                                            cause
-                                        )
-                                })
-                            ),
-
-                        descricao_geral:
-                            description,
-
-                        especificado:
-                            specified,
-
-                        encontrado:
-                            found
-                    })
-                }
-            );
-
-
-        let data = null;
-
-
-        try {
-
-            data =
-                await response.json();
-
-        } catch (error) {
-
-            data = null;
-
-        }
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data?.detail ||
-                "Não foi possível registrar o alerta de qualidade."
-            );
-
-        }
-
-
-        picking.qualityAlert =
-            {
-                reprovacao:
-                    rejectionType,
-
-                quantidade:
-                    rejectedQuantity,
-
-                causas:
-                    [...selectedQualityCauses],
-
-                descricao:
-                    description,
-
-                especificado:
-                    specified,
-
-                encontrado:
-                    found
-            };
-
-
-        closeModal(
-            "qualityModal"
+    const quantidade_nao_conforme =
+        Number(
+            document.getElementById(
+                "quantidade_nao_conforme"
+            ).value
         );
 
+
+    const descricao_geral =
+        document.getElementById(
+            "descricao_geral"
+        ).value.trim();
+
+
+    const especificado_quality =
+        document.getElementById(
+            "especificado_quality"
+        ).value.trim();
+
+
+    const encontrado_quality =
+        document.getElementById(
+            "encontrado_quality"
+        ).value.trim();
+
+
+    if (!descricao_geral) {
 
         showToast(
-            "ALERTA DE QUALIDADE REGISTRADO COM SUCESSO",
-            "✓"
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Erro ao registrar alerta:",
-            error
-        );
-
-
-        showToast(
-            error.message ||
-            "Não foi possível registrar o alerta de qualidade.",
+            "Informe a descrição do problema.",
             "!"
         );
 
-
-    } finally {
-
-        hideLoading();
-
-        submitButton.disabled =
-            false;
-
-        submitButton.textContent =
-            originalText;
+        return;
 
     }
 
+
+    if (
+        reprovacao === "parcial"
+        &&
+        (
+            !quantidade_nao_conforme
+            ||
+            quantidade_nao_conforme <= 0
+        )
+    ) {
+
+        showToast(
+            "Informe a quantidade reprovada.",
+            "!"
+        );
+
+        return;
+
+    }
+
+    // ------------------------------------------------
+    // Monta os dados do frontend que serão enviados para o backend
+    // ------------------------------------------------
+
+    const quality_alert_data = {
+        picking_id: picking.id,
+
+        causas_qa_id:
+            selectedQualityCauses,
+
+        reprovacao,
+
+        quantidade_nao_conforme:
+            reprovacao === "parcial"
+                ? quantidade_nao_conforme
+                : picking.receivedQuantity,
+
+        descricao_geral,
+
+        especificado_quality,
+
+        encontrado_quality
+    };
+
+    // ------------------------------------------------
+    // Envia os dados para o FastAPI
+    // ------------------------------------------------
+    
+    showLoading();
+    
+    try{
+        const response = await fetch("/api/quality-alert", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(quality_alert_data)});
+
+        if (!response.ok) {
+            showToast("Erro ao registrar alerta de qualidade.", "!");
+            return;
+        }
+
+        const resultado = await response.json();
+
+        // ------------------------------------------------
+        // Atualiza a tela após confirmado envio para o backend
+        // ------------------------------------------------
+
+        picking.qualityAlert = {
+            ...quality_alert_data,
+
+            causas_qa_id: [
+                ...selectedQualityCauses
+            ]
+        };
+
+        closeModal("qualityModal");
+
+        render();
+
+        showToast("ALERTA DE QUALIDADE REGISTRADO", "✓");
+    }
+
+    catch (error) {
+        console.error("Erro ao registrar alerta de qualidade:", error);
+        showToast("Erro ao registrar alerta de qualidade.", "!");
+    }
+
+    finally {
+
+        hideLoading();
+
+    }
 }
 
 
@@ -3898,184 +2680,111 @@ async function submitQualityAlert(event) {
    IMPRESSÃO
 ========================================================= */
 
-function printLabel(picking) {
-
-    if (!picking) {
-        return;
-    }
-
+async function printLabel(picking) {
 
     if (actionInProgress) {
         return;
     }
 
+    showLoading();
 
-    const printWindow =
-        window.open(
-            "",
-            "_blank",
-            "width=600,height=500"
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível imprimir a etiqueta."
+            );
+
+        }
+
+        const {
+            iot_url,
+            payload
+        } = data;
+
+        if (!iot_url || !payload) {
+
+            throw new Error(
+                "Resposta inválida do servidor para impressão: Faltando iot_url ou payload"
+            );
+
+        }
+
+        const iotResponse =
+            await fetch(
+                iot_url,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(
+                            payload
+                        )
+                }
+            );
+
+        const iotBody =
+            await iotResponse.json().catch(
+                () => ({
+                    raw:
+                        iotResponse.statusText
+                })
+            );
+
+        if (!iotResponse.ok) {
+
+            throw new Error(
+                `Erro IoT: ${iotResponse.status} - ${JSON.stringify(iotBody)}`
+            );
+
+        }
+
+        showToast(
+            `ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`,
+            "✓"
         );
 
 
-    if (!printWindow) {
+    } catch (error) {
+
+        console.error(
+            "Erro ao imprimir etiqueta:",
+            error
+        );
 
         showToast(
-            "Não foi possível abrir a janela de impressão.",
+            error.message ||
+            "Não foi possível imprimir a etiqueta.",
             "!"
         );
 
-        return;
-
     }
 
+    finally {
 
-    printWindow.document.write(`
-        <!DOCTYPE html>
-
-        <html lang="pt-BR">
-
-        <head>
-
-            <meta charset="UTF-8">
-
-            <title>
-                Etiqueta ${escapeHtml(picking.pv)}
-            </title>
-
-            <style>
-
-                * {
-                    box-sizing: border-box;
-                }
-
-                body {
-                    margin: 0;
-                    padding: 25px;
-                    font-family:
-                        Arial,
-                        Helvetica,
-                        sans-serif;
-                    color: #111;
-                }
-
-                .label {
-                    width: 100%;
-                    border: 2px solid #111;
-                    padding: 25px;
-                }
-
-                h1 {
-                    margin: 0 0 20px;
-                    font-size: 28px;
-                }
-
-                .row {
-                    margin-bottom: 12px;
-                }
-
-                .row strong {
-                    display: inline-block;
-                    min-width: 110px;
-                }
-
-            </style>
-
-        </head>
-
-        <body>
-
-            <div class="label">
-
-                <h1>
-                    RECEBIMENTO
-                </h1>
-
-                <div class="row">
-                    <strong>PV:</strong>
-                    ${escapeHtml(picking.pv)}
-                </div>
-
-                <div class="row">
-                    <strong>Cliente:</strong>
-                    ${escapeHtml(picking.client)}
-                </div>
-
-                <div class="row">
-                    <strong>Produto:</strong>
-                    ${escapeHtml(picking.product)}
-                </div>
-
-                <div class="row">
-                    <strong>Quantidade:</strong>
-                    ${escapeHtml(
-                        String(
-                            picking.receivedQuantity
-                        )
-                    )}
-                </div>
-
-            </div>
-
-        </body>
-
-        </html>
-    `);
-
-
-    printWindow.document.close();
-
-
-    printWindow.onload =
-        () => {
-
-            printWindow.focus();
-
-            printWindow.print();
-
-        };
-
-}
-
-
-/* =========================================================
-   UTILITÁRIO
-========================================================= */
-
-function escapeHtml(value) {
-
-    if (
-        value === null
-        ||
-        value === undefined
-    ) {
-
-        return "";
+        hideLoading();
 
     }
-
-
-    return String(value)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
 
 }
 
@@ -4105,19 +2814,6 @@ function showToast(
         document.getElementById(
             "toastIcon"
         );
-
-
-    if (
-        !toast
-        ||
-        !toastMessage
-        ||
-        !toastIcon
-    ) {
-
-        return;
-
-    }
 
 
     toastMessage.textContent =
