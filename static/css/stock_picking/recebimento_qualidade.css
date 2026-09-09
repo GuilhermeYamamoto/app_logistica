@@ -447,7 +447,7 @@ button {
         minmax(150px, .9fr)
         minmax(180px, 1.2fr);
     align-items: center;
-    gap: 18px;
+    gap: 34px;
 }
 
 .picking-identification strong {
