@@ -65,6 +65,9 @@ const qualityRecordsElement =
 const loadingOverlay =
     document.getElementById("loadingOverlay");
 
+const themeToggle =
+    document.getElementById("themeToggle");
+
 
 
 /* =========================================================
@@ -72,6 +75,8 @@ const loadingOverlay =
 ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    setupTheme();
 
     setupDashboard();
 
@@ -92,6 +97,87 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPickings();
 
 });
+
+
+
+/* =========================================================
+   TEMA
+========================================================= */
+
+function setupTheme() {
+
+    if (!themeToggle) {
+        return;
+    }
+
+    const savedTheme =
+        localStorage.getItem("recebimentoQualidadeTheme");
+
+    // Se nunca escolheu um tema, começa sempre no claro
+    const initialTheme =
+        savedTheme || "light";
+
+    applyTheme(initialTheme);
+
+    themeToggle.addEventListener(
+        "click",
+        toggleTheme
+    );
+}
+
+function applyTheme(theme) {
+
+    const isDark =
+        theme === "dark";
+
+    document.documentElement.dataset.theme =
+        isDark
+            ? "dark"
+            : "light";
+
+    if (!themeToggle) {
+        return;
+    }
+
+    themeToggle.textContent =
+        isDark
+            ? "☀️"
+            : "🌙";
+
+    themeToggle.setAttribute(
+        "aria-label",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+
+    themeToggle.setAttribute(
+        "title",
+        isDark
+            ? "Ativar modo claro"
+            : "Ativar modo escuro"
+    );
+}
+
+function toggleTheme() {
+
+    const currentTheme =
+        document.documentElement.dataset.theme ||
+        "light";
+
+    const newTheme =
+        currentTheme === "dark"
+            ? "light"
+            : "dark";
+
+    applyTheme(newTheme);
+
+    localStorage.setItem(
+        "recebimentoQualidadeTheme",
+        newTheme
+    );
+}
+
 
 
 async function loadPickings() {
@@ -440,13 +526,10 @@ function belongsToFilter(picking) {
 
 
         case "andamento":
-
             return (
                 !picking.validated
                 &&
-                picking.photos.some(
-                    photo => photo !== null
-                )
+                picking.photosRegistered
             );
 
 
@@ -598,9 +681,7 @@ function updateDashboard() {
             picking =>
                 !picking.validated
                 &&
-                picking.photos.some(
-                    photo => photo !== null
-                )
+                picking.photosRegistered
         ).length;
 
 
@@ -864,91 +945,91 @@ function createPickingCard(picking) {
     ====================================================== */
 
     const quantityInput =
-    article.querySelector(".quantity-input");
+        article.querySelector(".quantity-input");
 
-    quantityInput.addEventListener(
-        "change",
-        async () => {
+        quantityInput.addEventListener(
+            "change",
+            async () => {
 
-        if (actionInProgress) {
-            return;
-        }
-
-        const value =
-            Number(quantityInput.value);
-
-        if (
-            Number.isNaN(value) ||
-            value < 0
-        ) {
-
-            quantityInput.value =
-                picking.receivedQuantity;
-
-            return;
-        }
-
-        picking.receivedQuantity = value;
-
-        showLoading();
-
-        try {
-
-            const response = await fetch(
-                "/api/received_quantity",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        picking_id: picking.id,
-                        received_quantity: value
-                    })
-                }
-            );
-
-            const data =
-                await response.json();
-
-            console.log(response, data);
-
-            if (!response.ok) {
-                throw new Error(
-                    data.detail ||
-                    "Erro ao atualizar quantidade."
-                );
+            if (actionInProgress) {
+                return;
             }
 
-            showToast(
-                "Quantidade atualizada.",
-                "✓"
-            );
+            const value =
+                Number(quantityInput.value);
 
-        } catch (error) {
+            if (
+                Number.isNaN(value) ||
+                value < 0
+            ) {
 
-            console.error(
-                "Erro ao atualizar quantidade:",
-                error
-            );
+                quantityInput.value =
+                    picking.receivedQuantity;
 
-            showToast(
-                "Erro ao atualizar quantidade.",
-                "✕"
-            );
+                return;
+            }
+
+            picking.receivedQuantity = value;
+
+            showLoading();
+
+            try {
+
+                const response = await fetch(
+                    "/api/received_quantity",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            picking_id: picking.id,
+                            received_quantity: value
+                        })
+                    }
+                );
+
+                const data =
+                    await response.json();
+
+                console.log(response, data);
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Erro ao atualizar quantidade."
+                    );
+                }
+
+                showToast(
+                    "Quantidade atualizada.",
+                    "✓"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao atualizar quantidade:",
+                    error
+                );
+
+                showToast(
+                    "Erro ao atualizar quantidade.",
+                    "✕"
+                );
+
+            }
+
+            finally {
+
+                hideLoading();
+
+            }
 
         }
-
-        finally {
-
-            hideLoading();
-
-        }
-
-    }
-);
+    );
 
 
 
@@ -1060,21 +1141,16 @@ function setupModalButtons() {
                 "click",
                 event => {
 
-                    if (
-                        event.target === overlay
-                    ) {
-
+                    if (event.target === overlay && overlay.id !== "photoModal") {
                         closeModal(
-                            overlay.id
+                        overlay.id
                         );
-
                     }
 
                 }
             );
 
-        });
-
+    });
 }
 
 
