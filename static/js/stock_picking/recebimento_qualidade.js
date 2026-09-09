@@ -32,6 +32,12 @@ let selectedQualityCauses = [];
 
 let actionInProgress = false;
 
+const photoInstructions = [
+    "Tirar foto da EMBALAGEM",
+    "Tirar foto do PRODUTO",
+    "Tirar foto da AMOSTRAGEM"
+];
+
 
 
 /*=========================================================
@@ -1344,13 +1350,19 @@ function updatePhotoInterface() {
             "photoMessage"
         );
 
+    const photoInstruction =
+        document.getElementById(
+            "photoInstruction"
+        );
+
 
     if (
         !grid ||
         !finishButton ||
         !progressText ||
         !progressBar ||
-        !photoMessage
+        !photoMessage ||
+        !photoInstruction
     ) {
         return;
     }
@@ -1484,6 +1496,15 @@ function updatePhotoInterface() {
     progressText.textContent =
         `${completed} FOTOS`;
 
+
+    // Orientação para as três primeiras fotos
+    if (completed < photoInstructions.length) {
+        photoInstruction.textContent =
+            photoInstructions[completed];
+    } else {
+        photoInstruction.textContent =
+            "Tirar fotos adicionais, se necessário";
+    }
 
     /*
      * Não existe mais limite superior.
