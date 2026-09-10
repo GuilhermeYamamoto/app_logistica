@@ -49,3 +49,9 @@ class SavePickingPhotos(BaseModel):
 
     picking_id: int
     photos: list[str]
+
+
+class BarcodeScan(BaseModel):
+    """Código de barras lido para um recebimento."""
+
+    barcode: str

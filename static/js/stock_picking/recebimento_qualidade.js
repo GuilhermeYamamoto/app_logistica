@@ -32,6 +32,14 @@ let selectedQualityCauses = [];
 
 let actionInProgress = false;
 
+let barcodeScannerReader = null;
+
+let barcodeScannerControls = null;
+
+let barcodeScannerActive = false;
+
+let barcodeScannerPickingId = null;
+
 const photoInstructions = [
     "Tirar foto da EMBALAGEM",
     "Tirar foto do PRODUTO",
@@ -85,6 +93,12 @@ const loadingOverlay =
 
 const themeToggle =
     document.getElementById("themeToggle");
+
+const barcodeScannerVideo =
+    document.getElementById("barcodeScannerVideo");
+
+const barcodeScannerStatus =
+    document.getElementById("barcodeScannerStatus");
 
 
 
@@ -633,6 +647,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupQuantityValidation();
 
     setupQualityCauses();
+
+    setupBarcodeScanner();
 
     setupPullToRefresh();
 
@@ -1422,6 +1438,22 @@ function createPickingCard(picking) {
 
             </button>
 
+
+            <button
+                class="main-action barcode-scanner-action"
+                data-action="barcode"
+                data-picking-id="${picking.id}"
+                aria-label="Ler código de barras"
+            >
+
+                <span class="action-icon-small">
+                    ▥
+                </span>
+
+                LER CÓDIGO
+
+            </button>
+
         </div>
 
 
@@ -1621,6 +1653,12 @@ function handleAction(
 
             break;
 
+        case "barcode":
+
+            openBarcodeScanner(picking_id);
+
+            break;
+
 
         case "quality":
 
@@ -1715,11 +1753,229 @@ function openModal(id) {
 
 function closeModal(id) {
 
+    if (id === "barcodeScannerModal") {
+        stopBarcodeScanner();
+    }
+
     document
         .getElementById(id)
         .classList.add(
             "hidden"
         );
+
+}
+
+
+/* =========================================================
+   LEITOR DE CÓDIGO DE BARRAS
+========================================================= */
+
+function setupBarcodeScanner() {
+
+    if (!barcodeScannerVideo || !barcodeScannerStatus) {
+        return;
+    }
+
+    window.addEventListener(
+        "pagehide",
+        stopBarcodeScanner
+    );
+
+}
+
+
+async function openBarcodeScanner(pickingId) {
+
+    if (barcodeScannerActive) {
+        return;
+    }
+
+    if (!window.ZXingBrowser?.BrowserMultiFormatReader) {
+
+        showToast(
+            "O leitor de código de barras não foi carregado.",
+            "!"
+        );
+
+        return;
+
+    }
+
+    openModal("barcodeScannerModal");
+
+    barcodeScannerStatus.textContent =
+        "Solicitando acesso à câmera...";
+
+    barcodeScannerPickingId = pickingId;
+
+    barcodeScannerActive = true;
+
+    barcodeScannerReader =
+        new window.ZXingBrowser.BrowserMultiFormatReader();
+
+    try {
+
+        barcodeScannerControls =
+            await barcodeScannerReader.decodeFromConstraints(
+                {
+                    audio: false,
+                    video: {
+                        facingMode: {
+                            ideal: "environment"
+                        },
+                        width: {
+                            ideal: 1280
+                        },
+                        height: {
+                            ideal: 720
+                        }
+                    }
+                },
+                barcodeScannerVideo,
+                handleBarcodeScanResult
+            );
+
+
+        if (!barcodeScannerActive) {
+            barcodeScannerControls.stop();
+        }
+
+    } catch (error) {
+
+        barcodeScannerActive = false;
+
+        barcodeScannerStatus.textContent =
+            getBarcodeScannerErrorMessage(error);
+
+        console.error(
+            "Erro ao iniciar o leitor de código de barras:",
+            error
+        );
+
+    }
+
+}
+
+
+async function handleBarcodeScanResult(result) {
+
+    if (!barcodeScannerActive || !result) {
+        return;
+    }
+
+    const barcode =
+        result.getText().trim();
+
+    if (!barcode) {
+        return;
+    }
+
+    barcodeScannerStatus.textContent =
+        "Enviando código lido...";
+
+    barcodeScannerActive = false;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${barcodeScannerPickingId}/barcode`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        barcode
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível enviar o código lido."
+            );
+
+        }
+
+        closeModal("barcodeScannerModal");
+
+        showToast(
+            `CÓDIGO ENVIADO: ${barcode}`,
+            "✓"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao enviar código de barras:",
+            error
+        );
+
+        barcodeScannerStatus.textContent =
+            error.message ||
+            "Não foi possível enviar o código. Tente novamente.";
+
+        barcodeScannerActive = true;
+
+    }
+
+}
+
+
+function stopBarcodeScanner() {
+
+    barcodeScannerActive = false;
+
+    if (barcodeScannerControls) {
+
+        barcodeScannerControls.stop();
+
+        barcodeScannerControls = null;
+
+    }
+
+    if (barcodeScannerVideo?.srcObject) {
+
+        barcodeScannerVideo.srcObject
+            .getTracks()
+            .forEach(track => track.stop());
+
+        barcodeScannerVideo.srcObject = null;
+
+    }
+
+    barcodeScannerReader = null;
+
+    barcodeScannerPickingId = null;
+
+}
+
+
+function getBarcodeScannerErrorMessage(error) {
+
+    if (
+        error?.name === "NotAllowedError" ||
+        error?.name === "SecurityError"
+    ) {
+        return "Permita o acesso à câmera para realizar a leitura.";
+    }
+
+    if (
+        error?.name === "NotFoundError" ||
+        error?.name === "OverconstrainedError"
+    ) {
+        return "Nenhuma câmera compatível foi encontrada.";
+    }
+
+    return "Não foi possível iniciar a câmera. Tente novamente.";
 
 }
 

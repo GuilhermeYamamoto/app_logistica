@@ -540,6 +540,79 @@
 
     </div>
 
+    <!-- =====================================================
+         MODAL DE LEITURA DE CÓDIGO DE BARRAS
+    ====================================================== -->
+
+    <div
+        id="barcodeScannerModal"
+        class="modal-overlay hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="barcodeScannerTitle"
+    >
+
+        <div class="modal barcode-scanner-modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <span class="modal-kicker">
+                        LEITURA PELA CÂMERA
+                    </span>
+
+                    <h2 id="barcodeScannerTitle">
+                        LER CÓDIGO DE BARRAS
+                    </h2>
+
+                    <p>
+                        Posicione o código da nota fiscal dentro da área de leitura.
+                    </p>
+                </div>
+
+                <button
+                    class="close-modal"
+                    data-close="barcodeScannerModal"
+                    type="button"
+                    aria-label="Fechar leitor"
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div class="barcode-camera-container">
+                <video
+                    id="barcodeScannerVideo"
+                    autoplay
+                    muted
+                    playsinline
+                ></video>
+
+                <div class="barcode-scanner-guide" aria-hidden="true"></div>
+            </div>
+
+            <p
+                id="barcodeScannerStatus"
+                class="barcode-scanner-status"
+                role="status"
+            >
+                Iniciando câmera...
+            </p>
+
+            <div class="modal-footer">
+                <button
+                    class="secondary-button"
+                    data-close="barcodeScannerModal"
+                    type="button"
+                >
+                    CANCELAR
+                </button>
+            </div>
+
+        </div>
+
+    </div>
 
     <!-- =====================================================
          MODAL DE VALIDAÇÃO
@@ -649,10 +722,10 @@
         {{ records["records"] | tojson }}
     </script>
 
+    <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}"></script>
     <script
         src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
     ></script>
-
 </body>
 
 </html>
