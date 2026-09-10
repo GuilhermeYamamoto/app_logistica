@@ -195,11 +195,7 @@ function handlePullTouchStart(event) {
      * Não iniciar o gesto quando o usuário
      * está interagindo com elementos de formulário.
      */
-    if (
-        event.target.closest(
-            "input, textarea, select, button"
-        )
-    ) {
+    if (event.target.closest("input, textarea, select")){
         return;
     }
 
@@ -238,13 +234,9 @@ function handlePullTouchMove(event) {
      * Se o usuário saiu do topo durante o gesto,
      * cancelamos.
      */
-    if (window.scrollY > 0) {
-
-        resetPullToRefresh();
-
+    if (document.documentElement.scrollTop > 1) {
         return;
-
-    }
+    }   
 
 
     pullCurrentY =
@@ -292,8 +284,14 @@ function handlePullTouchMove(event) {
         pullDistance;
 
 
-    pullToRefresh.style.transform =
-        `translateY(${translateY - 64}px)`;
+    pullToRefresh.style.setProperty(
+        "--pull-distance",
+        `${pullDistance}px`
+    );
+
+    pullToRefresh.style.removeProperty(
+        "--pull-distance"
+    );
 
 
     pullToRefresh.classList.add(
