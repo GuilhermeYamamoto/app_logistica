@@ -248,3 +248,29 @@ def save_picking_photos(
         client,
         data,
     )
+
+
+
+####################################
+#  REFRESH DOS PICKINGS
+####################################
+
+@router.get("/api/recebimento-qualidade/pickings/refresh/{stage_key}")
+async def refresh_pickings(
+    stage_key: str,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Atualiza os recebimentos da etapa atual.
+
+    Utilizado pelo Pull to Refresh do frontend.
+    """
+
+    stage = get_stage(stage_key)
+
+    records = InventoryService.list_stage_records(
+        client,
+        stage["picking_type_id"],
+    )
+
+    return records
