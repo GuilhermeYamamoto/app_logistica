@@ -104,7 +104,7 @@ let pullRefreshing = false;
 
 let pullReady = false;
 
-const PULL_THRESHOLD = 90;
+const PULL_THRESHOLD = 70;
 
 const PULL_MAX_DISTANCE = 150;
 
@@ -284,14 +284,8 @@ function handlePullTouchMove(event) {
         pullDistance;
 
 
-    pullToRefresh.style.setProperty(
-        "--pull-distance",
-        `${pullDistance}px`
-    );
-
-    pullToRefresh.style.removeProperty(
-        "--pull-distance"
-    );
+    pullToRefresh.style.transform =
+        `translateY(${pullDistance - 64}px)`;
 
 
     pullToRefresh.classList.add(
@@ -561,8 +555,7 @@ async function executePullToRefresh() {
                     "Puxe para atualizar";
 
 
-                pullToRefresh.style.transform =
-                    "translateY(-64px)";
+                pullToRefresh.style.removeProperty("transform");
 
 
                 pullRefreshing = false;
@@ -611,8 +604,7 @@ function resetPullToRefresh() {
         "Puxe para atualizar";
 
 
-    pullToRefresh.style.transform =
-        "translateY(-64px)";
+    pullToRefresh.style.removeProperty("transform");
 
 }
 

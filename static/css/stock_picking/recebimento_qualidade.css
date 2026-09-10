@@ -140,7 +140,7 @@ button {
     /*
      * Fica acima da topbar, mas abaixo dos modais.
      */
-    z-index: 850;
+    z-index: 950;
 
     height: 64px;
 
