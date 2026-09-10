@@ -137,9 +137,6 @@ button {
     left: 0;
     right: 0;
 
-    /*
-     * Fica acima da topbar, mas abaixo dos modais.
-     */
     z-index: 850;
 
     height: 64px;
@@ -151,17 +148,9 @@ button {
     gap: 10px;
 
     background: var(--surface);
-
     color: var(--muted);
 
-    font-size: 14px;
-    font-weight: 900;
-
-    /*
-     * Começa completamente escondido.
-     */
-    transform: translateY(-64px);
-
+    transform: translateY(-100%);
     opacity: 0;
 
     pointer-events: none;
@@ -169,40 +158,24 @@ button {
     transition:
         transform .18s ease,
         opacity .18s ease;
-
-    box-shadow:
-        0 5px 15px rgba(20, 35, 60, .12);
 }
 
-
-/*
- * Durante o gesto.
- */
 .pull-to-refresh.visible {
     opacity: 1;
+    transform: translateY(
+        calc(-100% + var(--pull-distance, 0px))
+    );
 }
 
-
-/*
- * Quando atingiu o limite necessário
- * para executar o refresh.
- */
 .pull-to-refresh.ready {
     color: var(--blue);
 }
 
-
-/*
- * Enquanto o backend está atualizando.
- */
 .pull-to-refresh.refreshing {
+    opacity: 1;
+    transform: translateY(0);
     color: var(--blue);
 }
-
-
-/* =========================================================
-   ÍCONE
-========================================================= */
 
 .pull-refresh-icon {
     width: 32px;
@@ -215,40 +188,23 @@ button {
     justify-content: center;
 
     background: var(--surface-secondary);
-
     color: var(--blue);
 
     font-size: 20px;
     font-weight: 900;
-
-    transition:
-        transform .18s ease,
-        background-color .18s ease;
 }
 
-
-/*
- * Usuário já puxou o suficiente.
- */
 .pull-to-refresh.ready .pull-refresh-icon {
     background: var(--blue);
     color: white;
-
     transform: rotate(180deg);
 }
 
-
-/*
- * Animação durante atualização.
- */
 .pull-to-refresh.refreshing .pull-refresh-icon {
-    animation:
-        pull-refresh-spin .8s linear infinite;
+    animation: pull-refresh-spin .8s linear infinite;
 }
 
-
 @keyframes pull-refresh-spin {
-
     from {
         transform: rotate(0deg);
     }
@@ -256,51 +212,8 @@ button {
     to {
         transform: rotate(360deg);
     }
-
 }
 
-
-/* =========================================================
-   IMPORTANTE PARA TOUCH
-========================================================= */
-
-/*
- * Permite que o navegador continue tratando o scroll
- * normalmente, enquanto o JS decide quando iniciar
- * o Pull to Refresh.
- */
-html,
-body {
-    overscroll-behavior-y: contain;
-}
-
-
-/*
- * Evita seleção acidental durante o gesto.
- */
-.pull-to-refresh,
-.pull-refresh-icon {
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 760px) {
-
-    .pull-to-refresh {
-        height: 58px;
-
-        transform:
-            translateY(-58px);
-
-        font-size: 13px;
-    }
-
-}
 
 
 
