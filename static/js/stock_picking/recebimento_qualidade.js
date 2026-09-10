@@ -44,6 +44,18 @@ const photoInstructions = [
    ELEMENTOS
 ========================================================= */
 
+const pullToRefresh =
+    document.getElementById("pullToRefresh");
+
+const pullRefreshIcon =
+    document.getElementById("pullRefreshIcon");
+
+const pullRefreshText =
+    document.getElementById("pullRefreshText");
+
+const stageKey =
+    document.body.dataset.stageKey;
+
 const pickingsContainer =
     document.getElementById("pickingsContainer");
 
@@ -77,6 +89,538 @@ const themeToggle =
 
 
 /* =========================================================
+   PULL TO REFRESH
+========================================================= */
+
+let pullStartY = 0;
+
+let pullCurrentY = 0;
+
+let pullDistance = 0;
+
+let pullTracking = false;
+
+let pullRefreshing = false;
+
+let pullReady = false;
+
+const PULL_THRESHOLD = 90;
+
+const PULL_MAX_DISTANCE = 150;
+
+
+/* =========================================================
+   CONFIGURAÇÃO
+========================================================= */
+
+function setupPullToRefresh() {
+
+    if (!pullToRefresh) {
+        return;
+    }
+
+    document.addEventListener(
+        "touchstart",
+        handlePullTouchStart,
+        {
+            passive: true
+        }
+    );
+
+
+    document.addEventListener(
+        "touchmove",
+        handlePullTouchMove,
+        {
+            passive: false
+        }
+    );
+
+
+    document.addEventListener(
+        "touchend",
+        handlePullTouchEnd,
+        {
+            passive: true
+        }
+    );
+
+
+    document.addEventListener(
+        "touchcancel",
+        resetPullToRefresh,
+        {
+            passive: true
+        }
+    );
+
+}
+
+
+/* =========================================================
+   TOUCH START
+========================================================= */
+
+function handlePullTouchStart(event) {
+
+    if (pullRefreshing) {
+        return;
+    }
+
+    if (actionInProgress) {
+        return;
+    }
+
+
+    /*
+     * Só funciona quando a página realmente
+     * está no topo.
+     */
+    if (window.scrollY > 0) {
+        return;
+    }
+
+
+    /*
+     * Não iniciar Pull to Refresh dentro de modal.
+     */
+    if (
+        event.target.closest(".modal-overlay")
+    ) {
+        return;
+    }
+
+
+    /*
+     * Não iniciar o gesto quando o usuário
+     * está interagindo com elementos de formulário.
+     */
+    if (
+        event.target.closest(
+            "input, textarea, select, button"
+        )
+    ) {
+        return;
+    }
+
+
+    pullStartY =
+        event.touches[0].clientY;
+
+    pullCurrentY =
+        pullStartY;
+
+    pullDistance = 0;
+
+    pullTracking = true;
+
+    pullReady = false;
+
+}
+
+
+/* =========================================================
+   TOUCH MOVE
+========================================================= */
+
+function handlePullTouchMove(event) {
+
+    if (!pullTracking) {
+        return;
+    }
+
+    if (pullRefreshing) {
+        return;
+    }
+
+
+    /*
+     * Se o usuário saiu do topo durante o gesto,
+     * cancelamos.
+     */
+    if (window.scrollY > 0) {
+
+        resetPullToRefresh();
+
+        return;
+
+    }
+
+
+    pullCurrentY =
+        event.touches[0].clientY;
+
+
+    const rawDistance =
+        pullCurrentY - pullStartY;
+
+
+    /*
+     * Movimento para cima não é Pull to Refresh.
+     */
+    if (rawDistance <= 0) {
+
+        resetPullToRefresh();
+
+        return;
+
+    }
+
+
+    /*
+     * Resistência do movimento.
+     *
+     * Quanto mais o usuário puxa,
+     * menor fica o deslocamento visual.
+     */
+    pullDistance =
+        Math.min(
+            rawDistance * 0.55,
+            PULL_MAX_DISTANCE
+        );
+
+
+    /*
+     * Agora que temos um movimento vertical
+     * válido, impedimos o comportamento normal
+     * do navegador.
+     */
+    event.preventDefault();
+
+
+    const translateY =
+        pullDistance;
+
+
+    pullToRefresh.style.transform =
+        `translateY(${translateY - 64}px)`;
+
+
+    pullToRefresh.classList.add(
+        "visible"
+    );
+
+
+    /*
+     * Verifica se atingiu o limite.
+     */
+    if (
+        pullDistance >= PULL_THRESHOLD
+    ) {
+
+        if (!pullReady) {
+
+            pullReady = true;
+
+            pullToRefresh.classList.add(
+                "ready"
+            );
+
+            pullRefreshIcon.textContent =
+                "↑";
+
+            pullRefreshText.textContent =
+                "Solte para atualizar";
+
+        }
+
+    } else {
+
+        if (pullReady) {
+
+            pullReady = false;
+
+            pullToRefresh.classList.remove(
+                "ready"
+            );
+
+            pullRefreshIcon.textContent =
+                "↓";
+
+            pullRefreshText.textContent =
+                "Puxe para atualizar";
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   TOUCH END
+========================================================= */
+
+async function handlePullTouchEnd() {
+
+    if (!pullTracking) {
+        return;
+    }
+
+
+    pullTracking = false;
+
+
+    /*
+     * Se não chegou ao limite,
+     * simplesmente esconde o indicador.
+     */
+    if (!pullReady) {
+
+        resetPullToRefresh();
+
+        return;
+
+    }
+
+
+    await executePullToRefresh();
+
+}
+
+
+/* =========================================================
+   EXECUTA REFRESH
+========================================================= */
+
+async function executePullToRefresh() {
+
+    if (pullRefreshing) {
+        return;
+    }
+
+
+    pullRefreshing = true;
+
+    actionInProgress = true;
+
+
+    pullToRefresh.classList.add(
+        "visible",
+        "refreshing"
+    );
+
+
+    pullToRefresh.classList.remove(
+        "ready"
+    );
+
+
+    pullRefreshIcon.textContent =
+        "↻";
+
+
+    pullRefreshText.textContent =
+        "Atualizando...";
+
+
+    /*
+     * Mantém o indicador visível.
+     */
+    pullToRefresh.style.transform =
+        "translateY(0)";
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/refresh/${encodeURIComponent(stageKey)}`,
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept": "application/json"
+                    },
+
+                    cache: "no-store"
+                }
+            );
+
+
+        let data = null;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (error) {
+
+            data = null;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível atualizar os recebimentos."
+            );
+
+        }
+
+
+        /*
+         * O InventoryService já retorna:
+         *
+         * {
+         *     "records": [...]
+         * }
+         */
+        const records =
+            data?.records;
+
+
+        if (!Array.isArray(records)) {
+
+            throw new TypeError(
+                "O servidor retornou registros em formato inválido."
+            );
+
+        }
+
+
+        /*
+         * Atualiza o estado local exatamente
+         * como loadPickings() faz.
+         */
+        pickings =
+            records.map(
+                picking => ({
+
+                    ...picking,
+
+                    photos: [],
+
+                    photosRegistered:
+                        Boolean(
+                            picking.photosRegistered
+                        ),
+
+                    photoCount:
+                        Number(
+                            picking.photoCount || 0
+                        ),
+
+                    qualityAlert:
+                        null
+
+                })
+            );
+
+
+        /*
+         * Mantém o filtro atual e renderiza novamente.
+         */
+        render();
+
+
+        showToast(
+            "RECEBIMENTOS ATUALIZADOS",
+            "✓"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro no Pull to Refresh:",
+            error
+        );
+
+
+        showToast(
+            error.message ||
+            "Não foi possível atualizar os recebimentos.",
+            "!"
+        );
+
+
+    } finally {
+
+        /*
+         * Dá um pequeno tempo para o usuário
+         * perceber que terminou.
+         */
+        setTimeout(
+            () => {
+
+                pullToRefresh.classList.remove(
+                    "refreshing",
+                    "visible",
+                    "ready"
+                );
+
+
+                pullRefreshIcon.textContent =
+                    "↓";
+
+
+                pullRefreshText.textContent =
+                    "Puxe para atualizar";
+
+
+                pullToRefresh.style.transform =
+                    "translateY(-64px)";
+
+
+                pullRefreshing = false;
+
+                actionInProgress = false;
+
+            },
+            300
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function resetPullToRefresh() {
+
+    pullTracking = false;
+
+    pullReady = false;
+
+    pullDistance = 0;
+
+
+    if (!pullToRefresh) {
+        return;
+    }
+
+
+    pullToRefresh.classList.remove(
+        "visible",
+        "ready",
+        "refreshing"
+    );
+
+
+    pullRefreshIcon.textContent =
+        "↓";
+
+
+    pullRefreshText.textContent =
+        "Puxe para atualizar";
+
+
+    pullToRefresh.style.transform =
+        "translateY(-64px)";
+
+}
+
+
+
+/* =========================================================
    INICIALIZAÇÃO
 ========================================================= */
 
@@ -99,6 +643,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupQuantityValidation();
 
     setupQualityCauses();
+
+    setupPullToRefresh();
 
     loadPickings();
 
@@ -478,6 +1024,8 @@ function getPickingStatus(picking) {
 
 
     if (
+        picking.photos.length >= 3
+        &&
         picking.photos.every(
             photo => photo !== null
         )
@@ -492,9 +1040,9 @@ function getPickingStatus(picking) {
 
 
     if (
-        picking.photos.some(
-            photo => photo !== null
-        )
+        picking.photos.length > 0
+        ||
+        picking.photosRegistered
     ) {
 
         return {
