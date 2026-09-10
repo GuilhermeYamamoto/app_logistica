@@ -32,6 +32,12 @@ let selectedQualityCauses = [];
 
 let actionInProgress = false;
 
+let barcodeScannerReader = null;
+
+let barcodeScannerControls = null;
+
+let barcodeScannerActive = false;
+
 const photoInstructions = [
     "Tirar foto da EMBALAGEM",
     "Tirar foto do PRODUTO",
@@ -85,6 +91,12 @@ const loadingOverlay =
 
 const themeToggle =
     document.getElementById("themeToggle");
+
+const barcodeScannerVideo =
+    document.getElementById("barcodeScannerVideo");
+
+const barcodeScannerStatus =
+    document.getElementById("barcodeScannerStatus");
 
 
 
@@ -643,6 +655,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupQuantityValidation();
 
     setupQualityCauses();
+
+    setupBarcodeScanner();
 
     setupPullToRefresh();
 
@@ -1432,6 +1446,22 @@ function createPickingCard(picking) {
 
             </button>
 
+
+            <button
+                class="main-action barcode-scanner-action"
+                data-action="barcode"
+                data-picking-id="${picking.id}"
+                aria-label="Ler código de barras"
+            >
+
+                <span class="action-icon-small">
+                    ▥
+                </span>
+
+                LER CÓDIGO
+
+            </button>
+
         </div>
 
 
@@ -1631,6 +1661,12 @@ function handleAction(
 
             break;
 
+        case "barcode":
+
+            openBarcodeScanner();
+
+            break;
+
 
         case "quality":
 
@@ -1725,11 +1761,184 @@ function openModal(id) {
 
 function closeModal(id) {
 
+    if (id === "barcodeScannerModal") {
+        stopBarcodeScanner();
+    }
+
     document
         .getElementById(id)
         .classList.add(
             "hidden"
         );
+
+}
+
+
+/* =========================================================
+   LEITOR DE CÓDIGO DE BARRAS
+========================================================= */
+
+function setupBarcodeScanner() {
+
+    if (!barcodeScannerVideo || !barcodeScannerStatus) {
+        return;
+    }
+
+    window.addEventListener(
+        "pagehide",
+        stopBarcodeScanner
+    );
+
+}
+
+
+async function openBarcodeScanner() {
+
+    if (barcodeScannerActive) {
+        return;
+    }
+
+    if (!window.ZXingBrowser?.BrowserMultiFormatReader) {
+
+        showToast(
+            "O leitor de código de barras não foi carregado.",
+            "!"
+        );
+
+        return;
+
+    }
+
+    openModal("barcodeScannerModal");
+
+    barcodeScannerStatus.textContent =
+        "Solicitando acesso à câmera...";
+
+    barcodeScannerActive = true;
+
+    barcodeScannerReader =
+        new window.ZXingBrowser.BrowserMultiFormatReader();
+
+    try {
+
+        barcodeScannerControls =
+            await barcodeScannerReader.decodeFromConstraints(
+                {
+                    audio: false,
+                    video: {
+                        facingMode: {
+                            ideal: "environment"
+                        },
+                        width: {
+                            ideal: 1280
+                        },
+                        height: {
+                            ideal: 720
+                        }
+                    }
+                },
+                barcodeScannerVideo,
+                handleBarcodeScanResult
+            );
+
+
+        if (!barcodeScannerActive) {
+            barcodeScannerControls.stop();
+        }
+
+    } catch (error) {
+
+        barcodeScannerActive = false;
+
+        barcodeScannerStatus.textContent =
+            getBarcodeScannerErrorMessage(error);
+
+        console.error(
+            "Erro ao iniciar o leitor de código de barras:",
+            error
+        );
+
+    }
+
+}
+
+
+function handleBarcodeScanResult(result) {
+
+    if (!barcodeScannerActive || !result) {
+        return;
+    }
+
+    const barcode =
+        result.getText().trim();
+
+    if (!barcode) {
+        return;
+    }
+
+    barcodeScannerStatus.textContent =
+        `Código lido: ${barcode}`;
+
+    closeModal("barcodeScannerModal");
+
+    searchInput.value = barcode;
+
+    searchTerm = barcode;
+
+    filterByNF(barcode);
+
+    showToast(
+        `CÓDIGO LIDO: ${barcode}`,
+        "✓"
+    );
+
+}
+
+
+function stopBarcodeScanner() {
+
+    barcodeScannerActive = false;
+
+    if (barcodeScannerControls) {
+
+        barcodeScannerControls.stop();
+
+        barcodeScannerControls = null;
+
+    }
+
+    if (barcodeScannerVideo?.srcObject) {
+
+        barcodeScannerVideo.srcObject
+            .getTracks()
+            .forEach(track => track.stop());
+
+        barcodeScannerVideo.srcObject = null;
+
+    }
+
+    barcodeScannerReader = null;
+
+}
+
+
+function getBarcodeScannerErrorMessage(error) {
+
+    if (
+        error?.name === "NotAllowedError" ||
+        error?.name === "SecurityError"
+    ) {
+        return "Permita o acesso à câmera para realizar a leitura.";
+    }
+
+    if (
+        error?.name === "NotFoundError" ||
+        error?.name === "OverconstrainedError"
+    ) {
+        return "Nenhuma câmera compatível foi encontrada.";
+    }
+
+    return "Não foi possível iniciar a câmera. Tente novamente.";
 
 }
 
