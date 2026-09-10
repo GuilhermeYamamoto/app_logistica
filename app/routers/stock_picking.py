@@ -12,7 +12,12 @@ from app.config import settings
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
-from app.models.schemas import (QualityAlert, ReceivedQuantity, SavePickingPhotos,)
+from app.models.schemas import (
+    BarcodeScan,
+    QualityAlert,
+    ReceivedQuantity,
+    SavePickingPhotos,
+)
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
@@ -248,6 +253,19 @@ def save_picking_photos(
         client,
         data,
     )
+
+
+@router.post("/api/recebimento-qualidade/pickings/{picking_id}/barcode")
+def receive_barcode(
+    picking_id: int,
+    data: BarcodeScan = Body(...),
+):
+    """Recebe o código de barras lido para o picking informado."""
+    return {
+        "success": True,
+        "picking_id": picking_id,
+        "barcode": data.barcode,
+    }
 
 
 

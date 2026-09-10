@@ -38,6 +38,8 @@ let barcodeScannerControls = null;
 
 let barcodeScannerActive = false;
 
+let barcodeScannerPickingId = null;
+
 const photoInstructions = [
     "Tirar foto da EMBALAGEM",
     "Tirar foto do PRODUTO",
@@ -1663,7 +1665,7 @@ function handleAction(
 
         case "barcode":
 
-            openBarcodeScanner();
+            openBarcodeScanner(picking_id);
 
             break;
 
@@ -1792,7 +1794,7 @@ function setupBarcodeScanner() {
 }
 
 
-async function openBarcodeScanner() {
+async function openBarcodeScanner(pickingId) {
 
     if (barcodeScannerActive) {
         return;
@@ -1813,6 +1815,8 @@ async function openBarcodeScanner() {
 
     barcodeScannerStatus.textContent =
         "Solicitando acesso à câmera...";
+
+    barcodeScannerPickingId = pickingId;
 
     barcodeScannerActive = true;
 
@@ -1863,7 +1867,7 @@ async function openBarcodeScanner() {
 }
 
 
-function handleBarcodeScanResult(result) {
+async function handleBarcodeScanResult(result) {
 
     if (!barcodeScannerActive || !result) {
         return;
@@ -1877,20 +1881,61 @@ function handleBarcodeScanResult(result) {
     }
 
     barcodeScannerStatus.textContent =
-        `Código lido: ${barcode}`;
+        "Enviando código lido...";
 
-    closeModal("barcodeScannerModal");
+    barcodeScannerActive = false;
 
-    searchInput.value = barcode;
+    try {
 
-    searchTerm = barcode;
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${barcodeScannerPickingId}/barcode`,
+                {
+                    method: "POST",
 
-    filterByNF(barcode);
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-    showToast(
-        `CÓDIGO LIDO: ${barcode}`,
-        "✓"
-    );
+                    body: JSON.stringify({
+                        barcode
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.detail ||
+                "Não foi possível enviar o código lido."
+            );
+
+        }
+
+        closeModal("barcodeScannerModal");
+
+        showToast(
+            `CÓDIGO ENVIADO: ${barcode}`,
+            "✓"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao enviar código de barras:",
+            error
+        );
+
+        barcodeScannerStatus.textContent =
+            error.message ||
+            "Não foi possível enviar o código. Tente novamente.";
+
+        barcodeScannerActive = true;
+
+    }
 
 }
 
@@ -1918,6 +1963,8 @@ function stopBarcodeScanner() {
     }
 
     barcodeScannerReader = null;
+
+    barcodeScannerPickingId = null;
 
 }
 

@@ -11,6 +11,7 @@ Aplicação web em FastAPI que integra com Odoo via XML-RPC, gerencia sessões d
 - ✅ Consulta de registros por modelo
 - ✅ Etapas de inventário com templates específicos
 - ✅ Recebimento de qualidade com integração em tempo real
+- ✅ Leitura de código de barras pela câmera no recebimento de qualidade
 - ✅ Logout seguro
 
 ## 🛠️ Tecnologias
@@ -20,6 +21,7 @@ Aplicação web em FastAPI que integra com Odoo via XML-RPC, gerencia sessões d
 - **Uvicorn** - ASGI server
 - **Pydantic** - Validação de dados e configurações
 - **Jinja2** - Templates HTML
+- **ZXing Browser** - Leitura de códigos de barras pela câmera
 - **Redis** - Armazenamento de sessões (opcional)
 - **Docker** - Containerização
 - **Nginx** - Reverse proxy
@@ -367,6 +369,34 @@ arquivo. Abrir o seletor por `input.click()` pode ser bloqueado ou ignorar a
 preferência de câmera em alguns WebViews, pois não é tratado como uma ação
 direta do usuário.
 
+#### Leitura de código de barras pela câmera
+
+Cada cartão de recebimento possui o botão **LER CÓDIGO**, posicionado após o
+botão **VALIDAR**. O botão abre um modal que usa a biblioteca local
+`static/js/zxing-browser.min.js` para ler códigos de barras pela câmera.
+
+O leitor solicita vídeo sem áudio e prioriza a câmera traseira do dispositivo.
+Após uma leitura válida, a câmera é desligada e o navegador envia o código para
+a API:
+
+```http
+POST /api/recebimento-qualidade/pickings/{picking_id}/barcode
+Content-Type: application/json
+
+{
+  "barcode": "valor-lido-pela-camera"
+}
+```
+
+O corpo da requisição é validado pelo schema `BarcodeScan`. A rota atual
+devolve o código e o `picking_id`, sem persistir dados no Odoo. Para concluir a
+integração, o `InventoryService` deve receber esses valores e executar a chamada
+XML-RPC no modelo e campo Odoo definidos para o processo.
+
+O acesso à câmera requer permissão do navegador. Em dispositivos reais, a
+aplicação deve ser acessada por HTTPS; `localhost` também é aceito durante o
+desenvolvimento.
+
 #### Versionamento dos arquivos estáticos
 
 O template de recebimento de qualidade adiciona um parâmetro `v` às URLs do
@@ -389,6 +419,7 @@ tela antes do carregamento dos pickings.
 | POST | `/logout` | Remove a sessao e redireciona para login |
 | GET | `/inventario/recebimento-qualidade` | Exibe a tela de recebimento de qualidade |
 | GET | `/api/recebimento-qualidade/pickings?nf_number={nf}` | Filtra pickings pela nota fiscal |
+| POST | `/api/recebimento-qualidade/pickings/{picking_id}/barcode` | Recebe o código lido pela câmera para um picking |
 | GET | `/inicio` | Exibe os modulos disponiveis |
 | GET | `/inventario` | Exibe as etapas de Inventario |
 | GET | `/inventario/{stage_key}` | Renderiza a tela da etapa e seus registros |
