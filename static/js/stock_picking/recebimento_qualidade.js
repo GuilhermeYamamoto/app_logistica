@@ -1363,7 +1363,11 @@ function createPickingCard(picking) {
 
         <button
             type="button"
-            class="chat-tab"
+            class="chat-tab ${
+                chatMessages[picking.id]?.length > 0
+                    ? "has-messages"
+                    : ""
+            }"
             data-action="chat"
             data-picking-id="${picking.id}"
             aria-label="Abrir chat do pedido ${picking.pv}"
@@ -4059,6 +4063,41 @@ function renderChatMessages() {
 }
 
 
+
+/* =========================================================
+   BADGE DO CHAT
+========================================================= */
+
+function updateChatBadge(pickingId) {
+
+    const chatTab =
+        document.querySelector(
+            `.chat-tab[data-picking-id="${pickingId}"]`
+        );
+
+
+    if (!chatTab) {
+        return;
+    }
+
+
+    const hasMessages =
+        Array.isArray(
+            chatMessages[pickingId]
+        )
+        &&
+        chatMessages[pickingId].length > 0;
+
+
+    chatTab.classList.toggle(
+        "has-messages",
+        hasMessages
+    );
+
+}
+
+
+
 /* =========================================================
    ENVIAR MENSAGEM
 ========================================================= */
@@ -4104,6 +4143,10 @@ function sendChatMessage() {
         text
 
     });
+
+    updateChatBadge(
+        currentChatPickingId
+    );
 
 
     chatInput.value = "";
