@@ -254,20 +254,10 @@ def save_picking_photos(
         data,
     )
 
-
 @router.post("/api/recebimento-qualidade/pickings/{picking_id}/barcode")
-def receive_barcode(
-    picking_id: int,
-    data: BarcodeScan = Body(...),
-):
+def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: OdooClient = Depends(get_odoo_client)):
     """Recebe o código de barras lido para o picking informado."""
-    return {
-        "success": True,
-        "picking_id": picking_id,
-        "barcode": data.barcode,
-    }
-
-
+    return InventoryService.preencher_destino_estq_transitorio(client, picking_id, data.barcode)
 
 ####################################
 #  REFRESH DOS PICKINGS

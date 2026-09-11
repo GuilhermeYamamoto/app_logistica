@@ -618,3 +618,12 @@ class InventoryService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Erro ao registrar as fotos no Odoo."
             ) from error
+
+    def preencher_destino_estq_transitorio(client: OdooClient, picking_id: int, barcode: str):
+        """
+        Preenche o campo 'location_dest_id' do do picking no Estoque Transitorio com o valor do lido no código de barras.
+        """
+        # Consulta o picking no Odoo para obter o move_dest_id do picking atual (Recebimento Qualidade), ou seja, do picking do Recebimento Qualidade, vamos buscar o picking do Estoque Transitorio.
+        barcode_location_id = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id"])
+        picking_estq_transitorio_id = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["move_dest_ids"])
+        client.execute("stock.move", "write", picking_estq_transitorio_id[0]["move_dest_ids"][0], {"location_dest_id": barcode_location_id[0]["id"]})
