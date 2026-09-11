@@ -2261,41 +2261,49 @@ body {
 
 
 /* =========================================================
-   PAINEL DO CHAT
-   SOBREPOSIÇÃO REAL DA TELA
+   CHAT - SOBREPOSIÇÃO DA TELA
+   RESPEITANDO AS BARRAS DO SISTEMA ANDROID
 ========================================================= */
 
 .chat-tab.has-messages::after {
     content: "";
-
     position: absolute;
-
     top: -5px;
     right: -5px;
-
     width: 11px;
     height: 11px;
-
     background: var(--red);
-
     border: 2px solid var(--surface);
-
     border-radius: 50%;
-
     box-shadow:
         0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
+/*
+ * O painel ocupa toda a área disponível da aplicação,
+ * mas NÃO invade a barra de status nem a barra de navegação
+ * do Android.
+ *
+ * O fallback de 20px mantém o comportamento seguro mesmo
+ * quando o WebView não fornece corretamente o safe-area.
+ */
 .chat-panel {
     position: fixed !important;
 
-    top: 0 !important;
+    top: max(20px, var(--safe-top)) !important;
     right: 0 !important;
-    bottom: 0 !important;
+    bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
     left: auto !important;
 
     width: min(430px, 92vw) !important;
-    height: 100vh !important;
+
+    /*
+     * Não usamos mais height: 100vh.
+     *
+     * Com top + bottom definidos, o navegador calcula
+     * automaticamente a altura correta do painel.
+     */
+    height: auto !important;
 
     max-width: none !important;
 
@@ -2303,14 +2311,12 @@ body {
 
     display: flex;
     flex-direction: column;
-
     overflow: hidden;
 
     background:
         rgba(0, 31, 85, 0.88);
 
     backdrop-filter: blur(0.5px);
-
     -webkit-backdrop-filter: blur(0.5px);
 
     border-left:
@@ -2332,20 +2338,19 @@ body {
     .chat-panel {
         position: fixed !important;
 
-        top: 0 !important;
+        top: max(20px, var(--safe-top)) !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
         left: auto !important;
 
         width: min(420px, 55vw) !important;
 
-        height: 100vh !important;
+        height: auto !important;
 
         max-width: none !important;
 
         z-index: 1100 !important;
     }
-
 }
 
 
@@ -2358,14 +2363,14 @@ body {
     .chat-panel {
         position: fixed !important;
 
-        top: 0 !important;
+        top: max(20px, var(--safe-top)) !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
         left: auto !important;
 
         width: 78vw !important;
 
-        height: 100vh !important;
+        height: auto !important;
 
         max-width: none !important;
 
@@ -2376,7 +2381,6 @@ body {
         right: 18px;
         top: -13px;
     }
-
 }
 
 
@@ -2389,14 +2393,14 @@ body {
     .chat-panel {
         position: fixed !important;
 
-        top: 0 !important;
+        top: max(20px, var(--safe-top)) !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
         left: auto !important;
 
         width: 100vw !important;
 
-        height: 100vh !important;
+        height: auto !important;
 
         max-width: none !important;
 
@@ -2413,8 +2417,14 @@ body {
         padding: 14px;
     }
 
+    /*
+     * Reserva adicional para a área inferior do sistema.
+     * Impede que o campo de texto fique encostado ou atrás
+     * da barra de navegação do Android.
+     */
     .chat-input-area {
-        padding: 10px;
+        padding:
+            10px 10px
+            max(10px, env(safe-area-inset-bottom, 0px));
     }
-
 }
