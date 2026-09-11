@@ -507,29 +507,14 @@ async function executePullToRefresh() {
          * Atualiza o estado local exatamente
          * como loadPickings() faz.
          */
-        pickings =
-            records.map(
-                picking => ({
-
-                    ...picking,
-
-                    photos: [],
-
-                    photosRegistered:
-                        Boolean(
-                            picking.photosRegistered
-                        ),
-
-                    photoCount:
-                        Number(
-                            picking.photoCount || 0
-                        ),
-
-                    qualityAlert:
-                        null
-
-                })
-            );
+        pickings = records.map(picking => ({
+            ...picking,
+            photos: [],
+            photosRegistered: Boolean(picking.photosRegistered),
+            photoCount: Number(picking.photoCount || 0),
+            barcodeRegistered: Boolean(picking.barcodeRegistered),
+            qualityAlert: null
+        }));
 
 
         /*
@@ -686,19 +671,12 @@ async function loadPickings() {
         }
 
         pickings = records.map(picking => ({
-
             ...picking,
-
             photos: [],
-
-            photosRegistered:
-                Boolean(picking.photosRegistered),
-
-            photoCount:
-                Number(picking.photoCount || 0),
-
+            photosRegistered: Boolean(picking.photosRegistered),
+            photoCount: Number(picking.photoCount || 0),
+            barcodeRegistered: Boolean(picking.barcodeRegistered),
             qualityAlert: null
-
         }));
 
     } catch (error) {
@@ -1237,7 +1215,8 @@ function createPickingCard(picking) {
 
 
     const validationAvailable =
-        picking.photosRegistered === true;
+        picking.photosRegistered === true &&
+        picking.barcodeRegistered === true;
 
 
 
@@ -1344,13 +1323,13 @@ function createPickingCard(picking) {
 
 
             <button
-                class="secondary-action quality-action"
+                class="secondary-action quality-action
+                    ${picking.photosRegistered ? "" : "disabled"}"
                 data-action="quality"
                 data-picking-id="${picking.id}"
+                ${picking.photosRegistered ? "" : "disabled"}
             >
-
                 ⚠️ ALERTA DE QUALIDADE
-
             </button>
 
 
@@ -1366,18 +1345,17 @@ function createPickingCard(picking) {
 
 
             <button
-                class="main-action barcode-scanner-action"
+                class="main-action barcode-scanner-action
+                    ${picking.photosRegistered ? "" : "disabled"}"
                 data-action="barcode"
                 data-picking-id="${picking.id}"
                 aria-label="Ler código de barras"
+                ${picking.photosRegistered ? "" : "disabled"}
             >
-
                 <span class="action-icon-small">
                     ▥
                 </span>
-
                 LER CÓDIGO
-
             </button>
 
 
@@ -1535,71 +1513,69 @@ function createPickingCard(picking) {
    AÇÕES DOS PEDIDOS
 ========================================================= */
 
-function handleAction(
-    action,
-    picking_id
-) {
+function handleAction(action, picking_id) {
+    if (actionInProgress) return;
 
-    if (actionInProgress) {
+    const picking = findPicking(picking_id);
+    if (!picking) return;
+
+    currentPickingId = picking_id;
+
+    if (action === "barcode" && !picking.photosRegistered) {
+        showToast(
+            "É necessário registrar as fotos antes de ler o código de barras.",
+            "!"
+        );
         return;
     }
 
-    const picking =
-        findPicking(picking_id);
-
-
-    if (!picking) return;
-
-
-    currentPickingId =
-        picking_id;
-
-
-    switch (action) {
-
-        case "photos":
-
-            openPhotoModal(picking);
-
-            break;
-
-
-        case "validate":
-
-            openValidationModal(picking);
-
-            break;
-
-
-         case "chat":
-
-            openChatPanel(picking);
-
-            break;
-
-
-        case "barcode":
-
-            openBarcodeScanner(picking_id);
-
-            break;
-
-
-        case "quality":
-
-            openQualityModal(picking);
-
-            break;
-
-
-        case "print":
-
-            printLabel(picking);
-
-            break;
-
+    if (action === "quality" && !picking.photosRegistered) {
+        showToast(
+            "É necessário registrar as fotos antes de abrir o alerta de qualidade.",
+            "!"
+        );
+        return;
     }
 
+    if (
+        action === "validate" &&
+        (
+            !picking.photosRegistered ||
+            !picking.barcodeRegistered
+        )
+    ) {
+        showToast(
+            "É necessário registrar as fotos e o código de barras antes de validar o pedido.",
+            "!"
+        );
+        return;
+    }
+
+    switch (action) {
+        case "photos":
+            openPhotoModal(picking);
+            break;
+
+        case "validate":
+            openValidationModal(picking);
+            break;
+
+        case "chat":
+            openChatPanel(picking);
+            break;
+
+        case "barcode":
+            openBarcodeScanner(picking_id);
+            break;
+
+        case "quality":
+            openQualityModal(picking);
+            break;
+
+        case "print":
+            printLabel(picking);
+            break;
+    }
 }
 
 
@@ -1777,6 +1753,12 @@ async function handleBarcodeScanResult(result) {
                 "Não foi possível enviar o código lido."
             );
 
+        }
+
+        const picking = findPicking(barcodeScannerPickingId);
+
+        if (picking) {
+            picking.barcodeRegistered = true;
         }
 
         closeModal("barcodeScannerModal");
@@ -2475,6 +2457,16 @@ async function validatePicking() {
             "É necessário registrar pelo menos 3 fotos antes de validar o pedido.",
             "!"
         );
+
+        return;
+
+    }
+
+    if (!picking.barcodeRegistered) {
+       
+        closeModal("validationModal");
+
+        showToast("É necessário registrar o código de barras antes de validar o pedido.", "!");
 
         return;
 
