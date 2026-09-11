@@ -32,12 +32,6 @@ class InventoryService:
                 "template": "stock_picking/recebimento_qualidade.html",
             },
             {
-                "key": "estoque-transitorio",
-                "name": "Estoque Transitório",
-                "picking_type_id": 138,
-                "template": "stock_picking/inventario_etapa.html",
-            },
-            {
                 "key": "pre-separacao",
                 "name": "Pré-Separação",
                 "picking_type_id": 119,
