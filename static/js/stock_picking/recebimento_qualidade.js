@@ -660,8 +660,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupBarcodeScanner();
 
-    setupPullToRefresh();
-    
     setupChat();
 
     loadPickings();
