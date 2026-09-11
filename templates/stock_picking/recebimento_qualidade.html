@@ -195,6 +195,77 @@
 
     </main>
 
+    <!-- =========================================================
+     CHAT DO RECEBIMENTO
+    ========================================================= -->
+
+    <aside
+        id="chatPanel"
+        class="chat-panel hidden"
+        aria-hidden="true"
+    >
+
+        <div class="chat-header">
+
+            <div class="chat-header-info">
+
+                <span class="chat-header-label">
+                    CHAT DO RECEBIMENTO
+                </span>
+
+                <strong id="chatPickingInfo">
+                    -
+                </strong>
+
+            </div>
+
+            <button
+                type="button"
+                class="chat-close-button"
+                data-close="chatPanel"
+                aria-label="Fechar chat"
+                title="Fechar chat"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div
+            id="chatMessages"
+            class="chat-messages"
+        >
+        </div>
+
+
+        <form
+            id="chatForm"
+            class="chat-input-area"
+        >
+
+            <input
+                type="text"
+                id="chatInput"
+                class="chat-input"
+                placeholder="Digite uma mensagem..."
+                autocomplete="off"
+                maxlength="500"
+            >
+
+            <button
+                type="submit"
+                id="chatSendButton"
+                class="chat-send-button"
+                aria-label="Enviar mensagem"
+                title="Enviar mensagem"
+            >
+                ➤
+            </button>
+
+        </form>
+
+    </aside>
 
     <!-- =====================================================
          MODAL DE FOTOS

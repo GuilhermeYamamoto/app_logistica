@@ -40,6 +40,10 @@ let barcodeScannerActive = false;
 
 let barcodeScannerPickingId = null;
 
+let chatMessages = {};
+
+let currentChatPickingId = null;
+
 const photoInstructions = [
     "Tirar foto da EMBALAGEM",
     "Tirar foto do PRODUTO",
@@ -99,6 +103,24 @@ const barcodeScannerVideo =
 
 const barcodeScannerStatus =
     document.getElementById("barcodeScannerStatus");
+
+const chatPanel =
+    document.getElementById("chatPanel");
+
+const chatPickingInfo =
+    document.getElementById("chatPickingInfo");
+
+const chatMessagesContainer =
+    document.getElementById("chatMessages");
+
+const chatForm =
+    document.getElementById("chatForm");
+
+const chatInput =
+    document.getElementById("chatInput");
+
+const chatSendButton =
+    document.getElementById("chatSendButton");
 
 
 
@@ -651,6 +673,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupBarcodeScanner();
 
     setupPullToRefresh();
+    
+    setupChat();
 
     loadPickings();
 
@@ -1337,6 +1361,17 @@ function createPickingCard(picking) {
 
     article.innerHTML = `
 
+        <button
+            type="button"
+            class="chat-tab"
+            data-action="chat"
+            data-picking-id="${picking.id}"
+            aria-label="Abrir chat do pedido ${picking.pv}"
+            title="Abrir chat"
+        >
+            💬
+        </button>
+
         <div class="picking-main">
 
             <div class="picking-identification">
@@ -1653,6 +1688,14 @@ function handleAction(
 
             break;
 
+
+         case "chat":
+
+            openChatPanel(picking);
+
+            break;
+
+
         case "barcode":
 
             openBarcodeScanner(picking_id);
@@ -1756,6 +1799,13 @@ function closeModal(id) {
     if (id === "barcodeScannerModal") {
         stopBarcodeScanner();
     }
+
+
+    if (id === "chatPanel") {
+        closeChatPanel();
+        return;
+    }
+
 
     document
         .getElementById(id)
@@ -3736,5 +3786,366 @@ function showToast(
             },
             2800
         );
+
+}
+
+
+
+/* =========================================================
+   CHAT DO RECEBIMENTO
+========================================================= */
+
+function setupChat() {
+
+    if (
+        !chatPanel ||
+        !chatPickingInfo ||
+        !chatMessagesContainer ||
+        !chatForm ||
+        !chatInput
+    ) {
+        return;
+    }
+
+
+    chatForm.addEventListener(
+        "submit",
+        event => {
+
+            event.preventDefault();
+
+            sendChatMessage();
+
+        }
+    );
+
+
+    chatInput.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                sendChatMessage();
+
+            }
+
+        }
+    );
+
+
+    chatSendButton?.addEventListener(
+        "click",
+        event => {
+
+            event.preventDefault();
+
+            sendChatMessage();
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   ABRIR CHAT
+========================================================= */
+
+function openChatPanel(picking) {
+
+    if (!picking) {
+        return;
+    }
+
+
+    currentChatPickingId =
+        picking.id;
+
+
+    chatPickingInfo.textContent =
+        `${picking.pv} • ${picking.product}`;
+
+
+    if (
+        !chatMessages[
+            picking.id
+        ]
+    ) {
+
+        chatMessages[
+            picking.id
+        ] = [];
+
+    }
+
+
+    renderChatMessages();
+
+
+    chatPanel.classList.remove(
+        "hidden"
+    );
+
+
+    chatPanel.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+
+    setTimeout(
+        () => {
+
+            chatInput?.focus();
+
+        },
+        100
+    );
+
+}
+
+
+/* =========================================================
+   FECHAR CHAT
+========================================================= */
+
+function closeChatPanel() {
+
+    if (!chatPanel) {
+        return;
+    }
+
+
+    chatPanel.classList.add(
+        "hidden"
+    );
+
+
+    chatPanel.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    currentChatPickingId =
+        null;
+
+}
+
+
+/* =========================================================
+   RENDER DAS MENSAGENS
+========================================================= */
+
+function renderChatMessages() {
+
+    if (
+        !chatMessagesContainer ||
+        currentChatPickingId === null
+    ) {
+        return;
+    }
+
+
+    const messages =
+        chatMessages[
+            currentChatPickingId
+        ] || [];
+
+
+    chatMessagesContainer.innerHTML = "";
+
+
+    if (messages.length === 0) {
+
+        const emptyMessage =
+            document.createElement(
+                "div"
+            );
+
+
+        emptyMessage.className =
+            "chat-empty";
+
+
+        emptyMessage.textContent =
+            "Nenhuma mensagem ainda. Inicie uma conversa sobre este recebimento.";
+
+
+        chatMessagesContainer.appendChild(
+            emptyMessage
+        );
+
+
+        return;
+
+    }
+
+
+    messages.forEach(
+        message => {
+
+            const messageElement =
+                document.createElement(
+                    "div"
+                );
+
+
+            messageElement.className =
+                `chat-message ${
+                    message.sender === "user"
+                        ? "sent"
+                        : "received"
+                }`;
+
+
+            const author =
+                document.createElement(
+                    "span"
+                );
+
+
+            author.className =
+                "chat-message-author";
+
+
+            author.textContent =
+                message.sender === "user"
+                    ? "Você"
+                    : "Sistema";
+
+
+            const text =
+                document.createElement(
+                    "span"
+                );
+
+
+            text.className =
+                "chat-message-text";
+
+
+            text.textContent =
+                message.text;
+
+
+            messageElement.appendChild(
+                author
+            );
+
+
+            messageElement.appendChild(
+                text
+            );
+
+
+            chatMessagesContainer.appendChild(
+                messageElement
+            );
+
+        }
+    );
+
+
+    chatMessagesContainer.scrollTop =
+        chatMessagesContainer.scrollHeight;
+
+}
+
+
+/* =========================================================
+   ENVIAR MENSAGEM
+========================================================= */
+
+function sendChatMessage() {
+
+    if (
+        currentChatPickingId === null ||
+        !chatInput
+    ) {
+        return;
+    }
+
+
+    const text =
+        chatInput.value.trim();
+
+
+    if (!text) {
+        return;
+    }
+
+
+    if (
+        !chatMessages[
+            currentChatPickingId
+        ]
+    ) {
+
+        chatMessages[
+            currentChatPickingId
+        ] = [];
+
+    }
+
+
+    chatMessages[
+        currentChatPickingId
+    ].push({
+
+        sender: "user",
+
+        text
+
+    });
+
+
+    chatInput.value = "";
+
+
+    renderChatMessages();
+
+
+    /*
+     * V1:
+     * O chat ainda não possui backend.
+     *
+     * Esta resposta apenas simula uma
+     * confirmação para demonstrar o fluxo.
+     */
+
+    setTimeout(
+        () => {
+
+            if (
+                currentChatPickingId === null
+            ) {
+                return;
+            }
+
+
+            chatMessages[
+                currentChatPickingId
+            ].push({
+
+                sender: "system",
+
+                text:
+                    "Mensagem registrada no chat. A integração com o backend será adicionada posteriormente."
+
+            });
+
+
+            renderChatMessages();
+
+        },
+        500
+    );
 
 }
