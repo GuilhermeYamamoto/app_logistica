@@ -712,6 +712,14 @@ body {
     filter: none;
 }
 
+.secondary-action.disabled,
+.secondary-action:disabled {
+    background: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+    filter: none;
+}
+
 .action-icon-small {
     font-size: 24px;
 }

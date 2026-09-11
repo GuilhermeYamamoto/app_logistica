@@ -104,7 +104,7 @@ class InventoryService:
 
                 received_quantity_field = next((field for field in ("quantity", "quantity_done") if field in move_fields), None)
 
-                fields = ["picking_id", "product_id", "product_uom_qty"]
+                fields = ["picking_id", "product_id", "product_uom_qty", "move_dest_ids"]
 
                 if received_quantity_field is not None:
                     fields.append(received_quantity_field)
@@ -117,6 +117,33 @@ class InventoryService:
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings da etapa solicitada")) from error
 
+
+        destination_move_ids = list({
+            move_dest_id
+            for moves in moves_by_picking.values()
+            for move in moves
+            for move_dest_id in move.get("move_dest_ids", [])
+        })
+
+        destination_moves_by_id: Dict[int, Dict[str, Any]] = {}
+
+        if destination_move_ids:
+            destination_moves = client.execute(
+                "stock.move",
+                "search_read",
+                [("id", "in", destination_move_ids)],
+                fields=[
+                    "id",
+                    "location_dest_id",
+                ],
+            )
+
+            destination_moves_by_id = {
+                move["id"]: move
+                for move in destination_moves
+            }
+
+
         records = []
 
         for picking in pickings:
@@ -124,6 +151,11 @@ class InventoryService:
             product_names = [move["product_id"][1] for move in moves if move["product_id"]]
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
+            barcode_registered = any(
+                destination_moves_by_id.get(move_dest_id, {}).get("location_dest_id")
+                for move in moves
+                for move_dest_id in move.get("move_dest_ids", [])
+            )
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
@@ -148,6 +180,7 @@ class InventoryService:
                             "scheduledDate": picking["scheduled_date"],
                             "photoCount": photo_count,
                             "photosRegistered": photo_count >= 3,
+                            "barcodeRegistered": bool(barcode_registered),
                         })
 
         return {"picking_type_id": picking_type_id, "records": records}
@@ -620,4 +653,18 @@ class InventoryService:
         # Consulta o picking no Odoo para obter o move_dest_id do picking atual (Recebimento Qualidade), ou seja, do picking do Recebimento Qualidade, vamos buscar o picking do Estoque Transitorio.
         barcode_location_id = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id"])
         picking_estq_transitorio_id = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["move_dest_ids"])
-        client.execute("stock.move", "write", picking_estq_transitorio_id[0]["move_dest_ids"][0], {"location_dest_id": barcode_location_id[0]["id"]})
+
+        client.execute(
+            "stock.move",
+            "write",
+            picking_estq_transitorio_id[0]["move_dest_ids"][0],
+            {
+                "location_dest_id": barcode_location_id[0]["id"]
+            }
+        )
+
+        return {
+            "success": True,
+            "picking_id": picking_id,
+            "barcode": barcode,
+        }
