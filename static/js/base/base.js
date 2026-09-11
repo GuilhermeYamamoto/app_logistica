@@ -7,6 +7,23 @@
         return document.getElementById(id);
     }
 
+    function getStoredTheme() {
+        try {
+            return localStorage.getItem(themeStorageKey);
+        } catch (error) {
+            console.warn("Não foi possível ler a preferência de tema.", error);
+            return null;
+        }
+    }
+
+    function storeTheme(theme) {
+        try {
+            localStorage.setItem(themeStorageKey, theme);
+        } catch (error) {
+            console.warn("Não foi possível salvar a preferência de tema.", error);
+        }
+    }
+
     function applyTheme(theme) {
         const isDark = theme === "dark";
         const toggle = getElement("themeToggle");
@@ -35,12 +52,12 @@
             toggle.classList.remove("global-theme-toggle");
         }
 
-        applyTheme(localStorage.getItem(themeStorageKey) || "light");
+        applyTheme(getStoredTheme() || "light");
         toggle.dataset.themeInitialized = "true";
         toggle.addEventListener("click", () => {
             const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
             applyTheme(nextTheme);
-            localStorage.setItem(themeStorageKey, nextTheme);
+            storeTheme(nextTheme);
         });
     }
 

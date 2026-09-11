@@ -741,7 +741,9 @@
         {{ records["records"] | tojson }}
     </script>
 
-    <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}"></script>
+    <script
+        src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"
+    ></script>
     <script
         src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
     ></script>

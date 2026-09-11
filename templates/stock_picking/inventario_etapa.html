@@ -27,5 +27,7 @@
         const inventoryStage = {{ stage.key | tojson }};
         const inventoryStageRecords = {{ records.records | tojson }};
     </script>
-    <script src="{{ url_for('static', path='js/stock_picking/inventario-etapas.js') }}"></script>
+    <script
+        src="{{ url_for('static', path='js/stock_picking/inventario-etapas.js') }}?v={{ static_asset_version('js/stock_picking/inventario-etapas.js') }}"
+    ></script>
 {% endblock %}

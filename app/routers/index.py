@@ -4,13 +4,14 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
+from app.config import settings, static_asset_version
 from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_credentials
 from app.models import ModuleInfo
 
 router = APIRouter(tags=["index"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
+templates.env.globals["static_asset_version"] = static_asset_version
 
 MODULES = [
     ModuleInfo(name="Vendas", model="sale.order", description="Pedidos e cotações"),

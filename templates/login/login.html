@@ -1,7 +1,10 @@
 {% extends "base/base.html" %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', path='css/login/login.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/login/login.css') }}?v={{ static_asset_version('css/login/login.css') }}"
+    >
 {% endblock %}
 
 {% block title %}
@@ -73,5 +76,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{{ url_for('static', path='js/login/login.js') }}"></script>
+    <script
+        src="{{ url_for('static', path='js/login/login.js') }}?v={{ static_asset_version('js/login/login.js') }}"
+    ></script>
 {% endblock %}
