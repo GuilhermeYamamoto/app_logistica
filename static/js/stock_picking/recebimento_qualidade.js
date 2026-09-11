@@ -1346,18 +1346,23 @@ function createPickingCard(picking) {
 
 
             <button
-                class="main-action validation-action
-                    ${validationAvailable ? "" : "disabled"}"
-                data-action="validate"
+                class="secondary-action quality-action"
+                data-action="quality"
                 data-picking-id="${picking.id}"
-                ${validationAvailable ? "" : "disabled"}
             >
 
-                <span class="action-icon-small">
-                    ✓
-                </span>
+                ⚠️ ALERTA DE QUALIDADE
 
-                VALIDAR
+            </button>
+
+
+            <button
+                class="secondary-action print-action"
+                data-action="print"
+                data-picking-id="${picking.id}"
+            >
+
+                🖨️ IMPRIMIR ETIQUETA
 
             </button>
 
@@ -1377,29 +1382,20 @@ function createPickingCard(picking) {
 
             </button>
 
-        </div>
-
-
-        <div class="secondary-actions">
 
             <button
-                class="secondary-action quality-action"
-                data-action="quality"
+                class="main-action validation-action
+                    ${validationAvailable ? "" : "disabled"}"
+                data-action="validate"
                 data-picking-id="${picking.id}"
+                ${validationAvailable ? "" : "disabled"}
             >
 
-                ⚠️ ALERTA DE QUALIDADE
+                <span class="action-icon-small">
+                    ✓
+                </span>
 
-            </button>
-
-
-            <button
-                class="secondary-action print-action"
-                data-action="print"
-                data-picking-id="${picking.id}"
-            >
-
-                🖨️ IMPRIMIR ETIQUETA
+                VALIDAR
 
             </button>
 
