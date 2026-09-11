@@ -128,6 +128,128 @@
         });
     }
 
+    let pullRefreshHandler = () => window.location.reload();
+    let pullStartY = 0;
+    let pullDistance = 0;
+    let pullTracking = false;
+    let pullRefreshing = false;
+    let pullReady = false;
+    const pullThreshold = 70;
+    const pullMaxDistance = 150;
+
+    function resetPullToRefresh() {
+        const indicator = getElement("pullToRefresh");
+        const icon = getElement("pullRefreshIcon");
+        const text = getElement("pullRefreshText");
+
+        pullTracking = false;
+        pullReady = false;
+        pullDistance = 0;
+        indicator?.classList.remove("visible", "ready", "refreshing");
+        indicator?.style.removeProperty("transform");
+        if (icon) {
+            icon.textContent = "↓";
+        }
+        if (text) {
+            text.textContent = "Puxe para atualizar";
+        }
+    }
+
+    async function refreshFromPull() {
+        const indicator = getElement("pullToRefresh");
+        const icon = getElement("pullRefreshIcon");
+        const text = getElement("pullRefreshText");
+        if (pullRefreshing) {
+            return;
+        }
+
+        pullRefreshing = true;
+        indicator?.classList.add("visible", "refreshing");
+        indicator?.classList.remove("ready");
+        indicator?.style.setProperty("transform", "translateY(0)");
+        if (icon) {
+            icon.textContent = "↻";
+        }
+        if (text) {
+            text.textContent = "Atualizando...";
+        }
+
+        try {
+            await pullRefreshHandler();
+        } catch (error) {
+            console.error("Erro ao atualizar a tela:", error);
+            showToast(error.message || "Não foi possível atualizar a tela.", "!");
+        } finally {
+            window.setTimeout(() => {
+                pullRefreshing = false;
+                resetPullToRefresh();
+            }, 300);
+        }
+    }
+
+    function initializePullToRefresh() {
+        const indicator = getElement("pullToRefresh");
+        if (!indicator || indicator.dataset.pullInitialized === "true") {
+            return;
+        }
+
+        indicator.dataset.pullInitialized = "true";
+        document.addEventListener("touchstart", (event) => {
+            if (
+                pullRefreshing ||
+                window.scrollY > 0 ||
+                event.target.closest(".modal-overlay, input, textarea, select")
+            ) {
+                return;
+            }
+            pullStartY = event.touches[0].clientY;
+            pullDistance = 0;
+            pullTracking = true;
+            pullReady = false;
+        }, { passive: true });
+
+        document.addEventListener("touchmove", (event) => {
+            if (!pullTracking || pullRefreshing || document.documentElement.scrollTop > 1) {
+                return;
+            }
+
+            const rawDistance = event.touches[0].clientY - pullStartY;
+            if (rawDistance <= 0) {
+                resetPullToRefresh();
+                return;
+            }
+
+            pullDistance = Math.min(rawDistance * 0.55, pullMaxDistance);
+            event.preventDefault();
+            indicator.style.transform = `translateY(${pullDistance - indicator.offsetHeight}px)`;
+            indicator.classList.add("visible");
+            pullReady = pullDistance >= pullThreshold;
+            indicator.classList.toggle("ready", pullReady);
+            getElement("pullRefreshIcon").textContent = pullReady ? "↑" : "↓";
+            getElement("pullRefreshText").textContent = pullReady ? "Solte para atualizar" : "Puxe para atualizar";
+        }, { passive: false });
+
+        document.addEventListener("touchend", () => {
+            if (!pullTracking) {
+                return;
+            }
+            pullTracking = false;
+            if (pullReady) {
+                refreshFromPull();
+                return;
+            }
+            resetPullToRefresh();
+        }, { passive: true });
+        document.addEventListener("touchcancel", resetPullToRefresh, { passive: true });
+    }
+
+    function setPullToRefreshHandler(handler) {
+        if (typeof handler !== "function") {
+            throw new TypeError("A atualização por gesto deve ser uma função.");
+        }
+        pullRefreshHandler = handler;
+    }
+
     function createBarcodeScanner({ video, onResult, onError }) {
         let controls = null;
         let reader = null;
@@ -166,12 +288,15 @@
         hideLoading,
         initializeModals,
         initializeTheme,
+        initializePullToRefresh,
         openModal,
         closeModal,
+        setPullToRefreshHandler,
         showLoading,
         showToast,
     });
 
     initializeTheme();
     initializeModals();
+    initializePullToRefresh();
 }());

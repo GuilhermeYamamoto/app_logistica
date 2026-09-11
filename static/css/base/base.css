@@ -198,6 +198,72 @@ html[data-theme="dark"] {
     display: none !important;
 }
 
+.pull-to-refresh {
+    position: fixed;
+    z-index: 950;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: flex;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--app-surface);
+    color: var(--app-muted);
+    box-shadow: 0 5px 15px rgba(20, 35, 60, 0.12);
+    font-size: 14px;
+    font-weight: 900;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-64px);
+    transition: transform 0.18s ease, opacity 0.18s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.pull-to-refresh.visible {
+    opacity: 1;
+}
+
+.pull-to-refresh.ready,
+.pull-to-refresh.refreshing {
+    color: var(--app-primary);
+}
+
+.pull-refresh-icon {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--app-surface-secondary);
+    color: var(--app-primary);
+    font-size: 20px;
+    font-weight: 900;
+    transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.pull-to-refresh.ready .pull-refresh-icon {
+    background: var(--app-primary);
+    color: white;
+    transform: rotate(180deg);
+}
+
+.pull-to-refresh.refreshing .pull-refresh-icon {
+    animation: app-pull-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes app-pull-refresh-spin {
+    to { transform: rotate(360deg); }
+}
+
+html,
+body {
+    overscroll-behavior-y: contain;
+}
+
 .loading-overlay,
 .modal-overlay {
     position: fixed;
@@ -486,6 +552,12 @@ html[data-theme="dark"] {
 }
 
 @media (max-width: 760px) {
+    .pull-to-refresh {
+        height: 58px;
+        font-size: 13px;
+        transform: translateY(-58px);
+    }
+
     .topbar {
         align-items: stretch;
         flex-direction: column;
