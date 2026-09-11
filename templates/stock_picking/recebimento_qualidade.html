@@ -1,24 +1,17 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+{% extends "base/base.html" %}
 
-<head>
-    <meta charset="UTF-8">
+{% block title %}Recebimento Qualidade{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    >
+{% block body_attributes %} data-stage-key="{{ stage.key }}" data-theme-storage-key="appTheme"{% endblock %}
 
-    <title>Recebimento Qualidade</title>
-
+{% block head %}
     <link
         rel="stylesheet"
         href="{{ url_for('static', path='css/stock_picking/recebimento_qualidade.css') }}?v={{ static_asset_version('css/stock_picking/recebimento_qualidade.css') }}"
     >
+{% endblock %}
 
-</head>
-
-<body data-stage-key="{{ stage.key }}">
+{% block content %}
 
     <!-- =====================================================
      PULL TO REFRESH
@@ -53,7 +46,7 @@
             </div>
         </div>
 
-        <div class="topbar-actions">
+        <div class="topbar-actions" data-theme-toggle-container>
 
             <div class="search-area">
 
@@ -73,16 +66,6 @@
             </button>
 
             </div>
-
-            <button
-                id="themeToggle"
-                class="theme-toggle"
-                type="button"
-                aria-label="Ativar modo escuro"
-                title="Ativar modo escuro"
-            >
-                🌙
-            </button>
 
         </div>
 
@@ -274,6 +257,7 @@
     <div
         id="photoModal"
         class="modal-overlay hidden"
+        data-close-on-backdrop="false"
     >
 
         <div class="modal photo-modal">
@@ -750,45 +734,9 @@
     </div>
 
 
-    <!-- =====================================================
-         LOADING GLOBAL
-    ====================================================== -->
+{% endblock %}
 
-    <div
-        id="loadingOverlay"
-        class="loading-overlay hidden"
-        aria-hidden="true"
-    >
-
-        <div
-            class="loading-spinner"
-            role="status"
-            aria-label="Carregando"
-        ></div>
-
-    </div>
-
-
-    <!-- =====================================================
-         TOAST
-    ====================================================== -->
-
-    <div
-        id="toast"
-        class="toast"
-    >
-
-        <span id="toastIcon">
-            ✓
-        </span>
-
-        <span id="toastMessage">
-            Operação realizada.
-        </span>
-
-    </div>
-
-
+{% block scripts %}
     <script id="qualityRecords" type="application/json">
         {{ records["records"] | tojson }}
     </script>
@@ -797,6 +745,4 @@
     <script
         src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
     ></script>
-</body>
-
-</html>
+{% endblock %}

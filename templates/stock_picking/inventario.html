@@ -1,10 +1,5 @@
 {% extends "base/base.html" %}
 
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', path='css/index/inicio.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/inventario-etapas.css') }}">
-{% endblock %}
-
 {% block title %}Inventário - FastAPI Odoo{% endblock %}
 
 {% block content %}
@@ -15,7 +10,9 @@
                 <h1>Etapas de operação</h1>
                 <p>Selecione uma etapa para visualizar os registros pendentes.</p>
             </div>
-            <a class="logout-button" href="/index">Voltar</a>
+            <div class="home-header-actions" data-theme-toggle-container>
+                <a class="logout-button" href="/index">Voltar</a>
+            </div>
         </header>
 
         <section class="stage-grid" aria-label="Etapas do inventário">
