@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
+from app.config import settings, static_asset_version
 from app.core.auth import OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.models import ModuleInfo
@@ -15,6 +15,7 @@ from app.routers.index import MODULES
 
 router = APIRouter(tags=["models"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
+templates.env.globals["static_asset_version"] = static_asset_version
 
 MODELS_DICT = {m.model: m.model_dump() for m in MODULES}
 

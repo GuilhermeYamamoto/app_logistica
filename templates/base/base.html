@@ -11,7 +11,10 @@
             {% endblock %}
         </title>
 
-        <link rel="stylesheet" href="{{ url_for('static', path='css/base/base.css') }}">
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', path='css/base/base.css') }}?v={{ static_asset_version('css/base/base.css') }}"
+        >
 
         {% block head %}
 
@@ -42,7 +45,9 @@
             <span id="toastMessage">Operação realizada.</span>
         </div>
 
-        <script src="{{ url_for('static', path='js/base/base.js') }}"></script>
+        <script
+            src="{{ url_for('static', path='js/base/base.js') }}?v={{ static_asset_version('js/base/base.js') }}"
+        ></script>
 
         {% block scripts %}
 

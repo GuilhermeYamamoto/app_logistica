@@ -6,13 +6,14 @@ from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
+from app.config import settings, static_asset_version
 from app.core.auth import OdooAuthService, session_store
 from app.core.exceptions import AuthenticationError, OdooConnectionError
 from app.models import LoginRequest
 
 router = APIRouter(tags=["auth"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
+templates.env.globals["static_asset_version"] = static_asset_version
 
 
 @router.get("/login", response_class=HTMLResponse)

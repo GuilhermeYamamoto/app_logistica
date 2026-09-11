@@ -33,3 +33,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def static_asset_version(path: str) -> int:
+    """Retorna a versão de cache de um arquivo estático."""
+    static_path = settings.STATIC_DIR.resolve()
+    asset_path = (static_path / path).resolve()
+
+    if not asset_path.is_relative_to(static_path):
+        raise ValueError("Caminho de arquivo estático inválido.")
+
+    return asset_path.stat().st_mtime_ns

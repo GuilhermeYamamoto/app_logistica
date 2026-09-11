@@ -1,14 +1,13 @@
 """Router de inventário."""
 
 import xmlrpc.client
-from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
+from app.config import settings, static_asset_version
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
@@ -21,17 +20,6 @@ from app.models.schemas import (
 
 router = APIRouter(tags=["inventario"])
 templates = Jinja2Templates(directory=settings.TEMPLATES_DIR)
-
-
-def static_asset_version(path: str) -> int:
-    """Retorna a versão de cache de um arquivo estático."""
-    static_path = settings.STATIC_DIR.resolve()
-    asset_path = (static_path / path).resolve()
-
-    if not asset_path.is_relative_to(static_path):
-        raise ValueError("Caminho de arquivo estático inválido.")
-
-    return asset_path.stat().st_mtime_ns
 
 
 templates.env.globals["static_asset_version"] = static_asset_version

@@ -1666,6 +1666,20 @@ function setupBarcodeScanner() {
         stopBarcodeScanner
     );
 
+    document.addEventListener(
+        "app:modal-close",
+        event => {
+
+            if (
+                event.detail?.id ===
+                "barcodeScannerModal"
+            ) {
+                stopBarcodeScanner();
+            }
+
+        }
+    );
+
 }
 
 
@@ -3573,6 +3587,23 @@ function setupChat() {
 
         }
     );
+
+    document
+        .querySelectorAll('[data-close="chatPanel"]')
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                event => {
+
+                    event.preventDefault();
+
+                    closeChatPanel();
+
+                }
+            );
+
+        });
 
 
     chatInput.addEventListener(
