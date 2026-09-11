@@ -2257,78 +2257,164 @@ body {
 
 }
 
+
+
+
 /* =========================================================
-    CHAT V2 - RESPONSIVIDADE E BADGE
+   PAINEL DO CHAT
+   SOBREPOSIÇÃO REAL DA TELA
 ========================================================= */
 
-/* Badge de mensagens na aba do chat */
-.chat-tab {
-    position: absolute;
-    top: -14px;
-    right: 24px;
+.chat-tab.has-messages::after {
+    content: "";
 
-    width: 48px;
-    height: 38px;
+    position: absolute;
+
+    top: -5px;
+    right: -5px;
+
+    width: 11px;
+    height: 11px;
+
+    background: var(--red);
+
+    border: 2px solid var(--surface);
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.chat-panel {
+    position: fixed !important;
+
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+
+    width: min(430px, 92vw) !important;
+    height: 100vh !important;
+
+    max-width: none !important;
+
+    z-index: 1100 !important;
 
     display: flex;
-    align-items: center; 
-    justify-content: center;
+    flex-direction: column;
 
-    font-size: 20px;
+    overflow: hidden;
+
+    background:
+        rgba(0, 31, 85, 0.88);
+
+    backdrop-filter: blur(0.5px);
+
+    -webkit-backdrop-filter: blur(0.5px);
+
+    border-left:
+        1px solid rgba(255, 255, 255, 0.16);
+
+    box-shadow:
+        -8px 0 30px rgba(0, 0, 0, 0.18);
+
+    color: #ffffff;
 }
 
-.chat-tab.has-messages::after { 
-    content: "";
-    position: absolute; 
-    top: -5px; 
-    right: -5px; 
-    width: 11px; 
-    height: 11px; 
-    background: var(--red); 
-    border: 2px solid var(--surface); 
-    border-radius: 50%; 
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); 
-}
 
-
-
-/* ========================================================= 
-    TABLETS
- ========================================================= */
-
- @media (max-width: 1000px) {
-    .chat-panel {
-        width: min(420px, 55vw); 
-        max-width: 420px; 
-        right: 0; 
-        top: var(--topbar-height);
-
-        height: calc(
-            100vh - var(--topbar-height)
-        );
-    }
- }
-
-
-
- /* =========================================================
-    TABLETS MENORES 
+/* =========================================================
+   TABLETS
 ========================================================= */
 
- @media (max-width: 760px) {
+@media (max-width: 1000px) {
 
     .chat-panel {
-        width: 78vw;
-        width: 78vw; 
-        max-width: none; 
-        right: 0; 
-        top: var(--topbar-height); 
-        height: calc(
-            100vh - var(--topbar-height)
-        );
-    }   
+        position: fixed !important;
 
-    .chat-tab { 
-        right: 18px; 
-    } 
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+
+        width: min(420px, 55vw) !important;
+
+        height: 100vh !important;
+
+        max-width: none !important;
+
+        z-index: 1100 !important;
+    }
+
+}
+
+
+/* =========================================================
+   TABLETS MENORES
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .chat-panel {
+        position: fixed !important;
+
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+
+        width: 78vw !important;
+
+        height: 100vh !important;
+
+        max-width: none !important;
+
+        z-index: 1100 !important;
+    }
+
+    .chat-tab {
+        right: 18px;
+        top: -13px;
+    }
+
+}
+
+
+/* =========================================================
+   CELULARES
+========================================================= */
+
+@media (max-width: 480px) {
+
+    .chat-panel {
+        position: fixed !important;
+
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+
+        width: 100vw !important;
+
+        height: 100vh !important;
+
+        max-width: none !important;
+
+        border-radius: 0;
+
+        z-index: 1100 !important;
+    }
+
+    .chat-tab {
+        right: 14px;
+    }
+
+    .chat-messages {
+        padding: 14px;
+    }
+
+    .chat-input-area {
+        padding: 10px;
+    }
+
 }
