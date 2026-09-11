@@ -8,6 +8,18 @@ from app.routers import auth, index, stock_picking, models
 
 app = FastAPI()
 
+
+@app.middleware("http")
+async def prevent_html_caching(request, call_next):
+    """Garante que o WebView receba o HTML atual ao recarregar uma tela."""
+    response = await call_next(request)
+
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+
+    return response
+
+
 # Montar arquivos estáticos
 app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 

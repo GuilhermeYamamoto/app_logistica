@@ -128,7 +128,13 @@
         });
     }
 
-    let pullRefreshHandler = () => window.location.reload();
+    function reloadCurrentPage() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("_refresh", Date.now().toString());
+        window.location.replace(url);
+    }
+
+    let pullRefreshHandler = reloadCurrentPage;
     let pullStartY = 0;
     let pullDistance = 0;
     let pullTracking = false;
