@@ -24,8 +24,6 @@ let photoSession = [];
 
 let photosSaving = false;
 
-let toastTimeout = null;
-
 let qualityCauses = [];
 
 let selectedQualityCauses = [];
@@ -91,12 +89,6 @@ const photoCameraInput =
 
 const qualityRecordsElement =
     document.getElementById("qualityRecords");
-
-const loadingOverlay =
-    document.getElementById("loadingOverlay");
-
-const themeToggle =
-    document.getElementById("themeToggle");
 
 const barcodeScannerVideo =
     document.getElementById("barcodeScannerVideo");
@@ -652,13 +644,9 @@ function resetPullToRefresh() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    setupTheme();
-
     setupDashboard();
 
     setupSearch();
-
-    setupModalButtons();
 
     setupPhotoSlots();
 
@@ -679,86 +667,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPickings();
 
 });
-
-
-
-/* =========================================================
-   TEMA
-========================================================= */
-
-function setupTheme() {
-
-    if (!themeToggle) {
-        return;
-    }
-
-    const savedTheme =
-        localStorage.getItem("recebimentoQualidadeTheme");
-
-    // Se nunca escolheu um tema, começa sempre no claro
-    const initialTheme =
-        savedTheme || "light";
-
-    applyTheme(initialTheme);
-
-    themeToggle.addEventListener(
-        "click",
-        toggleTheme
-    );
-}
-
-function applyTheme(theme) {
-
-    const isDark =
-        theme === "dark";
-
-    document.documentElement.dataset.theme =
-        isDark
-            ? "dark"
-            : "light";
-
-    if (!themeToggle) {
-        return;
-    }
-
-    themeToggle.textContent =
-        isDark
-            ? "☀️"
-            : "🌙";
-
-    themeToggle.setAttribute(
-        "aria-label",
-        isDark
-            ? "Ativar modo claro"
-            : "Ativar modo escuro"
-    );
-
-    themeToggle.setAttribute(
-        "title",
-        isDark
-            ? "Ativar modo claro"
-            : "Ativar modo escuro"
-    );
-}
-
-function toggleTheme() {
-
-    const currentTheme =
-        document.documentElement.dataset.theme ||
-        "light";
-
-    const newTheme =
-        currentTheme === "dark"
-            ? "light"
-            : "dark";
-
-    applyTheme(newTheme);
-
-    localStorage.setItem(
-        "recebimentoQualidadeTheme",
-        newTheme
-    );
-}
 
 
 
@@ -818,19 +726,7 @@ async function loadPickings() {
 function showLoading() {
 
     actionInProgress = true;
-
-    if (!loadingOverlay) {
-        return;
-    }
-
-    loadingOverlay.classList.remove(
-        "hidden"
-    );
-
-    loadingOverlay.setAttribute(
-        "aria-hidden",
-        "false"
-    );
+    window.AppUI.showLoading();
 
 }
 
@@ -838,19 +734,7 @@ function showLoading() {
 function hideLoading() {
 
     actionInProgress = false;
-
-    if (!loadingOverlay) {
-        return;
-    }
-
-    loadingOverlay.classList.add(
-        "hidden"
-    );
-
-    loadingOverlay.setAttribute(
-        "aria-hidden",
-        "true"
-    );
+    window.AppUI.hideLoading();
 
 }
 
@@ -1739,61 +1623,12 @@ function findPicking(picking_id) {
 
 
 /* =========================================================
-   MODAIS
-========================================================= */
-
-function setupModalButtons() {
-
-    document
-        .querySelectorAll("[data-close]")
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    closeModal(
-                        button.dataset.close
-                    );
-
-                }
-            );
-
-        });
-
-
-    document
-        .querySelectorAll(".modal-overlay")
-        .forEach(overlay => {
-
-            overlay.addEventListener(
-                "click",
-                event => {
-
-                    if (event.target === overlay && overlay.id !== "photoModal") {
-                        closeModal(
-                        overlay.id
-                        );
-                    }
-
-                }
-            );
-
-    });
-}
-
-
-/* =========================================================
    ABRIR / FECHAR
 ========================================================= */
 
 function openModal(id) {
 
-    document
-        .getElementById(id)
-        .classList.remove(
-            "hidden"
-        );
+    window.AppUI.openModal(id);
 
 }
 
@@ -1811,11 +1646,7 @@ function closeModal(id) {
     }
 
 
-    document
-        .getElementById(id)
-        .classList.add(
-            "hidden"
-        );
+    window.AppUI.closeModal(id);
 
 }
 
@@ -1844,17 +1675,6 @@ async function openBarcodeScanner(pickingId) {
         return;
     }
 
-    if (!window.ZXingBrowser?.BrowserMultiFormatReader) {
-
-        showToast(
-            "O leitor de código de barras não foi carregado.",
-            "!"
-        );
-
-        return;
-
-    }
-
     openModal("barcodeScannerModal");
 
     barcodeScannerStatus.textContent =
@@ -1865,33 +1685,25 @@ async function openBarcodeScanner(pickingId) {
     barcodeScannerActive = true;
 
     barcodeScannerReader =
-        new window.ZXingBrowser.BrowserMultiFormatReader();
+        window.AppUI.createBarcodeScanner(
+            {
+                video: barcodeScannerVideo,
+                onResult: handleBarcodeScanResult,
+                onError: error => {
+                    barcodeScannerStatus.textContent =
+                        getBarcodeScannerErrorMessage(error);
+                }
+            }
+        );
 
     try {
 
         barcodeScannerControls =
-            await barcodeScannerReader.decodeFromConstraints(
-                {
-                    audio: false,
-                    video: {
-                        facingMode: {
-                            ideal: "environment"
-                        },
-                        width: {
-                            ideal: 1280
-                        },
-                        height: {
-                            ideal: 720
-                        }
-                    }
-                },
-                barcodeScannerVideo,
-                handleBarcodeScanResult
-            );
+            await barcodeScannerReader.start();
 
 
         if (!barcodeScannerActive) {
-            barcodeScannerControls.stop();
+            barcodeScannerReader.stop();
         }
 
     } catch (error) {
@@ -1988,23 +1800,9 @@ function stopBarcodeScanner() {
 
     barcodeScannerActive = false;
 
-    if (barcodeScannerControls) {
+    barcodeScannerReader?.stop();
 
-        barcodeScannerControls.stop();
-
-        barcodeScannerControls = null;
-
-    }
-
-    if (barcodeScannerVideo?.srcObject) {
-
-        barcodeScannerVideo.srcObject
-            .getTracks()
-            .forEach(track => track.stop());
-
-        barcodeScannerVideo.srcObject = null;
-
-    }
+    barcodeScannerControls = null;
 
     barcodeScannerReader = null;
 
@@ -3742,54 +3540,7 @@ function showToast(
     message,
     icon = "✓"
 ) {
-
-    const toast =
-        document.getElementById(
-            "toast"
-        );
-
-
-    const toastMessage =
-        document.getElementById(
-            "toastMessage"
-        );
-
-
-    const toastIcon =
-        document.getElementById(
-            "toastIcon"
-        );
-
-
-    toastMessage.textContent =
-        message;
-
-
-    toastIcon.textContent =
-        icon;
-
-
-    toast.classList.add(
-        "show"
-    );
-
-
-    clearTimeout(
-        toastTimeout
-    );
-
-
-    toastTimeout =
-        setTimeout(
-            () => {
-
-                toast.classList.remove(
-                    "show"
-                );
-
-            },
-            2800
-        );
+    window.AppUI.showToast(message, icon);
 
 }
 

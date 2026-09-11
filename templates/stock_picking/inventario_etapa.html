@@ -1,10 +1,5 @@
 {% extends "base/base.html" %}
 
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', path='css/index/inicio.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/inventario-etapas.css') }}">
-{% endblock %}
-
 {% block title %}{{ stage.name }} - Inventário{% endblock %}
 
 {% block content %}
@@ -15,7 +10,9 @@
                 <h1>{{ stage.name }}</h1>
                 <p>Registros pendentes nesta etapa.</p>
             </div>
-            <a class="logout-button" href="/inventario">Todas as etapas</a>
+            <div class="home-header-actions" data-theme-toggle-container>
+                <a class="logout-button" href="/inventario">Todas as etapas</a>
+            </div>
         </header>
 
         <section class="records-panel" aria-live="polite">

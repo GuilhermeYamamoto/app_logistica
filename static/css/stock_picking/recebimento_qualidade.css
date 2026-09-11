@@ -27,28 +27,22 @@
     --red: #e53935;
     --purple: #7048e8;
     --light-blue: #009dff;
-    --background: #f3f6fa;
-    --white: #ffffff;
-    --surface: #ffffff;
-    --surface-secondary: #edf2f8;
-
-    --input-background: #ffffff;
-
-    --secondary-button-background: #edf0f4;
-    --secondary-button-text: #3e4755;
-
-    --close-button-background: #eef1f5;
-    --close-button-text: #4e5766;
-
-    --photo-background: #edf2f8;
-    --photo-border: #cbd5e1;
-
-    --progress-background: var(--progress-background);
-
-    --text: #172033;
-    --muted: #6c7485;
-    --border: #dfe5ee;
-    --shadow: 0 8px 24px rgba(20, 35, 60, 0.10);
+    --background: var(--app-background);
+    --white: var(--app-surface);
+    --surface: var(--app-surface);
+    --surface-secondary: var(--app-surface-secondary);
+    --input-background: var(--app-surface);
+    --secondary-button-background: var(--app-surface-secondary);
+    --secondary-button-text: var(--app-text);
+    --close-button-background: var(--app-surface-secondary);
+    --close-button-text: var(--app-text);
+    --photo-background: var(--app-surface-secondary);
+    --photo-border: var(--app-border);
+    --progress-background: var(--app-surface-secondary);
+    --text: var(--app-text);
+    --muted: var(--app-muted);
+    --border: var(--app-border);
+    --shadow: var(--app-shadow);
     --radius: 14px;
 
     /*
@@ -66,29 +60,6 @@
      * regras responsivas abaixo.
      */
     --topbar-height: calc(90px + max(20px, var(--safe-top)));
-}
-
-/* =========================================================
-   TEMA ESCURO
-========================================================= */
-
-html[data-theme="dark"] {
-    --background: #172A46;
-    --white: #111a2b;
-    --surface: #243550;
-    --surface-secondary: #172235;
-    --text: #f1f5f9;
-    --muted: #aab5c7;
-    --border: #2b3950;
-    --input-background: #172235;
-    --secondary-button-background: #252f40;
-    --secondary-button-text: #e5eaf2;
-    --close-button-background: #252f40;
-    --close-button-text: #dce3ed;
-    --photo-background: #172235;
-    --photo-border: #34445d;
-    --progress-background: #273449;
-    --shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
 }
 
 body {
@@ -435,35 +406,6 @@ body {
     align-items: center;
     gap: 10px;
 }
-
-/* =========================================================
-   BOTÃO DE TEMA
-========================================================= */
-
-.theme-toggle {
-    width: 52px;
-    height: 52px;
-    flex-shrink: 0;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, .16);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    transition:
-        background .2s ease,
-        transform .15s ease;
-}
-
-.theme-toggle:hover {
-    background: rgba(255, 255, 255, .25);
-}
-
-.theme-toggle:active {
-    transform: scale(.94);
-}
-
 
 /* =========================================================
    PESQUISA
@@ -1702,10 +1644,6 @@ body {
         flex: 1;
     }
 
-    .theme-toggle {
-        width: 52px;
-        height: 52px;
-    }
 }
 
 

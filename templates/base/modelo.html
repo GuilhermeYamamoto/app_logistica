@@ -1,9 +1,5 @@
 {% extends "base/base.html" %}
 
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', path='css/inicio.css') }}">
-{% endblock %}
-
 {% block title %}{{ module.name }} - FastAPI Odoo{% endblock %}
 
 {% block content %}
@@ -14,7 +10,9 @@
                 <h1>{{ module.name }}</h1>
                 <p>{{ module.description }}</p>
             </div>
-            <a class="logout-button" href="/inicio">Voltar</a>
+            <div class="home-header-actions" data-theme-toggle-container>
+                <a class="logout-button" href="/index">Voltar</a>
+            </div>
         </header>
 
         <section class="module-card" aria-live="polite">
