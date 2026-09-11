@@ -1569,7 +1569,32 @@ body {
     }
 
     .picking-actions {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* FOTOS */
+    .picking-actions > button:nth-child(1) {
+        grid-column: 1 / -1;
+    }
+
+    /* ALERTA DE QUALIDADE */
+    .picking-actions > button:nth-child(2) {
+        grid-column: 1;
+    }
+
+    /* IMPRIMIR ETIQUETA */
+    .picking-actions > button:nth-child(3) {
+        grid-column: 2;
+    }
+
+    /* LER CÓDIGO */
+    .picking-actions > button:nth-child(4) {
+        grid-column: 1 / -1;
+    }
+
+    /* VALIDAR */
+    .picking-actions > button:nth-child(5) {
+        grid-column: 1 / -1;
     }
 
     .photo-grid {
