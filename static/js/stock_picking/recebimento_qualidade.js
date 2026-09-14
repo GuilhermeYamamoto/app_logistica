@@ -3631,57 +3631,97 @@ function setupChat() {
    ABRIR CHAT
 ========================================================= */
 
-function openChatPanel(picking) {
+async function openChatPanel(picking) {
 
     if (!picking) {
         return;
     }
 
-
     currentChatPickingId =
         picking.id;
-
 
     chatPickingInfo.textContent =
         `${picking.pv} • ${picking.product}`;
 
-
-    if (
-        !chatMessages[
-            picking.id
-        ]
-    ) {
-
-        chatMessages[
-            picking.id
-        ] = [];
-
-    }
-
-
-    renderChatMessages();
-
+    chatMessagesContainer.innerHTML = `
+        <div class="chat-empty">
+            CARREGANDO MENSAGENS...
+        </div>
+    `;
 
     chatPanel.classList.remove(
         "hidden"
     );
-
 
     chatPanel.setAttribute(
         "aria-hidden",
         "false"
     );
 
+    try {
+
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${picking.id}/chat`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível carregar o histórico do chat."
+            );
+        }
+
+        chatMessages[picking.id] =
+            Array.isArray(data)
+                ? data.map(message => ({
+                    id: message.id,
+                    sender: "received",
+                    author: message.author || "Sistema",
+                    text: message.text || "",
+                    date: message.date || null
+                }))
+                : [];
+
+        renderChatMessages();
+
+        updateChatBadge(
+            picking.id
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao carregar chat:",
+            error
+        );
+
+        chatMessages[picking.id] = [];
+
+        chatMessagesContainer.innerHTML = `
+            <div class="chat-empty">
+                ${error.message || "Não foi possível carregar as mensagens."}
+            </div>
+        `;
+
+    }
 
     setTimeout(
         () => {
-
             chatInput?.focus();
-
         },
         100
     );
-
 }
 
 
@@ -3790,9 +3830,12 @@ function renderChatMessages() {
 
 
             author.textContent =
-                message.sender === "user"
-                    ? "Você"
-                    : "Sistema";
+                message.author ||
+                (
+                    message.sender === "user"
+                        ? "Você"
+                        : "Sistema"
+                );
 
 
             const text =
@@ -3872,7 +3915,7 @@ function updateChatBadge(pickingId) {
    ENVIAR MENSAGEM
 ========================================================= */
 
-function sendChatMessage() {
+async function sendChatMessage() {
 
     if (
         currentChatPickingId === null ||
@@ -3881,84 +3924,93 @@ function sendChatMessage() {
         return;
     }
 
-
     const text =
         chatInput.value.trim();
-
 
     if (!text) {
         return;
     }
 
-
-    if (
-        !chatMessages[
-            currentChatPickingId
-        ]
-    ) {
-
-        chatMessages[
-            currentChatPickingId
-        ] = [];
-
+    if (actionInProgress) {
+        return;
     }
 
+    const pickingId =
+        currentChatPickingId;
 
-    chatMessages[
-        currentChatPickingId
-    ].push({
+    chatInput.disabled = true;
 
-        sender: "user",
+    if (chatSendButton) {
+        chatSendButton.disabled = true;
+    }
 
-        text
+    try {
 
-    });
+        const response =
+            await fetch(
+                `/api/recebimento-qualidade/pickings/${pickingId}/chat`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: text
+                    })
+                }
+            );
 
-    updateChatBadge(
-        currentChatPickingId
-    );
+        const data =
+            await response.json();
 
+        if (!response.ok) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível registrar a mensagem."
+            );
+        }
 
-    chatInput.value = "";
+        chatInput.value = "";
 
+        chatMessages[pickingId] =
+            Array.isArray(data.messages)
+                ? data.messages.map(message => ({
+                    id: message.id,
+                    sender: "received",
+                    author: message.author || "Sistema",
+                    text: message.text || "",
+                    date: message.date || null
+                }))
+                : [];
 
-    renderChatMessages();
+        renderChatMessages();
 
+        updateChatBadge(
+            pickingId
+        );
 
-    /*
-     * V1:
-     * O chat ainda não possui backend.
-     *
-     * Esta resposta apenas simula uma
-     * confirmação para demonstrar o fluxo.
-     */
+    } catch (error) {
 
-    setTimeout(
-        () => {
+        console.error(
+            "Erro ao enviar mensagem:",
+            error
+        );
 
-            if (
-                currentChatPickingId === null
-            ) {
-                return;
-            }
+        showToast(
+            error.message ||
+            "Não foi possível registrar a mensagem.",
+            "!"
+        );
 
+    } finally {
 
-            chatMessages[
-                currentChatPickingId
-            ].push({
+        chatInput.disabled = false;
 
-                sender: "system",
+        if (chatSendButton) {
+            chatSendButton.disabled = false;
+        }
 
-                text:
-                    "Mensagem registrada no chat. A integração com o backend será adicionada posteriormente."
+        chatInput.focus();
 
-            });
-
-
-            renderChatMessages();
-
-        },
-        500
-    );
-
+    }
 }
