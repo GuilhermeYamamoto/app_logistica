@@ -60,6 +60,7 @@
     let loadingRequests = 0;
     let qualityCauses = [];
     let selectedQualityCauses = [];
+
     const conversations = new Map();
 
     function configure(nextOptions) {
@@ -90,9 +91,11 @@
 
         records = nextRecords.map((record) => options.normalizeRecord({ ...record }));
         options.onRecordsReplaced(records);
+
         if (initialized && renderRecords) {
             render();
         }
+
         return records;
     }
 
@@ -100,17 +103,21 @@
         if (filter === "andamento") {
             return !record.validated && options.isInProgress(record);
         }
+
         return !record.validated && !options.isInProgress(record);
     }
 
     function createElement(tagName, className, text) {
         const element = document.createElement(tagName);
+
         if (className) {
             element.className = className;
         }
+
         if (text !== undefined) {
             element.textContent = text;
         }
+
         return element;
     }
 
@@ -124,23 +131,38 @@
         title,
     }) {
         const button = createElement("button", className);
+
         button.type = "button";
         button.disabled = disabled;
+
         if (ariaLabel) {
             button.setAttribute("aria-label", ariaLabel);
         }
+
         if (title) {
             button.title = title;
         }
+
         if (icon) {
-            button.append(createElement("span", "action-icon-small", icon));
+            button.append(
+                createElement("span", "action-icon-small", icon),
+            );
         }
-        button.append(document.createTextNode(label));
+
+        button.append(
+            document.createTextNode(label),
+        );
+
         button.addEventListener("click", onClick);
+
         return button;
     }
 
-    function createValidationAction(record, className = "main-action validation-action", disabled = false) {
+    function createValidationAction(
+        record,
+        className = "main-action validation-action",
+        disabled = false,
+    ) {
         return createAction({
             className,
             label: "VALIDAR",
@@ -150,7 +172,10 @@
         });
     }
 
-    function createQualityAction(record, className = "main-action quality-action") {
+    function createQualityAction(
+        record,
+        className = "main-action quality-action",
+    ) {
         return createAction({
             className,
             label: "ALERTA DE QUALIDADE",
@@ -161,8 +186,15 @@
 
     function createCard(record) {
         const status = options.getStatus(record);
-        const card = createElement("article", `picking-card${record.validated ? " completed-card" : ""}`);
-        const hasMessages = (conversations.get(record.id) || []).length > 0;
+
+        const card = createElement(
+            "article",
+            `picking-card${record.validated ? " completed-card" : ""}`,
+        );
+
+        const hasMessages =
+            (conversations.get(record.id) || []).length > 0;
+
         const chatTab = createAction({
             className: `chat-tab${hasMessages ? " has-messages" : ""}`,
             label: "💬",
@@ -170,25 +202,67 @@
             title: "Abrir chat",
             onClick: () => openChat(record),
         });
+
         const main = createElement("div", "picking-main");
         const identification = createElement("div", "picking-identification");
-        const reference = createElement("strong", "", record.pv || record.reference || "Sem referência");
-        const statusElement = createElement("span", `picking-status ${status.className}`, status.label);
+
+        const reference = createElement(
+            "strong",
+            "",
+            record.pv || record.reference || "Sem referência",
+        );
+
+        const statusElement = createElement(
+            "span",
+            `picking-status ${status.className}`,
+            status.label,
+        );
+
         const supplier = createElement("div", "client-info");
         const product = createElement("div", "product-info");
         const primaryActions = createElement("div", "picking-actions");
-        const secondaryActions = createElement("div", "secondary-actions hidden");
+        const secondaryActions = createElement(
+            "div",
+            "secondary-actions hidden",
+        );
 
-        identification.append(reference, statusElement);
+        identification.append(
+            reference,
+            statusElement,
+        );
+
         supplier.append(
-            createElement("strong", "", record.client || "Sem fornecedor"),
-            createElement("span", "", "Fornecedor"),
+            createElement(
+                "strong",
+                "",
+                record.client || "Sem fornecedor",
+            ),
+            createElement(
+                "span",
+                "",
+                "Fornecedor",
+            ),
         );
+
         product.append(
-            createElement("strong", "", "Produto"),
-            createElement("p", "", record.product || "Sem produtos"),
+            createElement(
+                "strong",
+                "",
+                "Produto",
+            ),
+            createElement(
+                "p",
+                "",
+                record.product || "Sem produtos",
+            ),
         );
-        main.append(identification, supplier, product);
+
+        main.append(
+            identification,
+            supplier,
+            product,
+        );
+
         primaryActions.append(
             createValidationAction(record),
             createQualityAction(record),
@@ -200,23 +274,50 @@
                 secondaryActions.append(action);
                 return action;
             },
+
             card,
+
             createAction,
-            createQualityAction: (className) => createQualityAction(record, className),
-            createValidationAction: (className, disabled) => createValidationAction(record, className, disabled),
+
+            createQualityAction: (className) =>
+                createQualityAction(record, className),
+
+            createValidationAction: (className, disabled) =>
+                createValidationAction(record, className, disabled),
+
             main,
-            openChat: () => openChat(record),
-            openQuality: () => openQuality(record),
-            openValidation: () => openValidation(record),
+
+            openChat: () =>
+                openChat(record),
+
+            openQuality: () =>
+                openQuality(record),
+
+            openValidation: () =>
+                openValidation(record),
+
             primaryActions,
+
             replacePrimaryActions(actions) {
                 primaryActions.replaceChildren(...actions);
             },
+
             secondaryActions,
         };
 
-        options.enhanceCard(card, record, context);
-        card.append(chatTab, main, primaryActions, secondaryActions);
+        options.enhanceCard(
+            card,
+            record,
+            context,
+        );
+
+        card.append(
+            chatTab,
+            main,
+            primaryActions,
+            secondaryActions,
+        );
+
         return card;
     }
 
@@ -226,26 +327,48 @@
         }
 
         const visibleRecords = records.filter((record) => (
-            recordMatchesFilter(record) && options.matchesRecord(record)
+            recordMatchesFilter(record) &&
+            options.matchesRecord(record)
         ));
-        elements.container.replaceChildren(...visibleRecords.map(createCard));
+
+        elements.container.replaceChildren(
+            ...visibleRecords.map(createCard),
+        );
+
         if (elements.pendingCount) {
             elements.pendingCount.textContent = formatCount(
-                records.filter((record) => !record.validated && !options.isInProgress(record)).length,
+                records.filter(
+                    (record) =>
+                        !record.validated &&
+                        !options.isInProgress(record),
+                ).length,
             );
         }
+
         if (elements.progressCount) {
             elements.progressCount.textContent = formatCount(
-                records.filter((record) => !record.validated && options.isInProgress(record)).length,
+                records.filter(
+                    (record) =>
+                        !record.validated &&
+                        options.isInProgress(record),
+                ).length,
             );
         }
+
         if (elements.section) {
-            elements.section.textContent = options.getSectionTitle(filter);
+            elements.section.textContent =
+                options.getSectionTitle(filter);
         }
+
         if (elements.resultCount) {
-            elements.resultCount.textContent = options.resultText(visibleRecords.length);
+            elements.resultCount.textContent =
+                options.resultText(visibleRecords.length);
         }
-        elements.emptyState?.classList.toggle("hidden", visibleRecords.length > 0);
+
+        elements.emptyState?.classList.toggle(
+            "hidden",
+            visibleRecords.length > 0,
+        );
     }
 
     function showLoading() {
@@ -254,14 +377,21 @@
     }
 
     function hideLoading() {
-        loadingRequests = Math.max(0, loadingRequests - 1);
+        loadingRequests = Math.max(
+            0,
+            loadingRequests - 1,
+        );
+
         if (loadingRequests === 0) {
             window.AppUI.hideLoading();
         }
     }
 
     function showToast(message, icon = "✓") {
-        window.AppUI.showToast(message, icon);
+        window.AppUI.showToast(
+            message,
+            icon,
+        );
     }
 
     async function runAction(operation) {
@@ -271,6 +401,7 @@
 
         actionInProgress = true;
         showLoading();
+
         try {
             return await operation();
         } finally {
@@ -283,25 +414,35 @@
         if (actionInProgress) {
             return;
         }
+
         selectedValidationRecord = record;
+
         options.onOpenValidation(record);
+
         if (elements.validationText) {
-            elements.validationText.textContent = options.validationText(record);
+            elements.validationText.textContent =
+                options.validationText(record);
         }
-        window.AppUI.openModal("validationModal");
+
+        window.AppUI.openModal(
+            "validationModal",
+        );
     }
 
     async function validateSelectedRecord() {
         const record = selectedValidationRecord;
+
         if (!record || actionInProgress) {
             return;
         }
+
         if (!await options.beforeValidate(record)) {
             return;
         }
 
         const button = elements.validationButton;
         const originalText = button?.textContent;
+
         if (button) {
             button.disabled = true;
             button.textContent = "VALIDANDO...";
@@ -309,19 +450,46 @@
 
         try {
             await runAction(async () => {
-                const response = await fetch(options.validateEndpoint(record), { method: "POST" });
-                const data = await response.json().catch(() => ({}));
+                const response = await fetch(
+                    options.validateEndpoint(record),
+                    {
+                        method: "POST",
+                    },
+                );
+
+                const data =
+                    await response.json().catch(() => ({}));
+
                 if (!response.ok) {
-                    throw new Error(data.detail || "Não foi possível validar o registro.");
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível validar o registro.",
+                    );
                 }
+
                 record.validated = true;
-                window.AppUI.closeModal("validationModal");
+
+                window.AppUI.closeModal(
+                    "validationModal",
+                );
+
                 render();
-                showToast(options.validationSuccessMessage(record));
+
+                showToast(
+                    options.validationSuccessMessage(record),
+                );
             });
         } catch (error) {
-            console.error("Erro ao validar registro:", error);
-            showToast(error.message || "Não foi possível validar o registro.", "!");
+            console.error(
+                "Erro ao validar registro:",
+                error,
+            );
+
+            showToast(
+                error.message ||
+                "Não foi possível validar o registro.",
+                "!",
+            );
         } finally {
             if (button) {
                 button.disabled = false;
@@ -331,32 +499,74 @@
     }
 
     function openQuality(record) {
-        if (actionInProgress || !elements.qualityForm) {
+        if (
+            actionInProgress ||
+            !elements.qualityForm
+        ) {
             return;
         }
+
         selectedQualityRecord = record;
+
         if (elements.qualityInfo) {
-            elements.qualityInfo.textContent = `${record.pv || record.reference} • ${record.product || ""}`;
+            elements.qualityInfo.textContent =
+                `${record.pv || record.reference} • ${record.product || ""}`;
         }
+
         elements.qualityForm.reset();
+
         selectedQualityCauses = [];
-        elements.partialQuantityGroup?.classList.add("hidden");
+
+        elements.partialQuantityGroup?.classList.add(
+            "hidden",
+        );
+
         renderQualityCauses();
-        window.AppUI.openModal("qualityModal");
+
+        window.AppUI.openModal(
+            "qualityModal",
+        );
     }
 
     async function submitQualityAlert(event) {
         event.preventDefault();
+
         const record = selectedQualityRecord;
+
         if (!record || actionInProgress) {
             return;
         }
 
-        const rejection = document.querySelector('input[name="reprovacao"]:checked')?.value;
-        const rejectedQuantity = Number(document.getElementById("quantidade_nao_conforme")?.value);
-        const description = document.getElementById("descricao_geral")?.value.trim();
-        if (!rejection || !description || (rejection === "parcial" && rejectedQuantity <= 0)) {
-            showToast("Preencha os campos obrigatórios do alerta.", "!");
+        const rejection =
+            document.querySelector(
+                'input[name="reprovacao"]:checked',
+            )?.value;
+
+        const rejectedQuantity =
+            Number(
+                document.getElementById(
+                    "quantidade_nao_conforme",
+                )?.value,
+            );
+
+        const description =
+            document.getElementById(
+                "descricao_geral",
+            )?.value.trim();
+
+        if (
+            !rejection ||
+            !description ||
+            (
+                rejection === "parcial" &&
+                rejectedQuantity <= 0
+            )
+        ) {
+            showToast(
+                "Preencha os campos obrigatórios do alerta.",
+                "!",
+            );
+
             return;
         }
 
@@ -364,31 +574,67 @@
             picking_id: record.id,
             causas_qa_id: [...selectedQualityCauses],
             reprovacao: rejection,
-            quantidade_nao_conforme: rejection === "parcial" ? rejectedQuantity : record.receivedQuantity,
+            quantidade_nao_conforme:
+                rejection === "parcial"
+                    ? rejectedQuantity
+                    : record.receivedQuantity,
             descricao_geral: description,
-            especificado_quality: document.getElementById("especificado_quality")?.value.trim() || "",
-            encontrado_quality: document.getElementById("encontrado_quality")?.value.trim() || "",
+            especificado_quality:
+                document.getElementById(
+                    "especificado_quality",
+                )?.value.trim() || "",
+            encontrado_quality:
+                document.getElementById(
+                    "encontrado_quality",
+                )?.value.trim() || "",
         };
 
         try {
             await runAction(async () => {
-                const response = await fetch("/api/quality-alert", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                const data = await response.json().catch(() => ({}));
+                const response = await fetch(
+                    "/api/quality-alert",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(payload),
+                    },
+                );
+
+                const data =
+                    await response.json().catch(() => ({}));
+
                 if (!response.ok) {
-                    throw new Error(data.detail || "Não foi possível registrar o alerta de qualidade.");
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível registrar o alerta de qualidade.",
+                    );
                 }
+
                 record.qualityAlert = payload;
-                window.AppUI.closeModal("qualityModal");
+
+                window.AppUI.closeModal(
+                    "qualityModal",
+                );
+
                 render();
-                showToast("ALERTA DE QUALIDADE REGISTRADO");
+
+                showToast(
+                    "ALERTA DE QUALIDADE REGISTRADO",
+                );
             });
         } catch (error) {
-            console.error("Erro ao registrar alerta de qualidade:", error);
-            showToast(error.message || "Não foi possível registrar o alerta de qualidade.", "!");
+            console.error(
+                "Erro ao registrar alerta de qualidade:",
+                error,
+            );
+
+            showToast(
+                error.message ||
+                "Não foi possível registrar o alerta de qualidade.",
+                "!",
+            );
         }
     }
 
@@ -396,18 +642,39 @@
         if (!elements.qualityCausesList) {
             return;
         }
-        elements.qualityCausesList.textContent = "CARREGANDO CAUSAS...";
+
+        elements.qualityCausesList.textContent =
+            "CARREGANDO CAUSAS...";
+
         try {
-            const response = await fetch("/api/quality-alert/causas");
-            const data = await response.json().catch(() => null);
-            if (!response.ok || !Array.isArray(data)) {
-                throw new Error("Não foi possível carregar as causas.");
+            const response = await fetch(
+                "/api/quality-alert/causas",
+            );
+
+            const data =
+                await response.json().catch(() => null);
+
+            if (
+                !response.ok ||
+                !Array.isArray(data)
+            ) {
+                throw new Error(
+                    "Não foi possível carregar as causas.",
+                );
             }
+
             qualityCauses = data;
+
             renderQualityCauses();
+
         } catch (error) {
-            console.error("Erro ao carregar causas:", error);
-            elements.qualityCausesList.textContent = "Não foi possível carregar as causas.";
+            console.error(
+                "Erro ao carregar causas:",
+                error,
+            );
+
+            elements.qualityCausesList.textContent =
+                "Não foi possível carregar as causas.";
         }
     }
 
@@ -415,137 +682,425 @@
         if (!elements.qualityCausesList) {
             return;
         }
-        elements.qualityCausesList.replaceChildren(...qualityCauses.map((cause) => {
-            const button = createElement("button", "cause-option");
-            button.type = "button";
-            button.classList.toggle("selected", selectedQualityCauses.includes(Number(cause.id)));
-            button.dataset.causeId = cause.id;
-            button.append(
-                createElement("span", "cause-check", "✓"),
-                createElement("span", "cause-option-name", cause.name),
-            );
-            button.addEventListener("click", (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const id = Number(cause.id);
-                selectedQualityCauses = selectedQualityCauses.includes(id)
-                    ? selectedQualityCauses.filter((item) => item !== id)
-                    : [...selectedQualityCauses, id];
-                renderQualityCauses();
-            });
-            return button;
-        }));
+
+        elements.qualityCausesList.replaceChildren(
+            ...qualityCauses.map((cause) => {
+                const button = createElement(
+                    "button",
+                    "cause-option",
+                );
+
+                button.type = "button";
+
+                button.classList.toggle(
+                    "selected",
+                    selectedQualityCauses.includes(
+                        Number(cause.id),
+                    ),
+                );
+
+                button.dataset.causeId =
+                    cause.id;
+
+                button.append(
+                    createElement(
+                        "span",
+                        "cause-check",
+                        "✓",
+                    ),
+                    createElement(
+                        "span",
+                        "cause-option-name",
+                        cause.name,
+                    ),
+                );
+
+                button.addEventListener(
+                    "click",
+                    (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const id =
+                            Number(cause.id);
+
+                        selectedQualityCauses =
+                            selectedQualityCauses.includes(id)
+                                ? selectedQualityCauses.filter(
+                                    (item) => item !== id,
+                                )
+                                : [
+                                    ...selectedQualityCauses,
+                                    id,
+                                ];
+
+                        renderQualityCauses();
+                    },
+                );
+
+                return button;
+            }),
+        );
 
         if (elements.selectedCauses) {
-            const selected = selectedQualityCauses
-                .map((id) => qualityCauses.find((cause) => Number(cause.id) === id))
-                .filter(Boolean)
-                .map((cause) => createElement("span", "selected-cause", cause.name));
+            const selected =
+                selectedQualityCauses
+                    .map((id) =>
+                        qualityCauses.find(
+                            (cause) =>
+                                Number(cause.id) === id,
+                        ),
+                    )
+                    .filter(Boolean)
+                    .map((cause) =>
+                        createElement(
+                            "span",
+                            "selected-cause",
+                            cause.name,
+                        ),
+                    );
+
             elements.selectedCauses.replaceChildren(
-                ...(selected.length ? selected : [
-                    createElement("span", "cause-placeholder", "Selecione uma ou mais causas..."),
-                ]),
+                ...(selected.length
+                    ? selected
+                    : [
+                        createElement(
+                            "span",
+                            "cause-placeholder",
+                            "Selecione uma ou mais causas...",
+                        ),
+                    ]),
             );
         }
     }
 
     function toggleQualityCausesDropdown() {
-        const dropdown = elements.qualityCausesDropdown;
-        const selector = elements.qualityCausesSelector;
+        const dropdown =
+            elements.qualityCausesDropdown;
+
+        const selector =
+            elements.qualityCausesSelector;
+
         if (!dropdown || !selector) {
             return;
         }
-        const isOpening = dropdown.classList.contains("hidden");
-        dropdown.classList.toggle("hidden", !isOpening);
-        selector.classList.toggle("open", isOpening);
+
+        const isOpening =
+            dropdown.classList.contains("hidden");
+
+        dropdown.classList.toggle(
+            "hidden",
+            !isOpening,
+        );
+
+        selector.classList.toggle(
+            "open",
+            isOpening,
+        );
     }
 
     function closeQualityCausesDropdown() {
-        elements.qualityCausesDropdown?.classList.add("hidden");
-        elements.qualityCausesSelector?.classList.remove("open");
+        elements.qualityCausesDropdown?.classList.add(
+            "hidden",
+        );
+
+        elements.qualityCausesSelector?.classList.remove(
+            "open",
+        );
     }
 
-    function openChat(record) {
-        selectedChatRecord = record;
-        if (!elements.chatPanel || !elements.chatInfo || !elements.chatMessages || !elements.chatInput) {
+    // ####################################
+    // # CHAT DO RECEBIMENTO
+    // ####################################
+
+    async function openChat(record) {
+        if (!record || !elements.chatPanel) {
             return;
         }
-        elements.chatInfo.textContent = `${record.pv || record.reference} • ${record.product || ""}`;
-        elements.chatPanel.classList.remove("hidden");
-        elements.chatPanel.setAttribute("aria-hidden", "false");
-        renderChat();
-        window.setTimeout(() => elements.chatInput.focus(), 0);
+
+        selectedChatRecord = record;
+
+        if (elements.chatInfo) {
+            elements.chatInfo.textContent =
+                `${record.pv || record.reference || ""} • ${record.product || ""}`;
+        }
+
+        if (elements.chatMessages) {
+            elements.chatMessages.replaceChildren(
+                createElement(
+                    "div",
+                    "chat-empty",
+                    "CARREGANDO MENSAGENS...",
+                ),
+            );
+        }
+
+        elements.chatPanel.classList.remove(
+            "hidden",
+        );
+
+        elements.chatPanel.setAttribute(
+            "aria-hidden",
+            "false",
+        );
+
+        try {
+            const response = await fetch(
+                `/api/recebimento-qualidade/pickings/${record.id}/chat`,
+                {
+                    method: "GET",
+                    headers: {
+                        Accept: "application/json",
+                    },
+                    cache: "no-store",
+                },
+            );
+
+            const data =
+                await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.detail ||
+                    "Não foi possível carregar o histórico do chat.",
+                );
+            }
+
+            const messages =
+                Array.isArray(data)
+                    ? data.map((message) => ({
+                        id: message.id,
+                        sender: "received",
+                        author:
+                            message.author ||
+                            "Sistema",
+                        text:
+                            message.text ||
+                            "",
+                        date:
+                            message.date ||
+                            null,
+                    }))
+                    : [];
+
+            conversations.set(
+                record.id,
+                messages,
+            );
+
+            renderChat();
+
+            render();
+
+        } catch (error) {
+            console.error(
+                "Erro ao carregar chat:",
+                error,
+            );
+
+            conversations.set(
+                record.id,
+                [],
+            );
+
+            if (elements.chatMessages) {
+                elements.chatMessages.replaceChildren(
+                    createElement(
+                        "div",
+                        "chat-empty",
+                        error.message ||
+                        "Não foi possível carregar as mensagens.",
+                    ),
+                );
+            }
+        }
+
+        setTimeout(() => {
+            elements.chatInput?.focus();
+        }, 100);
     }
 
     function closeChat() {
         selectedChatRecord = null;
-        elements.chatPanel?.classList.add("hidden");
-        elements.chatPanel?.setAttribute("aria-hidden", "true");
+
+        elements.chatPanel?.classList.add(
+            "hidden",
+        );
+
+        elements.chatPanel?.setAttribute(
+            "aria-hidden",
+            "true",
+        );
     }
 
     function renderChat() {
-        if (!selectedChatRecord || !elements.chatMessages) {
+        if (
+            !selectedChatRecord ||
+            !elements.chatMessages
+        ) {
             return;
         }
-        const messages = conversations.get(selectedChatRecord.id) || [];
-        elements.chatMessages.replaceChildren(...messages.map((message) => {
-            const item = createElement(
-                "div",
-                `chat-message ${message.sender === "user" ? "sent" : "received"}`,
-            );
-            item.append(
-                createElement(
-                    "span",
-                    "chat-message-author",
-                    message.sender === "user" ? "Você" : "Sistema",
-                ),
-                createElement("span", "chat-message-text", message.text),
-            );
-            return item;
-        }));
+
+        const messages =
+            conversations.get(
+                selectedChatRecord.id,
+            ) || [];
+
+        elements.chatMessages.replaceChildren(
+            ...messages.map((message) => {
+                const item = createElement(
+                    "div",
+                    `chat-message ${
+                        message.sender === "user"
+                            ? "sent"
+                            : "received"
+                    }`,
+                );
+
+                const author =
+                    message.author ||
+                    (
+                        message.sender === "user"
+                            ? "Você"
+                            : "Sistema"
+                    );
+
+                item.append(
+                    createElement(
+                        "span",
+                        "chat-message-author",
+                        author,
+                    ),
+                    createElement(
+                        "span",
+                        "chat-message-text",
+                        message.text,
+                    ),
+                );
+
+                return item;
+            }),
+        );
+
         if (messages.length === 0) {
             elements.chatMessages.append(
-                createElement("div", "chat-empty", "Nenhuma mensagem ainda. Inicie uma conversa sobre este registro."),
+                createElement(
+                    "div",
+                    "chat-empty",
+                    "Nenhuma mensagem ainda. Inicie uma conversa sobre este registro.",
+                ),
             );
         }
-        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+        elements.chatMessages.scrollTop =
+            elements.chatMessages.scrollHeight;
     }
 
-    function sendChatMessage() {
-        if (!selectedChatRecord || !elements.chatInput) {
+    async function sendChatMessage() {
+        if (
+            !selectedChatRecord ||
+            !elements.chatInput
+        ) {
             return;
         }
-        const text = elements.chatInput.value.trim();
+
+        const text =
+            elements.chatInput.value.trim();
+
         if (!text) {
             return;
         }
-        const recordId = selectedChatRecord.id;
-        const messages = conversations.get(recordId) || [];
-        messages.push({ sender: "user", text });
-        conversations.set(recordId, messages);
-        elements.chatInput.value = "";
-        renderChat();
-        render();
 
-        window.setTimeout(() => {
-            const updatedMessages = conversations.get(recordId) || [];
-            updatedMessages.push({
-                sender: "system",
-                text: "Mensagem registrada no chat. A integração com o backend será adicionada posteriormente.",
-            });
-            conversations.set(recordId, updatedMessages);
-            if (selectedChatRecord?.id === recordId) {
-                renderChat();
+        if (actionInProgress) {
+            return;
+        }
+
+        const pickingId =
+            selectedChatRecord.id;
+
+        elements.chatInput.disabled = true;
+
+        try {
+            const response = await fetch(
+                `/api/recebimento-qualidade/pickings/${pickingId}/chat`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                    }),
+                },
+            );
+
+            const data =
+                await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.detail ||
+                    "Não foi possível registrar a mensagem.",
+                );
             }
+
+            elements.chatInput.value = "";
+
+            const messages =
+                Array.isArray(data?.messages)
+                    ? data.messages.map((message) => ({
+                        id: message.id,
+                        sender: "received",
+                        author:
+                            message.author ||
+                            "Sistema",
+                        text:
+                            message.text ||
+                            "",
+                        date:
+                            message.date ||
+                            null,
+                    }))
+                    : [];
+
+            conversations.set(
+                pickingId,
+                messages,
+            );
+
+            renderChat();
+
             render();
-        }, 500);
+
+        } catch (error) {
+            console.error(
+                "Erro ao enviar mensagem:",
+                error,
+            );
+
+            showToast(
+                error.message ||
+                "Não foi possível registrar a mensagem.",
+                "!",
+            );
+
+        } finally {
+            elements.chatInput.disabled = false;
+            elements.chatInput.focus();
+        }
     }
 
     async function runRefresh() {
-        if (actionInProgress || typeof options.refreshRecords !== "function") {
+        if (
+            actionInProgress ||
+            typeof options.refreshRecords !== "function"
+        ) {
             return;
         }
+
         actionInProgress = true;
+
         try {
             await options.refreshRecords({
                 getRecords: () => records,
@@ -559,32 +1114,64 @@
     }
 
     function initializeQualityAlert() {
-        document.querySelectorAll('input[name="reprovacao"]').forEach((input) => {
-            input.addEventListener("change", () => {
-                elements.partialQuantityGroup?.classList.toggle(
-                    "hidden",
-                    input.value !== "parcial" || !input.checked,
+        document
+            .querySelectorAll(
+                'input[name="reprovacao"]',
+            )
+            .forEach((input) => {
+                input.addEventListener(
+                    "change",
+                    () => {
+                        elements.partialQuantityGroup?.classList.toggle(
+                            "hidden",
+                            input.value !== "parcial" ||
+                            !input.checked,
+                        );
+                    },
                 );
             });
-        });
-        elements.qualityCausesSelector?.addEventListener("click", toggleQualityCausesDropdown);
-        elements.qualityCausesSelector?.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                toggleQualityCausesDropdown();
-            }
-        });
-        document.addEventListener("click", (event) => {
-            if (
-                elements.qualityCausesSelector
-                && elements.qualityCausesDropdown
-                && !elements.qualityCausesSelector.contains(event.target)
-                && !elements.qualityCausesDropdown.contains(event.target)
-            ) {
-                closeQualityCausesDropdown();
-            }
-        });
-        elements.qualityForm?.addEventListener("submit", submitQualityAlert);
+
+        elements.qualityCausesSelector?.addEventListener(
+            "click",
+            toggleQualityCausesDropdown,
+        );
+
+        elements.qualityCausesSelector?.addEventListener(
+            "keydown",
+            (event) => {
+                if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+                    event.preventDefault();
+                    toggleQualityCausesDropdown();
+                }
+            },
+        );
+
+        document.addEventListener(
+            "click",
+            (event) => {
+                if (
+                    elements.qualityCausesSelector &&
+                    elements.qualityCausesDropdown &&
+                    !elements.qualityCausesSelector.contains(
+                        event.target,
+                    ) &&
+                    !elements.qualityCausesDropdown.contains(
+                        event.target,
+                    )
+                ) {
+                    closeQualityCausesDropdown();
+                }
+            },
+        );
+
+        elements.qualityForm?.addEventListener(
+            "submit",
+            submitQualityAlert,
+        );
+
         loadQualityCauses();
     }
 
@@ -592,45 +1179,98 @@
         if (initialized) {
             return;
         }
+
         initialized = true;
 
         try {
-            const parsedRecords = JSON.parse(elements.records?.textContent || "[]");
-            replaceRecords(parsedRecords, { renderRecords: false });
+            const parsedRecords =
+                JSON.parse(
+                    elements.records?.textContent || "[]",
+                );
+
+            replaceRecords(
+                parsedRecords,
+                {
+                    renderRecords: false,
+                },
+            );
+
         } catch (error) {
-            console.error("Registros de inventário inválidos:", error);
-            showToast("Não foi possível carregar os registros.", "!");
+            console.error(
+                "Registros de inventário inválidos:",
+                error,
+            );
+
+            showToast(
+                "Não foi possível carregar os registros.",
+                "!",
+            );
         }
 
-        document.querySelectorAll(".dashboard-card").forEach((button) => {
-            button.addEventListener("click", () => {
-                if (actionInProgress) {
-                    return;
-                }
-                filter = button.dataset.filter;
-                document.querySelectorAll(".dashboard-card").forEach((card) => {
-                    card.classList.toggle("active", card === button);
-                });
-                render();
+        document
+            .querySelectorAll(".dashboard-card")
+            .forEach((button) => {
+                button.addEventListener(
+                    "click",
+                    () => {
+                        if (actionInProgress) {
+                            return;
+                        }
+
+                        filter =
+                            button.dataset.filter;
+
+                        document
+                            .querySelectorAll(
+                                ".dashboard-card",
+                            )
+                            .forEach((card) => {
+                                card.classList.toggle(
+                                    "active",
+                                    card === button,
+                                );
+                            });
+
+                        render();
+                    },
+                );
             });
-        });
-        elements.validationButton?.addEventListener("click", validateSelectedRecord);
-        elements.chatCloseButton?.addEventListener("click", closeChat);
-        elements.chatForm?.addEventListener("submit", (event) => {
-            event.preventDefault();
-            sendChatMessage();
-        });
+
+        elements.validationButton?.addEventListener(
+            "click",
+            validateSelectedRecord,
+        );
+
+        elements.chatCloseButton?.addEventListener(
+            "click",
+            closeChat,
+        );
+
+        elements.chatForm?.addEventListener(
+            "submit",
+            (event) => {
+                event.preventDefault();
+                sendChatMessage();
+            },
+        );
+
         initializeQualityAlert();
 
-        if (typeof options.refreshRecords === "function") {
-            window.AppUI.setPullToRefreshHandler(runRefresh);
+        if (
+            typeof options.refreshRecords === "function"
+        ) {
+            window.AppUI.setPullToRefreshHandler(
+                runRefresh,
+            );
         }
+
         options.onInitialized({
             getRecord,
             getRecords: () => records,
             render,
             replaceRecords,
         });
+
         render();
     }
 
@@ -651,8 +1291,16 @@
         showToast,
     });
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initialize, { once: true });
+    if (
+        document.readyState === "loading"
+    ) {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialize,
+            {
+                once: true,
+            },
+        );
     } else {
         initialize();
     }
