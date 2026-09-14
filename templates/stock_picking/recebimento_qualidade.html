@@ -1,732 +1,82 @@
-{% extends "base/base.html" %}
+{% extends "stock_picking/base.html" %}
 
 {% block title %}Recebimento Qualidade{% endblock %}
 
-{% block body_attributes %} data-stage-key="{{ stage.key }}" data-theme-storage-key="appTheme"{% endblock %}
-
-{% block head %}
+{% block inventory_head %}
     <link
         rel="stylesheet"
         href="{{ url_for('static', path='css/stock_picking/recebimento_qualidade.css') }}?v={{ static_asset_version('css/stock_picking/recebimento_qualidade.css') }}"
     >
 {% endblock %}
 
-{% block content %}
-
-    <!-- =====================================================
-         CABEÇALHO
-    ====================================================== -->
-
-    <header class="topbar">
-
-        <div class="brand">
-            <a class="brand-icon" href="/inventario">↩</a>
-
-            <div>
-                <h1>RECEBIMENTO</h1>
-                <span>QUALIDADE</span>
-            </div>
-        </div>
-
-        <div class="topbar-actions" data-theme-toggle-container>
-
-            <div class="search-area">
-
-            <input
-                type="text"
-                id="searchInput"
-                placeholder="Pesquisar NF..."
-                autocomplete="off"
-            >
-
-            <button id="clearSearch" class="clear-search">
-                ×
-            </button>
-
-            <button id="searchButton" class="search-button">
-                🔍
-            </button>
-
-            </div>
-
-        </div>
-
-    </header>
-
-
-    <!-- =====================================================
-         DASHBOARD
-    ====================================================== -->
-
-    <section class="dashboard">
-
-        <!--button class="dashboard-card total" data-filter="todos">
-
-            <span class="dashboard-label">
-                TOTAL
-            </span>
-
-            <strong id="totalCount">
-                0
-            </strong>
-
-        </button-->
-
-
-        <button class="dashboard-card pending active" data-filter="pendentes">
-
-            <span class="dashboard-label">
-                PENDENTES
-            </span>
-
-            <strong id="pendingCount">
-                0
-            </strong>
-
-        </button>
-
-
-        <button class="dashboard-card progress" data-filter="andamento">
-
-            <span class="dashboard-label">
-                EM ANDAMENTO
-            </span>
-
-            <strong id="progressCount">
-                0
-            </strong>
-
-        </button>
-
-
-        <!--button class="dashboard-card completed" data-filter="concluidos">
-
-            <span class="dashboard-label">
-                CONCLUÍDOS
-            </span>
-
-            <strong id="completedCount">
-                0
-            </strong>
-
-        </button-->
-
-    </section>
-
-
-    <!-- =====================================================
-         CONTEÚDO
-    ====================================================== -->
-
-    <main class="main-content">
-
-        <div class="content-header">
-
-            <div>
-                <h2 id="currentSection">
-                    PEDIDOS PENDENTES
-                </h2>
-
-                <span id="resultCount">
-                    0 pedidos
-                </span>
-            </div>
-
-        </div>
-
-
-        <section
-            id="pickingsContainer"
-            class="pickings-container"
-        ></section>
-
-
-        <div
-            id="emptyState"
-            class="empty-state hidden"
-        >
-
-            <div class="empty-icon">
-                ✓
-            </div>
-
-            <h3>NENHUM PEDIDO ENCONTRADO</h3>
-
-            <p>
-                Não existem pedidos nesta categoria.
-            </p>
-
-        </div>
-
-    </main>
-
-    <!-- =========================================================
-     CHAT DO RECEBIMENTO
-    ========================================================= -->
-
-    <aside
-        id="chatPanel"
-        class="chat-panel hidden"
-        aria-hidden="true"
-    >
-
-        <div class="chat-header">
-
-            <div class="chat-header-info">
-
-                <span class="chat-header-label">
-                    CHAT DO RECEBIMENTO
-                </span>
-
-                <strong id="chatPickingInfo">
-                    -
-                </strong>
-
-            </div>
-
-            <button
-                type="button"
-                class="chat-close-button"
-                data-close="chatPanel"
-                aria-label="Fechar chat"
-                title="Fechar chat"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div
-            id="chatMessages"
-            class="chat-messages"
-        >
-        </div>
-
-
-        <form
-            id="chatForm"
-            class="chat-input-area"
-        >
-
-            <input
-                type="text"
-                id="chatInput"
-                class="chat-input"
-                placeholder="Digite uma mensagem..."
-                autocomplete="off"
-                maxlength="500"
-            >
-
-            <button
-                type="submit"
-                id="chatSendButton"
-                class="chat-send-button"
-                aria-label="Enviar mensagem"
-                title="Enviar mensagem"
-            >
-                ➤
-            </button>
-
-        </form>
-
-    </aside>
-
-    <!-- =====================================================
-         MODAL DE FOTOS
-    ====================================================== -->
-
-    <div
-        id="photoModal"
-        class="modal-overlay hidden"
-        data-close-on-backdrop="false"
-    >
-
-        <div class="modal photo-modal">
-
-            <div class="modal-header">
-
-                <div>
-                    <span class="modal-kicker">
-                        REGISTRO FOTOGRÁFICO
-                    </span>
-
-                    <h2>
-                        FOTOS DO PRODUTO
-                    </h2>
-
-                    <p id="photoPickingInfo">
-                        PV
-                    </p>
-                </div>
-
-                <button
-                    class="close-modal"
-                    data-close="photoModal"
-                >
-                    ×
-                </button>
-
-            </div>
-
-
-            <div class="photo-progress">
-
-                <span id="photoProgressText">
-                    0 DE 3 FOTOS
-                </span>
-
-                <div class="progress-track">
-                    <div
-                        id="photoProgressBar"
-                        class="progress-fill"
-                    ></div>
-                </div>
-
-            </div>
-
-            <div
-                id="photoInstruction"
-                class="photo-instruction"
-            >
-                Tirar foto da EMBALAGEM    
-            </div>
-
-
-            <div
-                id="photoGrid"
-                class="photo-grid"
-            >
-
-                <label
-                    class="add-photo-button"
-                    for="photoCameraInput"
-                >
-
-                    <div class="camera-icon">
-                        📷
-                    </div>
-
-                    <span>
-                        TIRAR FOTO
-                    </span>
-
-                </label>
-
-            </div>
-
-
-            <div class="photo-message" id="photoMessage">
-                Clique em uma câmera para registrar a foto.
-            </div>
-
-
-            <div class="modal-footer">
-
-                <button
-                    class="secondary-button"
-                    data-close="photoModal"
-                >
-                    FECHAR
-                </button>
-
-                <button
-                    id="finishPhotosButton"
-                    class="primary-button"
-                    disabled
-                >
-                    REGISTRAR FOTOS
-                </button>
-
-            </div>
-
-        </div>
-
+{% block inventory_header_actions %}
+    <div class="search-area">
+        <input type="text" id="searchInput" placeholder="Pesquisar NF..." autocomplete="off">
+        <button id="clearSearch" class="clear-search" type="button">×</button>
+        <button id="searchButton" class="search-button" type="button">🔍</button>
     </div>
-
-
-    <!-- =====================================================
-         SELETOR DE FOTO
-
-         Solicita a câmera traseira. O navegador pode
-         disponibilizar outras fontes de imagem no seletor nativo.
-    ====================================================== -->
-
-    <input
-        type="file"
-        id="photoCameraInput"
-        class="photo-file-input"
-        accept="image/*"
-        capture="environment"
-    >
-
-
-    <!-- =====================================================
-         MODAL DE ALERTA DE QUALIDADE
-    ====================================================== -->
-
-    <div
-        id="qualityModal"
-        class="modal-overlay hidden"
-    >
-
-        <div class="modal quality-modal">
-
-            <div class="modal-header">
-
-                <div>
-
-                    <span class="modal-kicker quality-kicker">
-                        ALERTA DE QUALIDADE
-                    </span>
-
-                    <h2>
-                        REGISTRAR PROBLEMA
-                    </h2>
-
-                    <p id="qualityPickingInfo">
-                        PV
-                    </p>
-
-                </div>
-
-                <button
-                    class="close-modal"
-                    data-close="qualityModal"
-                >
-                    ×
-                </button>
-
-            </div>
-
-
-            <form id="qualityForm">
-
-                <div class="form-section">
-
-                    <label>
-                        REPROVAÇÃO
-                    </label>
-
-                    <div class="rejection-options">
-
-                        <label class="radio-option">
-
-                            <input
-                                type="radio"
-                                name="reprovacao"
-                                value="total"
-                                checked
-                            >
-
-                            <span>
-                                REPROVAÇÃO COMPLETA
-                            </span>
-
-                        </label>
-
-
-                        <label class="radio-option">
-
-                            <input
-                                type="radio"
-                                name="reprovacao"
-                                value="parcial"
-                            >
-
-                            <span>
-                                PARCIAL
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    id="partialQuantityGroup"
-                    class="form-group hidden"
-                >
-
-                    <label for="quantidade_nao_conforme">
-                        QUANTIDADE REPROVADA
-                    </label>
-
-                    <input
-                        id="quantidade_nao_conforme"
-                        type="number"
-                        min="0"
-                        placeholder="Digite a quantidade"
-                    >
-
-                </div>
-
-                <div class="form-group">
-
-                    <label for="causas_nao_conformidade">
-                        CAUSAS DA NÃO CONFORMIDADE
-                    </label>
-
-                    <div
-                        id="causas_nao_conformidade"
-                        class="cause-selector"
-                        tabindex="0"
-                    >
-
-                        <div
-                            id="selectedCauses"
-                            class="selected-causes"
-                        >
-
-                            <span class="cause-placeholder">
-                                Selecione uma ou mais causas...
-                            </span>
-
-                        </div>
-
-                        <span class="cause-selector-arrow">
-                            ▾
-                        </span>
-
-                    </div>
-
-                    <div
-                        id="causesDropdown"
-                        class="causes-dropdown hidden"
-                    >
-
-                        <div
-                            id="causesList"
-                            class="causes-list"
-                        ></div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="descricao_geral">
-                        DESCRIÇÃO GERAL
-                    </label>
-
-                    <textarea
-                        id="descricao_geral"
-                        rows="3"
-                        placeholder="Descreva o problema encontrado..."
-                    ></textarea>
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="especificado_quality">
-                        ESPECIFICADO
-                    </label>
-
-                    <textarea
-                        id="especificado_quality"
-                        rows="2"
-                        placeholder="O que veio no pedido?"
-                    ></textarea>
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="encontrado_quality">
-                        ENCONTRADO
-                    </label>
-
-                    <textarea
-                        id="encontrado_quality"
-                        rows="2"
-                        placeholder="O que deveria ter vindo?"
-                    ></textarea>
-
-                </div>
-
-
-                <div class="modal-footer">
-
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        data-close="qualityModal"
-                    >
-                        CANCELAR
-                    </button>
-
-                    <button
-                        type="submit"
-                        class="quality-button"
-                    >
-                        REGISTRAR ALERTA
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-
-    </div>
-
-    <!-- =====================================================
-         MODAL DE LEITURA DE CÓDIGO DE BARRAS
-    ====================================================== -->
-
-    <div
-        id="barcodeScannerModal"
-        class="modal-overlay hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="barcodeScannerTitle"
-    >
-
-        <div class="modal barcode-scanner-modal">
-
-            <div class="modal-header">
-
-                <div>
-                    <span class="modal-kicker">
-                        LEITURA PELA CÂMERA
-                    </span>
-
-                    <h2 id="barcodeScannerTitle">
-                        LER CÓDIGO DE BARRAS
-                    </h2>
-
-                    <p>
-                        Posicione o código da nota fiscal dentro da área de leitura.
-                    </p>
-                </div>
-
-                <button
-                    class="close-modal"
-                    data-close="barcodeScannerModal"
-                    type="button"
-                    aria-label="Fechar leitor"
-                >
-                    ×
-                </button>
-
-            </div>
-
-            <div class="barcode-camera-container">
-                <video
-                    id="barcodeScannerVideo"
-                    autoplay
-                    muted
-                    playsinline
-                ></video>
-
-                <div class="barcode-scanner-guide" aria-hidden="true"></div>
-            </div>
-
-            <p
-                id="barcodeScannerStatus"
-                class="barcode-scanner-status"
-                role="status"
-            >
-                Iniciando câmera...
-            </p>
-
-            <div class="modal-footer">
-                <button
-                    class="secondary-button"
-                    data-close="barcodeScannerModal"
-                    type="button"
-                >
-                    CANCELAR
-                </button>
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- =====================================================
-         MODAL DE VALIDAÇÃO
-    ====================================================== -->
-
-    <div
-        id="validationModal"
-        class="modal-overlay hidden"
-    >
-
-        <div class="modal action-modal">
-
-            <div class="action-icon validation-icon">
-                ✓
-            </div>
-
-            <span class="modal-kicker">
-                FINALIZAÇÃO
-            </span>
-
-            <h2>
-                VALIDAR PEDIDO
-            </h2>
-
-            <p id="validationText">
-                Deseja realmente validar este pedido?
-            </p>
-
-            <div
-                id="quantityWarning"
-                class="quantity-warning hidden"
-            >
-
-                ⚠️ A quantidade recebida é menor que a
-                quantidade esperada.
-
-                <strong>
-                    Tem certeza que deseja prosseguir
-                    com a quantidade menor?
-                </strong>
-
-            </div>
-
-            <div class="modal-footer">
-
-                <button
-                    class="secondary-button"
-                    data-close="validationModal"
-                >
-                    CANCELAR
-                </button>
-
-                <button
-                    id="confirmValidation"
-                    class="primary-button"
-                >
-                    VALIDAR PEDIDO
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
 {% endblock %}
 
-{% block scripts %}
-    <script id="qualityRecords" type="application/json">
-        {{ records["records"] | tojson }}
-    </script>
+{% block inventory_validation_content %}
+    <div id="quantityWarning" class="quantity-warning hidden">
+        ⚠️ A quantidade recebida é menor que a quantidade esperada.
+        <strong>Tem certeza que deseja prosseguir com a quantidade menor?</strong>
+    </div>
+{% endblock %}
 
-    <script
-        src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"
-    ></script>
+{% block inventory_modals %}
+    <div id="photoModal" class="modal-overlay hidden" data-close-on-backdrop="false">
+        <div class="modal photo-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">REGISTRO FOTOGRÁFICO</span>
+                    <h2>FOTOS DO PRODUTO</h2>
+                    <p id="photoPickingInfo">-</p>
+                </div>
+                <button class="close-modal" type="button" data-close="photoModal">×</button>
+            </div>
+            <div class="photo-progress">
+                <span id="photoProgressText">0 DE 3 FOTOS</span>
+                <div class="progress-track"><div id="photoProgressBar" class="progress-fill"></div></div>
+            </div>
+            <div id="photoInstruction" class="photo-instruction">Tirar foto da EMBALAGEM</div>
+            <div id="photoGrid" class="photo-grid"></div>
+            <div class="photo-message" id="photoMessage"></div>
+            <div class="modal-footer">
+                <button class="secondary-button" type="button" data-close="photoModal">FECHAR</button>
+                <button id="finishPhotosButton" class="primary-button" type="button" disabled>REGISTRAR FOTOS</button>
+            </div>
+        </div>
+    </div>
+    <input id="photoCameraInput" class="photo-file-input" type="file" accept="image/*" capture="environment">
+
+    <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal barcode-scanner-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">LEITURA PELA CÂMERA</span>
+                    <h2>LER CÓDIGO DE BARRAS</h2>
+                    <p>Posicione o código da nota fiscal dentro da área de leitura.</p>
+                </div>
+                <button class="close-modal" type="button" data-close="barcodeScannerModal">×</button>
+            </div>
+            <div class="barcode-camera-container">
+                <video id="barcodeScannerVideo" autoplay muted playsinline></video>
+                <div class="barcode-scanner-guide" aria-hidden="true"></div>
+            </div>
+            <p id="barcodeScannerStatus" class="barcode-scanner-status" role="status"></p>
+            <div class="modal-footer"><button class="secondary-button" type="button" data-close="barcodeScannerModal">CANCELAR</button></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block inventory_scripts %}
+    <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"></script>
     <script
         src="{{ url_for('static', path='js/stock_picking/recebimento_qualidade.js') }}?v={{ static_asset_version('js/stock_picking/recebimento_qualidade.js') }}"
     ></script>
+{% endblock %}
+
+{% block inventory_base_script %}
+    {{ super() }}
 {% endblock %}
