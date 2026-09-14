@@ -248,6 +248,39 @@ def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: Odoo
     """Recebe o código de barras lido para o picking informado."""
     return InventoryService.preencher_destino_estq_transitorio(client, picking_id, data.barcode)
 
+
+
+####################################
+#  CHAT DO RECEBIMENTO
+####################################
+
+@router.get("/api/recebimento-qualidade/pickings/{picking_id}/chat")
+def get_picking_chat(picking_id: int, client: OdooClient = Depends(get_odoo_client),):
+
+    """
+    Retorna o histórico do Chatter do picking.
+    """
+
+    return InventoryService.list_chat_messages(client, picking_id)
+
+
+@router.post("/api/recebimento-qualidade/pickings/{picking_id}/chat")
+def post_picking_chat(picking_id: int,data: Dict[str, Any] = Body(...),client: OdooClient = Depends(get_odoo_client),):
+
+    """
+    Publica uma mensagem no Chatter do picking.
+    """
+
+    message = data.get("message", "")
+
+    return InventoryService.post_chat_message(
+        client,
+        picking_id,
+        message,
+    )
+
+
+
 ####################################
 #  REFRESH DOS PICKINGS
 ####################################

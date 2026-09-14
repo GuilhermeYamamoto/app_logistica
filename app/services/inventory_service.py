@@ -11,6 +11,9 @@ from app.core.auth import OdooClient
 import json
 import uuid
 
+import re
+from html import unescape
+
 
 class InventoryService:
     """Serviço responsável por lógica de inventário."""
@@ -668,3 +671,139 @@ class InventoryService:
             "picking_id": picking_id,
             "barcode": barcode,
         }
+
+
+
+        ####################################
+    #  CHAT DO RECEBIMENTO
+    ####################################
+
+    @staticmethod
+    def list_chat_messages(client: OdooClient, picking_id: int):
+        """
+        Retorna o histórico de mensagens do Chatter do picking.
+        """
+
+        try:
+            picking = client.execute(
+                "stock.picking",
+                "search_read",
+                [("id", "=", picking_id)],
+                fields=["message_ids"],
+                limit=1,
+            )
+
+            if not picking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Picking não encontrado."
+                )
+
+            message_ids = picking[0].get("message_ids") or []
+
+            if not message_ids:
+                return []
+
+            messages = client.execute(
+                "mail.message",
+                "search_read",
+                [("id", "in", message_ids)],
+                fields=[
+                    "id",
+                    "body",
+                    "author_id",
+                    "date",
+                ],
+                order="date asc, id asc",
+            )
+
+            result = []
+
+            for message in messages:
+                body = message.get("body") or ""
+
+                # O Chatter normalmente armazena o body como HTML.
+                # Converte para texto simples para exibição no chat.
+                body = re.sub(r"<[^>]+>", "", body)
+                body = unescape(body).strip()
+
+                if not body:
+                    continue
+
+                author = message.get("author_id")
+
+                result.append({
+                    "id": message["id"],
+                    "text": body,
+                    "author": (
+                        author[1]
+                        if isinstance(author, (list, tuple)) and len(author) > 1
+                        else "Sistema"
+                    ),
+                    "date": message.get("date"),
+                })
+
+            return result
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível consultar o histórico do chat."
+            ) from error
+
+
+    @staticmethod
+    def post_chat_message(client: OdooClient, picking_id: int, message: str,):
+
+        """
+        Publica uma mensagem no Chatter do picking.
+        """
+
+        message = (message or "").strip()
+
+        if not message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A mensagem não pode estar vazia."
+            )
+
+        try:
+            picking = client.execute("stock.picking", "search_read", [("id", "=", picking_id)],
+                fields=["id"],
+                limit=1,
+            )
+
+            if not picking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Picking não encontrado."
+                )
+
+            client.execute("stock.picking", "message_post", [picking_id],
+                body=message,
+                message_type="comment",
+                subtype_xmlid="mail.mt_comment",
+            )
+
+            # Depois de gravar, consulta novamente o Chatter
+            # para devolver o histórico atualizado ao frontend.
+
+            messages = InventoryService.list_chat_messages(client, picking_id,)
+
+            return {
+                "success": True,
+                "picking_id": picking_id,
+                "messages": messages,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível registrar a mensagem no Chatter."
+            ) from error
