@@ -1,0 +1,2266 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.brand-icon,
+.brand-icon:hover,
+.brand-icon:focus,
+.brand-icon:active,
+.brand-icon:visited {
+    text-decoration: none;
+    font-size: 18px;
+}
+
+:root {
+    --blue: #A44389;
+    --blue-dark: #003db5;
+    --green: #00b85a;
+    --green-dark: #008d46;
+    --yellow: #ffc400;
+    --orange: #ff8a00;
+    --red: #e53935;
+    --purple: #7048e8;
+    --light-blue: #009dff;
+    --background: var(--app-background);
+    --white: var(--app-surface);
+    --surface: var(--app-surface);
+    --surface-secondary: var(--app-surface-secondary);
+    --input-background: var(--app-surface);
+    --secondary-button-background: var(--app-surface-secondary);
+    --secondary-button-text: var(--app-text);
+    --close-button-background: var(--app-surface-secondary);
+    --close-button-text: var(--app-text);
+    --photo-background: var(--app-surface-secondary);
+    --photo-border: var(--app-border);
+    --progress-background: var(--app-surface-secondary);
+    --text: var(--app-text);
+    --muted: var(--app-muted);
+    --border: var(--app-border);
+    --shadow: var(--app-shadow);
+    --radius: 14px;
+
+    /*
+     * Área segura do dispositivo.
+     * Usada principalmente em tablets/celulares Android
+     * com barra de status, notch ou recorte de tela.
+     */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
+    /*
+     * Altura base da topbar.
+     * O valor será ajustado automaticamente nas
+     * regras responsivas abaixo.
+     */
+    --topbar-height: calc(90px + max(20px, var(--safe-top)));
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    min-height: 100vh;
+
+    /*
+     * Como a topbar agora é position: fixed,
+     * precisamos reservar espaço para ela no fluxo
+     * normal da página.
+     */
+    padding-top: var(--topbar-height);
+
+    transition:
+        background-color .25s ease,
+        color .25s ease;
+}
+
+button,
+input,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.topbar {
+    /*
+     * Mantém o cabeçalho preso ao topo da tela.
+     */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    /*
+     * Fica acima do conteúdo normal.
+     * Os modais continuam acima dele com z-index: 1000.
+     */
+    z-index: 900;
+
+    /*
+     * Altura mínima considerando a barra de status
+     * do Android.
+     */
+    min-height: var(--topbar-height);
+
+    height: auto;
+
+    background: var(--blue);
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    /*
+     * Espaço reservado para a barra de status do Android.
+     *
+     * Garante pelo menos 20px mesmo quando o WebView
+     * não informa corretamente o safe-area-inset-top.
+     */
+    padding-top: max(20px, var(--safe-top));
+
+    /*
+     * Mantém o espaçamento lateral original e respeita
+     * dispositivos com notch/recorte.
+     */
+    padding-left: max(28px, var(--safe-left));
+    padding-right: max(28px, var(--safe-right));
+
+    padding-bottom: 0;
+
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .15);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.brand-icon {
+    width: 50px;
+    height: 50px;
+    background: #ffffff;
+    color: var(--blue);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.brand h1 {
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 900;
+}
+
+.brand span {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: .9;
+}
+
+
+/* =========================================================
+   AÇÕES DO TOPBAR
+========================================================= */
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* =========================================================
+   PESQUISA
+========================================================= */
+
+.search-area {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.search-area input {
+    width: 310px;
+    height: 52px;
+    border-radius: 9px;
+    border: none;
+    outline: none;
+    padding: 0 95px 0 18px;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.search-button {
+    position: absolute;
+    right: 5px;
+    width: 43px;
+    height: 43px;
+    border-radius: 7px;
+    background: var(--blue);
+    color: white;
+    font-size: 20px;
+}
+
+.clear-search {
+    position: absolute;
+    right: 53px;
+    width: 35px;
+    height: 35px;
+    background: transparent;
+    color: #7a8290;
+    font-size: 22px;
+    display: none;
+}
+/* ============================================================ */
+
+/* =========================================================
+   PULL TO REFRESH
+========================================================= */
+
+.pull-to-refresh {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+    right: 0;
+
+    /*
+     * Fica acima da topbar, mas abaixo dos modais.
+     */
+    z-index: 950;
+
+    height: 64px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    background: var(--surface);
+
+    color: var(--muted);
+
+    font-size: 14px;
+    font-weight: 900;
+
+    /*
+     * Começa completamente escondido.
+     */
+    transform: translateY(-64px);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        transform .18s ease,
+        opacity .18s ease;
+
+    box-shadow:
+        0 5px 15px rgba(20, 35, 60, .12);
+}
+
+
+/*
+ * Durante o gesto.
+ */
+.pull-to-refresh.visible {
+    opacity: 1;
+}
+
+
+/*
+ * Quando atingiu o limite necessário
+ * para executar o refresh.
+ */
+.pull-to-refresh.ready {
+    color: var(--blue);
+}
+
+
+/*
+ * Enquanto o backend está atualizando.
+ */
+.pull-to-refresh.refreshing {
+    color: var(--blue);
+}
+
+/* =========================================================
+   ÍCONE
+========================================================= */
+
+.pull-refresh-icon {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--surface-secondary);
+
+    color: var(--blue);
+
+    font-size: 20px;
+    font-weight: 900;
+
+    transition:
+        transform .18s ease,
+        background-color .18s ease;
+}
+
+
+/*
+ * Usuário já puxou o suficiente.
+ */
+.pull-to-refresh.ready .pull-refresh-icon {
+    background: var(--blue);
+    color: white;
+
+    transform: rotate(180deg);
+}
+
+
+/*
+ * Animação durante atualização.
+ */
+.pull-to-refresh.refreshing .pull-refresh-icon {
+    animation:
+        pull-refresh-spin .8s linear infinite;
+}
+
+
+@keyframes pull-refresh-spin {
+
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* =========================================================
+   IMPORTANTE PARA TOUCH
+========================================================= */
+
+/*
+ * Permite que o navegador continue tratando o scroll
+ * normalmente, enquanto o JS decide quando iniciar
+ * o Pull to Refresh.
+ */
+html,
+body {
+    overscroll-behavior-y: contain;
+}
+
+
+/*
+ * Evita seleção acidental durante o gesto.
+ */
+.pull-to-refresh,
+.pull-refresh-icon {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .pull-to-refresh {
+        height: 58px;
+
+        transform:
+            translateY(-58px);
+
+        font-size: 13px;
+    }
+
+}
+
+
+
+/* =========================================================
+   LOADING GLOBAL
+========================================================= */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(13, 22, 38, .58);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: wait;
+}
+
+.loading-overlay.hidden {
+    display: none !important;
+}
+
+.loading-spinner {
+    width: 58px;
+    height: 58px;
+    border: 6px solid rgba(255, 255, 255, .35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: loading-spin .75s linear infinite;
+}
+
+@keyframes loading-spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* ========================================================= */
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 20px 28px 12px;
+}
+
+.dashboard-card {
+    display: flex;
+    min-height: 105px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    flex-direction: column;
+    box-shadow: var(--app-shadow);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+}
+
+.dashboard-card.active {
+    outline: 5px solid rgba(0, 87, 255, .16);
+}
+
+.dashboard-card.total {
+    background: var(--light-blue);
+}
+
+.dashboard-card.pending {
+    background: var(--orange);
+}
+
+.dashboard-card.progress {
+    background: var(--purple);
+}
+
+.dashboard-card.completed {
+    background: var(--green);
+}
+
+.dashboard-label {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: .5px;
+}
+
+.dashboard-card strong {
+    font-size: 38px;
+    line-height: 1;
+    margin-top: 6px;
+}
+
+
+/* =========================================================
+   CONTEÚDO
+========================================================= */
+
+.main-content {
+    padding: 8px 28px 35px;
+}
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0 15px;
+}
+
+.content-header h2 {
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.content-header span {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+
+/* =========================================================
+   PEDIDOS
+========================================================= */
+
+.pickings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.picking-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 17px;
+    border-left: 7px solid var(--orange);
+}
+
+.picking-card.completed-card {
+    border-left-color: var(--green);
+}
+
+.picking-main {
+    display: grid;
+    grid-template-columns:
+        minmax(170px, 1fr)
+        minmax(130px, .8fr)
+        minmax(150px, .9fr)
+        minmax(180px, 1.2fr);
+    align-items: center;
+    gap: 34px;
+}
+
+.picking-identification strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.picking-identification span {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.client-info strong {
+    display: block;
+    font-size: 17px;
+}
+
+.client-info span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.quantity-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quantity-box label {
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--muted);
+}
+
+.quantity-input {
+    width: 130px;
+    height: 48px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 20px;
+    font-weight: 900;
+    outline: none;
+}
+
+.quantity-input:focus {
+    border-color: var(--blue);
+}
+
+.expected-quantity {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.picking-status {
+    display: inline-flex;
+    width: fit-content;
+    padding: 8px 11px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 900;
+    margin-top: 7px;
+}
+
+.status-waiting {
+    background: #fff0dc;
+    color: #b45c00;
+}
+
+.status-photos {
+    background: #e5edff;
+    color: #124ec7;
+}
+
+.status-package {
+    background: #eee8ff;
+    color: #6040c5;
+}
+
+.status-progress {
+    background: #eee8ff;
+    color: #6040c5;
+}
+
+.status-ready {
+    background: #dff8ea;
+    color: #087a3c;
+}
+
+.status-completed {
+    background: #d8f6e5;
+    color: #087a3c;
+}
+
+
+/* =========================================================
+   BOTÕES PRINCIPAIS
+========================================================= */
+
+.picking-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.main-action {
+    min-height: 72px;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: .15s ease;
+}
+
+.main-action:hover {
+    filter: brightness(.94);
+}
+
+.photo-action {
+    background: var(--light-blue);
+}
+
+.package-action {
+    background: var(--purple);
+}
+
+.validation-action {
+    background: var(--green);
+}
+
+.main-action.disabled,
+.main-action:disabled {
+    background: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.action-icon-small {
+    font-size: 24px;
+}
+
+
+/* =========================================================
+   BOTÕES SECUNDÁRIOS
+========================================================= */
+
+.secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.secondary-action {
+    min-height: 52px;
+    border-radius: 9px;
+    color: white;
+    font-size: 14px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.quality-action {
+    background: var(--red);
+}
+
+.print-action {
+    background: #424b5a;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.empty-state {
+    min-height: 300px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #dff8ea;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 35px;
+    font-weight: 900;
+    margin-bottom: 15px;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+}
+
+.empty-state p {
+    color: var(--muted);
+    margin-top: 7px;
+}
+
+/* ========================================================= */
+
+/* =========================================================
+   MODAIS
+========================================================= */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(13, 22, 38, .66);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal {
+    width: min(760px, 100%);
+    max-height: 94vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 18px;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, .30);
+}
+
+.modal-header {
+    padding: 24px 26px 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.modal-kicker {
+    display: block;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.modal-header h2 {
+    font-size: 27px;
+    font-weight: 900;
+}
+
+.modal-header p {
+    color: var(--muted);
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+.close-modal {
+    width: 43px;
+    height: 43px;
+    flex-shrink: 0;
+    background: var(--close-button-background);
+    color: var(--close-button-text);
+    border-radius: 9px;
+    font-size: 27px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 20px 26px 25px;
+}
+
+.modal-footer button {
+    flex: 1;
+}
+
+
+/* =========================================================
+   BOTÕES DE MODAL
+========================================================= */
+
+.primary-button,
+.secondary-button,
+.quality-button {
+    min-height: 60px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.primary-button {
+    background: var(--blue);
+    color: white;
+}
+
+.primary-button:disabled {
+    background: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+}
+
+.secondary-button {
+    background: var(--secondary-button-background);
+    color: var(--secondary-button-text);
+}
+
+.quality-button {
+    background: var(--red);
+    color: white;
+}
+
+/* =========================================================
+   MODAIS DE AÇÃO
+========================================================= */
+
+.action-modal {
+    width: min(510px, 100%);
+    text-align: center;
+    padding-top: 30px;
+}
+
+.action-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 39px;
+}
+
+.package-icon {
+    background: #eee8ff;
+}
+
+.validation-icon {
+    background: #dff8ea;
+    color: var(--green);
+}
+
+.action-modal .modal-kicker {
+    text-align: center;
+}
+
+.action-modal h2 {
+    font-size: 27px;
+}
+
+.action-modal > p {
+    padding: 10px 30px 0;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.action-modal .modal-footer {
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   ALERTA DE QUANTIDADE
+========================================================= */
+
+.quantity-warning {
+    margin: 20px 28px 0;
+    padding: 15px;
+    background: #fff4d7;
+    border: 2px solid #ffd36a;
+    color: #805d00;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.quantity-warning strong {
+    display: block;
+    margin-top: 5px;
+}
+
+/* =========================================================
+   FORMULÁRIO DE QUALIDADE
+========================================================= */
+
+.quality-modal {
+    width: min(700px, 100%);
+}
+
+.quality-kicker {
+    color: var(--red);
+}
+
+#qualityForm {
+    padding: 0 26px;
+}
+
+.form-section,
+.form-group {
+    margin-bottom: 17px;
+}
+
+.form-section > label,
+.form-group > label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.rejection-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.radio-option {
+    min-height: 60px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.radio-option:has(input:checked) {
+    border-color: var(--red);
+    background: rgba(229, 57, 53, .14);
+}
+
+.radio-option input {
+    accent-color: var(--red);
+    width: 19px;
+    height: 19px;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    outline: none;
+    padding: 12px;
+    font-size: 15px;
+    resize: vertical;
+    background: var(--input-background);
+    color: var(--text);
+}
+
+.form-group input {
+    height: 52px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--blue);
+}
+
+
+/* =========================================================
+   CAUSAS DA NÃO CONFORMIDADE
+========================================================= */
+
+.cause-selector {
+    position: relative;
+    width: 100%;
+    min-height: 52px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    padding: 8px 45px 8px 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    outline: none;
+    transition: .15s ease;
+}
+
+.cause-selector:hover,
+.cause-selector:focus,
+.cause-selector.open {
+    border-color: var(--blue);
+}
+
+.selected-causes {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+}
+
+.cause-placeholder {
+    color: #8b929d;
+    font-size: 15px;
+}
+
+.selected-cause {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 7px 10px;
+    border-radius: 7px;
+    background: #eee8ff;
+    color: #6040c5;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.cause-selector-arrow {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 20px;
+    font-weight: 900;
+    pointer-events: none;
+    transition: transform .15s ease;
+}
+
+.cause-selector.open .cause-selector-arrow {
+    transform:
+        translateY(-50%)
+        rotate(180deg);
+}
+
+
+/* =========================================================
+   LISTA DE CAUSAS
+========================================================= */
+
+.causes-dropdown {
+    width: 100%;
+    margin-top: 6px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    position: relative;
+    z-index: 20;
+}
+
+.causes-list {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.cause-option {
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: .12s ease;
+}
+
+.cause-option:last-child {
+    border-bottom: none;
+}
+
+.cause-option:hover {
+    background: #f6f3ff;
+}
+
+.cause-option.selected {
+    background: #f1edff;
+    color: #6040c5;
+}
+
+.cause-check {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border: 2px solid #cbd2dc;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.cause-option.selected .cause-check {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: white;
+}
+
+.cause-option-name {
+    flex: 1;
+    line-height: 1.3;
+}
+
+.causes-loading,
+.causes-empty,
+.causes-error {
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.causes-error {
+    color: var(--red);
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+.toast {
+    position: fixed;
+    z-index: 3000;
+    right: 25px;
+    bottom: 25px;
+    min-width: 310px;
+    padding: 17px 20px;
+    border-radius: 11px;
+    background: #172033;
+    color: white;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, .25);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    transform: translateY(120px);
+    opacity: 0;
+    transition: .25s ease;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast span:first-child {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* =========================================================
+   RESPONSIVIDADE
+========================================================= */
+
+@media (max-width: 1000px) {
+    .picking-main {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+@media (max-width: 760px) {
+
+    /*
+     * A topbar passa a ter uma altura diferente no mobile/tablet
+     * porque o conteúdo fica em coluna.
+     *
+     * O body utiliza a mesma variável para reservar exatamente
+     * o espaço necessário para o cabeçalho fixo.
+     */
+    :root {
+        --topbar-height: auto;
+    }
+
+    /*
+     * Como não podemos usar "auto" no padding-top do body,
+     * calculamos a altura esperada da topbar.
+     *
+     * 20px = área mínima superior
+     * 15px = área inferior
+     * 50px = altura do ícone
+     * 52px = altura da pesquisa
+     * 13px = gap entre os elementos
+     *
+     * O elemento mais alto é a combinação:
+     * topo + 50px + 13px + 52px + inferior
+     *
+     * Total aproximado: 150px + safe-area.
+     */
+    body {
+        padding-top: calc(150px + max(20px, var(--safe-top)));
+    }
+
+    .topbar {
+        height: auto;
+        min-height: 0;
+
+        padding-top: max(20px, var(--safe-top));
+        padding-right: max(15px, var(--safe-right));
+        padding-bottom: 15px;
+        padding-left: max(15px, var(--safe-left));
+
+        flex-direction: column;
+        align-items: stretch;
+        gap: 13px;
+    }
+
+    .search-area input {
+        width: 100%;
+    }
+
+    .dashboard {
+        padding: 12px;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .main-content {
+        padding: 5px 12px 25px;
+    }
+
+    .picking-main {
+        grid-template-columns: 1fr;
+    }
+
+    .picking-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .photo-grid {
+        grid-template-columns: 1fr;
+        max-height: 430px;
+    }
+
+    .photo-slot,
+    .add-photo-button {
+        min-height: 180px;
+    }
+
+    .rejection-options {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    /*
+     * Em telas muito estreitas, a pesquisa continua ocupando
+     * a largura disponível. A altura do cabeçalho permanece
+     * compatível com a reserva feita no body.
+     */
+
+    body {
+        padding-top: calc(150px + max(20px, var(--safe-top)));
+    }
+
+    .dashboard-card {
+        min-height: 90px;
+    }
+
+    .dashboard-card strong {
+        font-size: 30px;
+    }
+
+    .dashboard-label {
+        font-size: 12px;
+    }
+
+    .picking-identification strong {
+        font-size: 21px;
+    }
+
+/* =========================================================
+   ÍCONE
+========================================================= */
+
+.pull-refresh-icon {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--surface-secondary);
+
+    color: var(--blue);
+
+    font-size: 20px;
+    font-weight: 900;
+
+    transition:
+        transform .18s ease,
+        background-color .18s ease;
+}
+
+
+/*
+ * Usuário já puxou o suficiente.
+ */
+.pull-to-refresh.ready .pull-refresh-icon {
+    background: var(--blue);
+    color: white;
+
+    transform: rotate(180deg);
+}
+
+
+/*
+ * Animação durante atualização.
+ */
+.pull-to-refresh.refreshing .pull-refresh-icon {
+    animation:
+        pull-refresh-spin .8s linear infinite;
+}
+
+
+@keyframes pull-refresh-spin {
+
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* =========================================================
+   IMPORTANTE PARA TOUCH
+========================================================= */
+
+/*
+ * Permite que o navegador continue tratando o scroll
+ * normalmente, enquanto o JS decide quando iniciar
+ * o Pull to Refresh.
+ */
+html,
+body {
+    overscroll-behavior-y: contain;
+}
+
+
+/*
+ * Evita seleção acidental durante o gesto.
+ */
+.pull-to-refresh,
+.pull-refresh-icon {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .pull-to-refresh {
+        height: 58px;
+
+        transform:
+            translateY(-58px);
+
+        font-size: 13px;
+    }
+
+}
+
+
+
+/* =========================================================
+   LOADING GLOBAL
+========================================================= */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(13, 22, 38, .58);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: wait;
+}
+
+.loading-overlay.hidden {
+    display: none !important;
+}
+
+.loading-spinner {
+    width: 58px;
+    height: 58px;
+    border: 6px solid rgba(255, 255, 255, .35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: loading-spin .75s linear infinite;
+}
+
+@keyframes loading-spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+    .secondary-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .toast {
+        left: 12px;
+        right: 12px;
+        min-width: auto;
+    }
+}
+
+
+@media (max-width: 700px) {
+    .topbar-actions {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .topbar-actions .search-area {
+        flex: 1;
+    }
+
+}
+
+
+
+/* =========================================================
+   CHAT DO RECEBIMENTO
+========================================================= */
+
+/*
+ * Aba de fichário presa ao topo do card.
+ */
+
+.chat-tab {
+
+    position: absolute;
+
+    top: -14px;
+
+    right: 24px;
+
+    z-index: 5;
+
+    min-width: 54px;
+
+    height: 36px;
+
+    padding: 0 14px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: 1px solid var(--border);
+
+    border-bottom: none;
+
+    border-radius: 10px 10px 0 0;
+
+    background: var(--surface);
+
+    color: var(--text);
+
+    box-shadow:
+        0 -3px 8px rgba(0, 0, 0, 0.08);
+
+    cursor: pointer;
+
+    font-size: 18px;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+
+}
+
+
+.chat-tab:hover {
+
+    background: var(--blue);
+
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+}
+
+
+.chat-tab:active {
+
+    transform: translateY(0);
+
+}
+
+
+/*
+ * O card precisa permitir que a aba
+ * ultrapasse a borda superior.
+ */
+
+.picking-card {
+
+    position: relative;
+
+}
+
+
+/* =========================================================
+   PAINEL DO CHAT
+========================================================= */
+
+.chat-panel {
+
+    position: fixed;
+
+    top: var(--topbar-height);
+
+    right: 0;
+
+    width: min(430px, 92vw);
+
+    height: calc(100vh - var(--topbar-height));
+
+    z-index: 850;
+
+    display: flex;
+
+    flex-direction: column;
+
+    overflow: hidden;
+
+    background:
+        rgba(0, 31, 85, 0.88);
+
+    backdrop-filter: blur(0.5px);
+
+    -webkit-backdrop-filter: blur(0.5px);
+
+    border-left:
+        1px solid rgba(255, 255, 255, 0.16);
+
+    box-shadow:
+        -8px 0 30px rgba(0, 0, 0, 0.18);
+
+    color: #ffffff;
+
+    transform: translateX(0);
+
+    transition:
+        transform 0.75s ease,
+        opacity 0.75s ease;
+
+}
+
+
+.chat-panel.hidden {
+
+    display: none;
+
+}
+
+
+/* =========================================================
+   CABEÇALHO
+========================================================= */
+
+.chat-header {
+
+    min-height: 72px;
+
+    padding:
+        14px 16px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.14);
+
+    background:
+        rgba(0, 24, 68, 0.55);
+
+}
+
+
+.chat-header-info {
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 4px;
+
+}
+
+
+.chat-header-label {
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.8px;
+
+    opacity: 0.72;
+
+}
+
+
+.chat-header-info strong {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 16px;
+
+}
+
+
+.chat-close-button {
+
+    width: 38px;
+
+    height: 38px;
+
+    flex-shrink: 0;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255, 255, 255, 0.12);
+
+    color: #ffffff;
+
+    cursor: pointer;
+
+    font-size: 25px;
+
+    line-height: 1;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transition:
+        background 0.2s ease;
+
+}
+
+
+.chat-close-button:hover {
+
+    background:
+        rgba(255, 255, 255, 0.22);
+
+}
+
+
+/* =========================================================
+   MENSAGENS
+========================================================= */
+
+.chat-messages {
+
+    flex: 1;
+
+    min-height: 0;
+
+    padding: 18px 14px;
+
+    overflow-y: auto;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+
+}
+
+
+.chat-empty {
+
+    margin: auto;
+
+    max-width: 280px;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+
+    opacity: 0.65;
+
+}
+
+
+.chat-message {
+
+    max-width: 82%;
+
+    padding:
+        10px 12px;
+
+    border-radius: 12px;
+
+    font-size: 14px;
+
+    line-height: 1.45;
+
+    word-break: break-word;
+
+}
+
+
+.chat-message.received {
+
+    align-self: flex-start;
+
+    background:
+        rgba(255, 255, 255, 0.13);
+
+    border:
+        1px solid rgba(255, 255, 255, 0.10);
+
+    border-bottom-left-radius: 4px;
+
+}
+
+
+.chat-message.sent {
+
+    align-self: flex-end;
+
+    background:
+        rgba(255, 255, 255, 0.92);
+
+    color: #10213d;
+
+    border-bottom-right-radius: 4px;
+
+}
+
+
+.chat-message-author {
+
+    display: block;
+
+    margin-bottom: 3px;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    opacity: 0.65;
+
+}
+
+
+.chat-message-text {
+
+    display: block;
+
+}
+
+
+/* =========================================================
+   CAMPO DE ENVIO
+========================================================= */
+
+.chat-input-area {
+
+    padding: 12px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    border-top:
+        1px solid rgba(255, 255, 255, 0.14);
+
+    background:
+        rgba(0, 24, 68, 0.62);
+
+}
+
+
+.chat-input {
+
+    flex: 1;
+
+    min-width: 0;
+
+    height: 44px;
+
+    padding:
+        0 13px;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.20);
+
+    border-radius: 10px;
+
+    outline: none;
+
+    background:
+        rgba(255, 255, 255, 0.12);
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+}
+
+
+.chat-input::placeholder {
+
+    color:
+        rgba(255, 255, 255, 0.58);
+
+}
+
+
+.chat-input:focus {
+
+    border-color:
+        rgba(255, 255, 255, 0.42);
+
+    background:
+        rgba(255, 255, 255, 0.16);
+
+}
+
+
+.chat-send-button {
+
+    width: 44px;
+
+    height: 44px;
+
+    flex-shrink: 0;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #003db5;
+
+    cursor: pointer;
+
+    font-size: 18px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
+
+}
+
+
+.chat-send-button:hover {
+
+    transform: scale(1.04);
+
+}
+
+
+.chat-send-button:active {
+
+    transform: scale(0.96);
+
+}
+
+
+.chat-send-button:disabled {
+
+    opacity: 0.45;
+
+    cursor: not-allowed;
+
+    transform: none;
+
+}
+
+
+/* =========================================================
+   CHAT - MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .chat-tab {
+
+        right: 14px;
+
+        top: -13px;
+
+    }
+
+
+    .chat-panel {
+
+        width: 100%;
+
+        max-width: none;
+
+    }
+
+}
+
+
+@media (max-width: 480px) {
+
+    .chat-header {
+
+        min-height: 64px;
+
+    }
+
+
+    .chat-messages {
+
+        padding: 14px 10px;
+
+    }
+
+
+    .chat-message {
+
+        max-width: 88%;
+
+    }
+
+
+    .chat-input-area {
+
+        padding:
+            10px;
+
+    }
+
+}
+
+
+
+
+/* =========================================================
+   CHAT - SOBREPOSIÇÃO DA TELA
+   RESPEITANDO AS BARRAS DO SISTEMA ANDROID
+========================================================= */
+
+.chat-tab.has-messages::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 11px;
+    height: 11px;
+    background: var(--red);
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/*
+ * O painel ocupa toda a área disponível da aplicação,
+ * mas NÃO invade a barra de status nem a barra de navegação
+ * do Android.
+ *
+ * O fallback de 20px mantém o comportamento seguro mesmo
+ * quando o WebView não fornece corretamente o safe-area.
+ */
+.chat-panel {
+    position: fixed !important;
+
+    top: max(20px, var(--safe-top)) !important;
+    right: 0 !important;
+    bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+    left: auto !important;
+
+    width: min(430px, 92vw) !important;
+
+    /*
+     * Não usamos mais height: 100vh.
+     *
+     * Com top + bottom definidos, o navegador calcula
+     * automaticamente a altura correta do painel.
+     */
+    height: auto !important;
+
+    max-width: none !important;
+
+    z-index: 1100 !important;
+
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    background:
+        rgba(0, 31, 85, 0.88);
+
+    backdrop-filter: blur(0.5px);
+    -webkit-backdrop-filter: blur(0.5px);
+
+    border-left:
+        1px solid rgba(255, 255, 255, 0.16);
+
+    box-shadow:
+        -8px 0 30px rgba(0, 0, 0, 0.18);
+
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   TABLETS
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .chat-panel {
+        position: fixed !important;
+
+        top: max(20px, var(--safe-top)) !important;
+        right: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+        left: auto !important;
+
+        width: min(420px, 55vw) !important;
+
+        height: auto !important;
+
+        max-width: none !important;
+
+        z-index: 1100 !important;
+    }
+}
+
+
+/* =========================================================
+   TABLETS MENORES
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .chat-panel {
+        position: fixed !important;
+
+        top: max(20px, var(--safe-top)) !important;
+        right: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+        left: auto !important;
+
+        width: 78vw !important;
+
+        height: auto !important;
+
+        max-width: none !important;
+
+        z-index: 1100 !important;
+    }
+
+    .chat-tab {
+        right: 18px;
+        top: -13px;
+    }
+}
+
+
+/* =========================================================
+   CELULARES
+========================================================= */
+
+@media (max-width: 480px) {
+
+    .chat-panel {
+        position: fixed !important;
+
+        top: max(20px, var(--safe-top)) !important;
+        right: 0 !important;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+        left: auto !important;
+
+        width: 100vw !important;
+
+        height: auto !important;
+
+        max-width: none !important;
+
+        border-radius: 0;
+
+        z-index: 1100 !important;
+    }
+
+    .chat-tab {
+        right: 14px;
+    }
+
+    .chat-messages {
+        padding: 14px;
+    }
+
+    /*
+     * Reserva adicional para a área inferior do sistema.
+     * Impede que o campo de texto fique encostado ou atrás
+     * da barra de navegação do Android.
+     */
+    .chat-input-area {
+        padding:
+            10px 10px
+            max(10px, env(safe-area-inset-bottom, 0px));
+    }
+}

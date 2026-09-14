@@ -26,7 +26,7 @@ class InventoryService:
                 "key": "recebimento-fiscal",
                 "name": "Recebimento Fiscal",
                 "picking_type_id": 93,
-                "template": "stock_picking/inventario_etapa.html",
+                "template": "stock_picking/recebimento_fiscal.html",
             },
             {
                 "key": "recebimento-qualidade",
@@ -38,25 +38,25 @@ class InventoryService:
                 "key": "pre-separacao",
                 "name": "Pré-Separação",
                 "picking_type_id": 119,
-                "template": "stock_picking/inventario_etapa.html",
+                "template": "stock_picking/pre_separacao.html",
             },
             {
                 "key": "separacao",
                 "name": "Separação",
                 "picking_type_id": 120,
-                "template": "stock_picking/inventario_etapa.html",
+                "template": "stock_picking/separacao.html",
             },
             {
                 "key": "empacotamento",
                 "name": "Empacotamento",
                 "picking_type_id": 148,
-                "template": "stock_picking/inventario_etapa.html",
+                "template": "stock_picking/empacotamento.html",
             },
             {
                 "key": "conferencia-expedicao",
                 "name": "Conferencia Expedicao",
                 "picking_type_id": 139,
-                "template": "stock_picking/inventario_etapa.html",
+                "template": "stock_picking/conferencia_expedicao.html",
             },
         ]
 
