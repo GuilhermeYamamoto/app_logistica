@@ -124,11 +124,12 @@ async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
 #
 ####################################
 
-@router.post("/api/recebimento-qualidade/pickings/{picking_id}/validar")
+@router.post("/api/inventario/pickings/{picking_id}/validar")
 async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
+    """
+    Valida pickins em qualquer etapa do inventario.
+    """
     return InventoryService.button_validate(client, picking_id)
-
-
 
 ####################################
 #  CONSULTA DE PICKINGS POR NOTA FISCAL

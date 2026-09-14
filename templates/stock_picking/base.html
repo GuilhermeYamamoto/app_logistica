@@ -1,0 +1,317 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ stage.name }} - Inventário{% endblock %}
+
+{% block body_attributes %} data-stage-key="{{ stage.key }}"{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/base.css') }}?v={{ static_asset_version('css/stock_picking/base.css') }}">
+    {% block inventory_head %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+    
+    <!-- TOP BAR -->
+    <header class="topbar inventory-topbar">
+        <div class="brand">
+            <a class="brand-icon" href="/inventario" aria-label="Voltar às etapas">↩</a>
+            <div>
+                <h1>{{ stage.name | upper }}</h1>
+                <span>INVENTÁRIO</span>
+            </div>
+        </div>
+        <div class="topbar-actions" data-theme-toggle-container>
+            {% block inventory_header_actions %}{% endblock %}
+        </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <section class="dashboard" aria-label="Resumo da etapa">
+        <button class="dashboard-card pending active" data-filter="pendentes" type="button">
+            <span class="dashboard-label">PENDENTES</span>
+            <strong id="pendingCount">0</strong>
+        </button>
+        <button class="dashboard-card progress" data-filter="andamento" type="button">
+            <span class="dashboard-label">EM ANDAMENTO</span>
+            <strong id="progressCount">0</strong>
+        </button>
+    </section>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h2 id="currentSection">REGISTROS PENDENTES</h2>
+                <span id="resultCount">0 registros</span>
+            </div>
+        </div>
+        <section id="pickingsContainer" class="pickings-container" aria-live="polite"></section>
+        <div id="emptyState" class="empty-state hidden">
+            <div class="empty-icon">✓</div>
+            <h3>NENHUM REGISTRO ENCONTRADO</h3>
+            <p>Não existem registros nesta categoria.</p>
+        </div>
+    </main>
+
+    <!-- CHAT PANEL -->
+    <aside id="chatPanel" class="chat-panel hidden" aria-hidden="true">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <span class="chat-header-label">CHAT DA ETAPA</span>
+                <strong id="chatPickingInfo">-</strong>
+            </div>
+            <button
+                type="button"
+                class="chat-close-button"
+                id="chatCloseButton"
+                aria-label="Fechar chat"
+            >×</button>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <form id="chatForm" class="chat-input-area">
+            <input id="chatInput" class="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Digite uma mensagem...">
+            <button id="chatSendButton" class="chat-send-button" type="submit" aria-label="Enviar mensagem">➤</button>
+        </form>
+    </aside>
+
+    <!-- ****MODALS**** -->
+
+    <!-- VALIDATION MODAL -->
+    <div id="validationModal" class="modal-overlay hidden">
+        <div class="modal action-modal">
+            <span class="modal-kicker">FINALIZAÇÃO</span>
+            <h2>VALIDAR REGISTRO</h2>
+            <p id="validationText">Deseja realmente validar este registro?</p>
+            {% block inventory_validation_content %}{% endblock %}
+            <div class="modal-footer">
+                <button class="secondary-button" type="button" data-close="validationModal">CANCELAR</button>
+                <button id="confirmValidation" class="primary-button" type="button">VALIDAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUALITY ALERT MODAL -->
+    <div
+        id="qualityModal"
+        class="modal-overlay hidden"
+    >
+
+        <div class="modal quality-modal">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <span class="modal-kicker quality-kicker">
+                        ALERTA DE QUALIDADE
+                    </span>
+
+                    <h2>
+                        REGISTRAR PROBLEMA
+                    </h2>
+
+                    <p id="qualityPickingInfo">
+                        PV
+                    </p>
+
+                </div>
+
+                <button
+                    class="close-modal"
+                    data-close="qualityModal"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="qualityForm">
+
+                <div class="form-section">
+
+                    <label>
+                        Reprovação
+                    </label>
+
+                    <div class="rejection-options">
+
+                        <label class="radio-option">
+
+                            <input
+                                type="radio"
+                                name="reprovacao"
+                                value="total"
+                                checked
+                            >
+
+                            <span>
+                                Reprovação Total
+                            </span>
+
+                        </label>
+
+
+                        <label class="radio-option">
+
+                            <input
+                                type="radio"
+                                name="reprovacao"
+                                value="parcial"
+                            >
+
+                            <span>
+                                Reprovação Parcial
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="partialQuantityGroup"
+                    class="form-group hidden"
+                >
+
+                    <label for="quantidade_nao_conforme">
+                        Quantidade Reprovada
+                    </label>
+
+                    <input
+                        id="quantidade_nao_conforme"
+                        type="number"
+                        min="0"
+                        placeholder="Digite a quantidade"
+                    >
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="causas_nao_conformidade">
+                        Causas da Não Conformidade
+                    </label>
+
+                    <div
+                        id="causas_nao_conformidade"
+                        class="cause-selector"
+                        tabindex="0"
+                    >
+
+                        <div
+                            id="selectedCauses"
+                            class="selected-causes"
+                        >
+
+                            <span class="cause-placeholder">
+                                Selecione uma ou mais causas...
+                            </span>
+
+                        </div>
+
+                        <span class="cause-selector-arrow">
+                            ▾
+                        </span>
+
+                    </div>
+
+                    <div
+                        id="causesDropdown"
+                        class="causes-dropdown hidden"
+                    >
+
+                        <div
+                            id="causesList"
+                            class="causes-list"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="descricao_geral">
+                        Descrição Geral
+                    </label>
+
+                    <textarea
+                        id="descricao_geral"
+                        rows="3"
+                        placeholder="Descreva o problema encontrado..."
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="especificado_quality">
+                        Especificado
+                    </label>
+
+                    <textarea
+                        id="especificado_quality"
+                        rows="2"
+                        placeholder="O que veio no pedido?"
+                    ></textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="encontrado_quality">
+                        Encontrado
+                    </label>
+
+                    <textarea
+                        id="encontrado_quality"
+                        rows="2"
+                        placeholder="O que deveria ter vindo?"
+                    ></textarea>
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-close="qualityModal"
+                    >
+                        CANCELAR
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="quality-button"
+                    >
+                        REGISTRAR ALERTA
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% block inventory_modals %}{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+    <script id="inventoryStageRecords" type="application/json">{{ records.records | tojson }}</script>
+    {% block inventory_base_script %}
+        <script
+            src="{{ url_for('static', path='js/stock_picking/base.js') }}?v={{ static_asset_version('js/stock_picking/base.js') }}"
+        ></script>
+    {% endblock %}
+    {% block inventory_scripts %}{% endblock %}
+{% endblock %}
