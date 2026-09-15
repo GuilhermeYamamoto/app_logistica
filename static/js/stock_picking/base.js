@@ -846,7 +846,7 @@
 
         try {
             const response = await fetch(
-                `/api/recebimento-qualidade/pickings/${record.id}/chat`,
+                `/api/inventario/pickings/${record.id}/chat`,
                 {
                     method: "GET",
                     headers: {
@@ -1022,7 +1022,7 @@
 
         try {
             const response = await fetch(
-                `/api/recebimento-qualidade/pickings/${pickingId}/chat`,
+                `/api/inventario/pickings/${pickingId}/chat`,
                 {
                     method: "POST",
                     headers: {
