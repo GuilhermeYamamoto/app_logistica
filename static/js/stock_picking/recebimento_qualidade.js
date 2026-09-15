@@ -90,7 +90,7 @@
 
         context.addSecondaryAction(
             context.createAction({
-                className: "secondary-action barcode-scanner-action",
+                className: "main-action barcode-scanner-action",
                 label: "LER CÓDIGO",
                 icon: "▥",
                 ariaLabel: "Ler código de barras",
@@ -100,7 +100,7 @@
 
         context.addSecondaryAction(
             context.createValidationAction(
-                "secondary-action validation-action",
+                "main-action validation-action",
                 !picking.photosRegistered,
             ),
         );
