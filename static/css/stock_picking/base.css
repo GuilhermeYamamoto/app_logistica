@@ -633,37 +633,36 @@ body {
     font-size: 12px;
     font-weight: 900;
     margin-top: 7px;
-    color: #000000;
 }
 
 .status-waiting {
-    background: #FFA500;
-    color: #b45c00;
+    background: #fff4d7;
+    color: #cc6906 !important;
 }
 
 .status-photos {
-    background: #98FB98;
-    color: #124ec7;
+    background: #edf3ff;
+    color: #125ae0 !important;
 }
 
 .status-package {
-    background: #98FB98;
-    color: #6040c5;
+    background: #eee8ff;
+    color: #5030b0 !important;
 }
 
 .status-progress {
-    background: #98FB98;
-    color: #6040c5;
+    background: #eee8ff;
+    color: #5030b0 !important;
 }
 
 .status-ready {
     background: #dff8ea;
-    color: #087a3c;
+    color: #056b33 !important;
 }
 
 .status-completed {
-    background: #087a3c;
-    color: #087a3c;
+    background: var(--green);
+    color: #ffffff !important;
 }
 
 
