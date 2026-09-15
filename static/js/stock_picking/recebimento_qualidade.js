@@ -71,27 +71,39 @@
                 disabled: picking.photosRegistered,
                 onClick: () => openPhotoModal(picking),
             }),
-            context.createValidationAction(
-                "main-action validation-action",
-                !picking.photosRegistered,
+        ]);
+
+        context.addSecondaryAction(
+            context.createQualityAction(
+                "secondary-action quality-action",
             ),
+        );
+
+        context.addSecondaryAction(
             context.createAction({
-                className: "main-action barcode-scanner-action",
+                className: "secondary-action print-action",
+                label: "IMPRIMIR ETIQUETA",
+                icon: "🖨️",
+                onClick: () => printLabel(picking),
+            }),
+        );
+
+        context.addSecondaryAction(
+            context.createAction({
+                className: "secondary-action barcode-scanner-action",
                 label: "LER CÓDIGO",
                 icon: "▥",
                 ariaLabel: "Ler código de barras",
                 onClick: () => openBarcodeScanner(picking.id),
             }),
-        ]);
-        context.addSecondaryAction(
-            context.createQualityAction("secondary-action quality-action"),
         );
-        context.addSecondaryAction(context.createAction({
-            className: "secondary-action print-action",
-            label: "IMPRIMIR ETIQUETA",
-            icon: "🖨️",
-            onClick: () => printLabel(picking),
-        }));
+
+        context.addSecondaryAction(
+            context.createValidationAction(
+                "secondary-action validation-action",
+                !picking.photosRegistered,
+            ),
+        );
     }
 
     function showQuantityWarning(picking) {

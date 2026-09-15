@@ -238,3 +238,27 @@
     font-size: 14px;
     font-weight: 700;
 }
+
+/* =========================================================
+   ORDEM DOS BOTÕES - RECEBIMENTO QUALIDADE
+========================================================= */
+
+.picking-actions {
+    grid-template-columns: 1fr;
+}
+
+.secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+}
+
+.secondary-actions > :nth-child(1),
+.secondary-actions > :nth-child(2) {
+    grid-column: auto;
+}
+
+.secondary-actions > :nth-child(3),
+.secondary-actions > :nth-child(4) {
+    grid-column: 1 / -1;
+}
