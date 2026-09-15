@@ -117,7 +117,7 @@
     async function refreshRecords({ replaceRecords, showToast }) {
         const stageKey = document.body.dataset.stageKey;
         const response = await fetch(
-            `/api/recebimento-qualidade/pickings/refresh/${encodeURIComponent(stageKey)}`,
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}`,
             {
                 headers: { Accept: "application/json" },
                 cache: "no-store",
@@ -184,7 +184,7 @@
             await inventory.runAction(async () => {
                 clearSearch?.style.setProperty("display", "block");
                 const response = await fetch(
-                    `/api/recebimento-qualidade/pickings?nf_number=${encodeURIComponent(nfNumber)}`,
+                    `/api/inventario/pickings?nf_number=${encodeURIComponent(nfNumber)}`,
                 );
                 const data = await response.json().catch(() => null);
                 if (!response.ok || !Array.isArray(data)) {
@@ -371,7 +371,7 @@
         }
         try {
             await inventory.runAction(async () => {
-                const response = await fetch("/api/recebimento-qualidade/pickings/photos", {
+                const response = await fetch("/api/inventario/pickings/photos", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -470,7 +470,7 @@
         status.textContent = "Enviando código lido...";
         try {
             const response = await fetch(
-                `/api/recebimento-qualidade/pickings/${pickingId}/barcode`,
+                `/api/inventario/pickings/${pickingId}/barcode`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -514,7 +514,7 @@
         try {
             await inventory.runAction(async () => {
                 const response = await fetch(
-                    `/api/recebimento-qualidade/${picking.id}/imprimir-etiqueta`,
+                    `/api/inventario/${picking.id}/imprimir-etiqueta`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },

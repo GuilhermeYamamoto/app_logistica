@@ -107,7 +107,7 @@ async def stage_page(
 #
 ####################################
 
-@router.post("/api/recebimento-qualidade/{picking_id}/imprimir-etiqueta")
+@router.post("/api/inventario/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report_qualidade(client, picking_id)
 
@@ -142,7 +142,7 @@ async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
 #
 ####################################
 
-@router.get("/api/recebimento-qualidade/pickings")
+@router.get("/api/inventario/pickings")
 async def filter_nf(nf_number: str, client=Depends(get_odoo_client)):
     return InventoryService.filter_nf(client, nf_number)
 
@@ -229,7 +229,7 @@ def received_quantity(
 #
 ####################################
 
-@router.post("/api/recebimento-qualidade/pickings/photos")
+@router.post("/api/inventario/pickings/photos")
 def save_picking_photos(
     data: SavePickingPhotos = Body(...),
     client=Depends(get_odoo_client),
@@ -243,7 +243,7 @@ def save_picking_photos(
         data,
     )
 
-@router.post("/api/recebimento-qualidade/pickings/{picking_id}/barcode")
+@router.post("/api/inventario/pickings/{picking_id}/barcode")
 def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: OdooClient = Depends(get_odoo_client)):
     """Recebe o código de barras lido para o picking informado."""
     return InventoryService.preencher_destino_estq_transitorio(client, picking_id, data.barcode)
@@ -254,7 +254,7 @@ def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: Odoo
 #  CHAT DO RECEBIMENTO
 ####################################
 
-@router.get("/api/recebimento-qualidade/pickings/{picking_id}/chat")
+@router.get("/api/inventario/pickings/{picking_id}/chat")
 def get_picking_chat(picking_id: int, client: OdooClient = Depends(get_odoo_client),):
 
     """
@@ -264,7 +264,7 @@ def get_picking_chat(picking_id: int, client: OdooClient = Depends(get_odoo_clie
     return InventoryService.list_chat_messages(client, picking_id)
 
 
-@router.post("/api/recebimento-qualidade/pickings/{picking_id}/chat")
+@router.post("/api/inventario/pickings/{picking_id}/chat")
 def post_picking_chat(picking_id: int,data: Dict[str, Any] = Body(...),client: OdooClient = Depends(get_odoo_client),):
 
     """
@@ -285,7 +285,7 @@ def post_picking_chat(picking_id: int,data: Dict[str, Any] = Body(...),client: O
 #  REFRESH DOS PICKINGS
 ####################################
 
-@router.get("/api/recebimento-qualidade/pickings/refresh/{stage_key}")
+@router.get("/api/inventario/pickings/refresh/{stage_key}")
 async def refresh_pickings(
     stage_key: str,
     client: OdooClient = Depends(get_odoo_client),
