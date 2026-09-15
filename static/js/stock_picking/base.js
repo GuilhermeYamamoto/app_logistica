@@ -104,7 +104,7 @@
             return !record.validated && options.isInProgress(record);
         }
 
-        return !record.validated && !options.isInProgress(record);
+        return !record.validated;
     }
 
     function createElement(tagName, className, text) {
@@ -179,7 +179,7 @@
         return createAction({
             className,
             label: "ALERTA DE QUALIDADE",
-            icon: "⚠",
+            icon: "⚠️",
             onClick: () => openQuality(record),
         });
     }
@@ -235,13 +235,14 @@
             createElement(
                 "strong",
                 "",
-                record.client || "Sem fornecedor",
-            ),
-            createElement(
-                "span",
-                "",
                 "Fornecedor",
             ),
+            createElement(
+                "h3",
+                "",
+                record.client || "Sem fornecedor",
+            ),
+
         );
 
         product.append(
@@ -251,7 +252,7 @@
                 "Produto",
             ),
             createElement(
-                "p",
+                "h3",
                 "",
                 record.product || "Sem produtos",
             ),
@@ -339,8 +340,7 @@
             elements.pendingCount.textContent = formatCount(
                 records.filter(
                     (record) =>
-                        !record.validated &&
-                        !options.isInProgress(record),
+                        !record.validated
                 ).length,
             );
         }

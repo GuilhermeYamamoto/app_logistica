@@ -633,25 +633,26 @@ body {
     font-size: 12px;
     font-weight: 900;
     margin-top: 7px;
+    color: #000000;
 }
 
 .status-waiting {
-    background: #fff0dc;
+    background: #FFA500;
     color: #b45c00;
 }
 
 .status-photos {
-    background: #e5edff;
+    background: #98FB98;
     color: #124ec7;
 }
 
 .status-package {
-    background: #eee8ff;
+    background: #98FB98;
     color: #6040c5;
 }
 
 .status-progress {
-    background: #eee8ff;
+    background: #98FB98;
     color: #6040c5;
 }
 
@@ -661,7 +662,7 @@ body {
 }
 
 .status-completed {
-    background: #d8f6e5;
+    background: #087a3c;
     color: #087a3c;
 }
 
