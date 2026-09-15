@@ -21,6 +21,17 @@
             </div>
         </div>
         <div class="topbar-actions" data-theme-toggle-container>
+            <div class="search-area">
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Pesquisar..."
+                    autocomplete="off"
+                >
+                <button id="clearSearch" class="clear-search" type="button">×</button>
+                <button id="searchButton" class="search-button" type="button">🔍</button>
+            </div>
+
             {% block inventory_header_actions %}{% endblock %}
         </div>
     </header>
