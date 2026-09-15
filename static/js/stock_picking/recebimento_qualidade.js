@@ -150,40 +150,28 @@
     }
 
     function setupSearch() {
-        const searchInput = document.getElementById("searchInput");
-        const searchButton = document.getElementById("searchButton");
-        const clearSearch = document.getElementById("clearSearch");
-        if (!searchInput || !clearSearch) {
+        if (!window.AppUI?.initializeSearch) {
+            console.error("A interface compartilhada de pesquisa não foi carregada.");
             return;
         }
 
-        const search = () => {
-            const term = searchInput.value.trim();
-            if (!term) {
-                filteredPickingIds = null;
-                clearSearch.style.display = "none";
-                inventory.render();
-                return;
-            }
-            filterByNF(term);
-        };
+        window.AppUI.initializeSearch({
+            canInteract: () => !inventory.isActionInProgress(),
 
-        searchInput.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                search();
-            }
-        });
-        searchButton?.addEventListener("click", search);
-        clearSearch.addEventListener("click", () => {
-            if (inventory.isActionInProgress()) {
-                return;
-            }
-            searchInput.value = "";
-            filteredPickingIds = null;
-            clearSearch.style.display = "none";
-            inventory.render();
-            searchInput.focus();
+            onSearch: (term) => {
+                if (!term) {
+                    filteredPickingIds = null;
+                    inventory.render();
+                    return;
+                }
+
+                filterByNF(term);
+            },
+
+            onClear: () => {
+                filteredPickingIds = null;
+                inventory.render();
+            },
         });
     }
 

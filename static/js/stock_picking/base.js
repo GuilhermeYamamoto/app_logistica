@@ -44,6 +44,12 @@
         onOpenValidation: () => {},
         onRecordsReplaced: () => {},
         refreshRecords: null,
+
+        search: {
+            onSearch: null,
+            onClear: null,
+        },
+
         resultText: (count) => `${count} ${count === 1 ? "registro" : "registros"}`,
         validateEndpoint: (record) => `/api/inventario/pickings/${record.id}/validar`,
         validationSuccessMessage: () => "REGISTRO VALIDADO COM SUCESSO",
@@ -392,6 +398,60 @@
             message,
             icon,
         );
+    }
+
+    function initializeSearch() {
+        const searchInput = document.getElementById("searchInput");
+        const searchButton = document.getElementById("searchButton");
+        const clearSearch = document.getElementById("clearSearch");
+
+        if (!searchInput || !clearSearch) {
+            return;
+        }
+
+        const updateClearButton = () => {
+            clearSearch.style.display =
+                searchInput.value.trim() ? "block" : "none";
+        };
+
+        const search = () => {
+            if (actionInProgress) {
+                return;
+            }
+
+            const term = searchInput.value.trim();
+
+            if (!term) {
+                options.search.onClear?.();
+                updateClearButton();
+                return;
+            }
+
+            updateClearButton();
+            options.search.onSearch?.(term);
+        };
+
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                search();
+            }
+        });
+
+        searchButton?.addEventListener("click", search);
+
+        clearSearch.addEventListener("click", () => {
+            if (actionInProgress) {
+                return;
+            }
+
+            searchInput.value = "";
+            updateClearButton();
+            options.search.onClear?.();
+            searchInput.focus();
+        });
+
+        updateClearButton();
     }
 
     async function runAction(operation) {
@@ -1254,6 +1314,7 @@
             },
         );
 
+        initializeSearch();
         initializeQualityAlert();
 
         if (
