@@ -107,14 +107,20 @@
         );
 
         const secondaryInfoRow = document.createElement("div");
+
         secondaryInfoRow.className = "secondary-info-row";
 
         const localBox = document.createElement("div");
+
         localBox.className = "local-box";
 
         localBox.innerHTML = `
             <span class="local-label">Local</span>
-            <span class="local-value">${picking.local || "Não definido"}</span>
+            <span class="local-value">${
+                !picking.local || picking.local === "CD/STO"
+                    ? "Não definido"
+                    : picking.local
+            }</span>
         `;
 
         secondaryInfoRow.appendChild(localBox);
