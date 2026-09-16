@@ -28,6 +28,7 @@
             photos: [],
             photosRegistered: Boolean(record.photosRegistered),
             photoCount: Number(record.photoCount || 0),
+            local: record.local || null,
         };
     }
 
@@ -104,6 +105,22 @@
                 !picking.photosRegistered,
             ),
         );
+
+        const secondaryInfoRow = document.createElement("div");
+        secondaryInfoRow.className = "secondary-info-row";
+
+        const localBox = document.createElement("div");
+        localBox.className = "local-box";
+
+        localBox.innerHTML = `
+            <span class="local-label">Local</span>
+            <span class="local-value">${picking.local || "Não definido"}</span>
+        `;
+
+        secondaryInfoRow.appendChild(localBox);
+
+        // Adiciona a segunda linha ao card
+        context.main.appendChild(secondaryInfoRow);
     }
 
     function showQuantityWarning(picking) {
@@ -477,15 +494,37 @@
                     body: JSON.stringify({ barcode }),
                 },
             );
+
             const data = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error(data.detail || "Não foi possível enviar o código lido.");
+                throw new Error(
+                    data.detail || "Não foi possível enviar o código lido."
+                );
             }
+
+            const picking = inventory.getRecord(pickingId);
+
+            if (picking) {
+                picking.local = data.local || null;
+                picking.barcodeRegistered = Boolean(data.local);
+            }
+
             window.AppUI.closeModal("barcodeScannerModal");
-            inventory.showToast(`CÓDIGO ENVIADO: ${barcode}`);
+
+            inventory.render();
+
+            inventory.showToast(
+                `LOCAL DEFINIDO: ${data.local || "Não definido"}`
+            );
+
         } catch (error) {
             console.error("Erro ao enviar código de barras:", error);
-            status.textContent = error.message || "Não foi possível enviar o código. Tente novamente.";
+
+            status.textContent =
+                error.message ||
+                "Não foi possível enviar o código. Tente novamente.";
+
             barcodeScannerActive = true;
         }
     }
