@@ -154,11 +154,32 @@ class InventoryService:
             product_names = [move["product_id"][1] for move in moves if move["product_id"]]
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
-            barcode_registered = any(
-                destination_moves_by_id.get(move_dest_id, {}).get("location_dest_id")
-                for move in moves
-                for move_dest_id in move.get("move_dest_ids", [])
-            )
+
+            local = None
+
+            for move in moves:
+                for move_dest_id in move.get("move_dest_ids", []):
+                    destination_move = destination_moves_by_id.get(move_dest_id, {})
+
+                    location_dest = destination_move.get("location_dest_id")
+
+                    if location_dest:
+                        if isinstance(location_dest, (list, tuple)):
+                            local = (
+                                location_dest[1]
+                                if len(location_dest) > 1
+                                else str(location_dest[0])
+                            )
+                        else:
+                            local = str(location_dest)
+
+                        break
+
+                if local:
+                    break
+
+            barcode_registered = bool(local)
+            
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
@@ -184,6 +205,7 @@ class InventoryService:
                             "photoCount": photo_count,
                             "photosRegistered": photo_count >= 3,
                             "barcodeRegistered": bool(barcode_registered),
+                            "local": local,
                         })
 
         return {"picking_type_id": picking_type_id, "records": records}
@@ -649,32 +671,117 @@ class InventoryService:
                 detail="Erro ao registrar as fotos no Odoo."
             ) from error
 
-    def preencher_destino_estq_transitorio(client: OdooClient, picking_id: int, barcode: str):
+    @staticmethod
+    def preencher_destino_estq_transitorio(client, picking_id, barcode):
         """
-        Preenche o campo 'location_dest_id' do do picking no Estoque Transitorio com o valor do lido no código de barras.
-        """
-        # Consulta o picking no Odoo para obter o move_dest_id do picking atual (Recebimento Qualidade), ou seja, do picking do Recebimento Qualidade, vamos buscar o picking do Estoque Transitorio.
-        barcode_location_id = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id"])
-        picking_estq_transitorio_id = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["move_dest_ids"])
+        Define o local da movimentação da etapa 138 a partir do código
+        lido na etapa 137.
 
+        Fluxo:
+        stock.move da etapa 137
+            -> move_dest_ids
+                -> stock.move da etapa 138
+                    -> location_dest_id
+        """
+
+        # 1. Localiza o endereço/local através do código de barras
+        location_records = client.execute(
+            "stock.location",
+            "search_read",
+            [("barcode", "=", barcode)],
+            fields=[
+                "id",
+                "name",
+            ],
+            limit=1,
+        )
+        if not location_records:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Local não encontrado para o código informado.",
+            )
+
+        location = location_records[0]
+
+        # 2. Busca os movimentos da etapa 137
+        moves = client.execute(
+            "stock.move",
+            "search_read",
+            [("picking_id", "=", picking_id)],
+            fields=[
+                "id",
+                "move_dest_ids",
+            ],
+        )
+
+        if not moves:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Movimentação não encontrada para este recebimento.",
+            )
+
+        # 3. Descobre os movimentos da etapa 138 através de move_dest_ids
+        destination_move_ids = []
+
+        for move in moves:
+            for destination_id in move.get("move_dest_ids") or []:
+                destination_move_ids.append(destination_id)
+
+        destination_move_ids = list(dict.fromkeys(destination_move_ids))
+
+        if not destination_move_ids:
+            raise ValueError(
+                f"Nenhum movimento de destino encontrado para o picking {picking_id}."
+            )
+
+
+        # 4. Grava o local no movimento da etapa 138
         client.execute(
             "stock.move",
             "write",
-            picking_estq_transitorio_id[0]["move_dest_ids"][0],
+            destination_move_ids,
             {
-                "location_dest_id": barcode_location_id[0]["id"]
-            }
+                "location_dest_id": location["id"],
+            },
         )
+
+        # 5. Lê novamente o Odoo para confirmar o valor gravado
+        updated_moves = client.execute(
+            "stock.move",
+            "read",
+            destination_move_ids,
+            fields=[
+                "id",
+                "location_dest_id",
+            ],
+        )
+
+        local = None
+
+        for move in updated_moves:
+            location_dest = move.get("location_dest_id")
+
+            if location_dest:
+                if isinstance(location_dest, list):
+                    local = (
+                        location_dest[1]
+                        if len(location_dest) > 1
+                        else str(location_dest[0])
+                    )
+                else:
+                    local = str(location_dest)
+
+                break
 
         return {
             "success": True,
             "picking_id": picking_id,
             "barcode": barcode,
+            "local": local,
         }
 
 
-
-        ####################################
+    ####################################
     #  CHAT DO RECEBIMENTO
     ####################################
 
