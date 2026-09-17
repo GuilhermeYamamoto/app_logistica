@@ -427,6 +427,173 @@ class InventoryService:
             print("Erro ao executar stock.picking.picture.create:", error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao registrar as fotos no Odoo.") from error
 
+
+    @staticmethod
+    def list_inventory_locations(client: OdooClient, picking_id):
+        """
+        Retorna os locais disponíveis para seleção manual.
+
+        São considerados locais ativos utilizados na movimentação
+        de estoque, incluindo locais internos e de trânsito.
+        """
+
+        print(picking_id)
+        picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
+        centro_distruibuicao = 11 if picking_type_id == 137 else 5963
+
+        try:
+            locations = client.execute(
+                "stock.location",
+                "search_read",
+                [
+                    ("active", "=", True),
+                    ("usage", "in", ["internal", "transit"]),
+                    ("location_id", "=", centro_distruibuicao)
+                ],
+                fields=[
+                    "id",
+                    "name",
+                    "complete_name",
+                    "barcode",
+                ],
+                order="complete_name asc, id asc",
+            )
+
+            return [
+                {
+                    "id": location["id"],
+                    "name": (
+                        location.get("complete_name")
+                        or location.get("name")
+                        or "Local sem nome"
+                    ),
+                    "barcode": location.get("barcode") or None,
+                }
+                for location in locations
+            ]
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível consultar os locais disponíveis.",
+            ) from error
+
+
+    @staticmethod
+    def set_destination_location(
+        client: OdooClient,
+        picking_id: int,
+        location_id: int,
+    ):
+        """
+        Define manualmente o local de destino dos movimentos da etapa
+        seguinte ao picking informado.
+        """
+
+        try:
+            # 1. Valida se o local existe.
+            location_records = client.execute(
+                "stock.location",
+                "search_read",
+                [("id", "=", location_id)],
+                fields=["id", "name", "complete_name"],
+                limit=1,
+            )
+
+            if not location_records:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Local selecionado não foi encontrado.",
+                )
+
+            location = location_records[0]
+
+            # 2. Busca os movimentos do picking atual.
+            moves = client.execute(
+                "stock.move",
+                "search_read",
+                [("picking_id", "=", picking_id)],
+                fields=["id", "move_dest_ids"],
+            )
+
+            if not moves:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Movimentação não encontrada para este recebimento.",
+                )
+
+            # 3. Descobre os movimentos da etapa seguinte.
+            destination_move_ids = []
+
+            for move in moves:
+                for destination_id in move.get("move_dest_ids") or []:
+                    destination_move_ids.append(destination_id)
+
+            destination_move_ids = list(
+                dict.fromkeys(destination_move_ids)
+            )
+
+            if not destination_move_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=(
+                        "Nenhum movimento de destino encontrado "
+                        "para este recebimento."
+                    ),
+                )
+
+            # 4. Define o local selecionado.
+            client.execute(
+                "stock.move",
+                "write",
+                destination_move_ids,
+                {
+                    "location_dest_id": location_id,
+                },
+            )
+
+            # 5. Confirma a gravação no Odoo.
+            updated_moves = client.execute(
+                "stock.move",
+                "read",
+                destination_move_ids,
+                fields=["id", "location_dest_id"],
+            )
+
+            local = None
+
+            for move in updated_moves:
+                location_dest = move.get("location_dest_id")
+
+                if location_dest:
+                    if isinstance(location_dest, (list, tuple)):
+                        local = (
+                            location_dest[1]
+                            if len(location_dest) > 1
+                            else str(location_dest[0])
+                        )
+                    else:
+                        local = str(location_dest)
+
+                    break
+
+            return {
+                "success": True,
+                "picking_id": picking_id,
+                "location_id": location_id,
+                "local": local,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível definir o local do recebimento.",
+            ) from error
+
+
     @staticmethod
     def preencher_destino_estq_transitorio(client, picking_id, barcode):
         """

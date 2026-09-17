@@ -21,6 +21,9 @@
     let barcodeScanner = null;
     let barcodeScannerActive = false;
     let barcodeScannerPickingId = null;
+    let inventoryLocations = [];
+    let selectedLocationId = null;
+    let locationsLoading = false;
 
     function normalizeRecord(record) {
         return {
@@ -427,21 +430,414 @@
     }
 
     function setupBarcodeScanner() {
-        if (!document.getElementById("barcodeScannerVideo") || !document.getElementById("barcodeScannerStatus")) {
+        if (
+            !document.getElementById("barcodeScannerVideo") ||
+            !document.getElementById("barcodeScannerStatus")
+        ) {
             return;
         }
-        window.addEventListener("pagehide", stopBarcodeScanner);
+
+        window.addEventListener("pagehide", () => {
+            stopBarcodeScanner(true);
+        });
+
         document.addEventListener("app:modal-close", (event) => {
             if (event.detail?.id === "barcodeScannerModal") {
-                stopBarcodeScanner();
+                stopBarcodeScanner(true);
+                resetLocationSelection();
+                showBarcodeScannerView();
             }
         });
+
+        document
+            .getElementById("chooseLocationButton")
+            ?.addEventListener("click", openLocationSelection);
+
+        document
+            .getElementById("backToBarcodeButton")
+            ?.addEventListener("click", backToBarcodeScanner);
+
+        document
+            .getElementById("confirmLocationButton")
+            ?.addEventListener("click", confirmLocationSelection);
+
+        document
+            .getElementById("locationSearchInput")
+            ?.addEventListener("input", filterLocationList);
+    }
+
+    async function openLocationSelection() {
+        if (!barcodeScannerPickingId || inventory.isActionInProgress()) {
+            return;
+        }
+
+        // Para a câmera, mas mantém o pickingId
+        stopBarcodeScanner(false);
+
+        selectedLocationId = null;
+
+        const confirmButton = document.getElementById("confirmLocationButton");
+
+        if (confirmButton) {
+            confirmButton.disabled = true;
+        }
+
+        showLocationSelectionView();
+
+        await loadInventoryLocations();
+    }
+
+    function showBarcodeScannerView() {
+        const scannerView = document.getElementById("barcodeScannerView");
+        const locationView = document.getElementById("locationSelectionView");
+
+        scannerView?.classList.remove("hidden");
+        locationView?.classList.add("hidden");
+
+        const searchInput = document.getElementById("locationSearchInput");
+
+        if (searchInput) {
+            searchInput.value = "";
+        }
+
+        resetLocationSelection();
+    }
+
+    function showLocationSelectionView() {
+        const scannerView = document.getElementById("barcodeScannerView");
+        const locationView = document.getElementById("locationSelectionView");
+
+        scannerView?.classList.add("hidden");
+        locationView?.classList.remove("hidden");
+    }
+
+    function backToBarcodeScanner() {
+        showBarcodeScannerView();
+
+        const pickingId = barcodeScannerPickingId;
+
+        if (pickingId) {
+            openBarcodeScanner(pickingId);
+        }
+    }
+
+    async function loadInventoryLocations() {
+        const list = document.getElementById("locationList");
+        const status = document.getElementById("locationSelectionStatus");
+
+        if (!list || locationsLoading) {
+            return;
+        }
+
+        locationsLoading = true;
+
+        list.innerHTML = `
+            <div class="location-list-message">
+                CARREGANDO LOCAIS...
+            </div>
+        `;
+
+        if (status) {
+            status.textContent = "";
+        }   
+
+        try {
+            const response = await fetch(
+                `/api/inventario/pickings/${barcodeScannerPickingId}/location`,
+                {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                    cache: "no-store",
+                },
+            );
+
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok || !Array.isArray(data)) {
+                throw new Error(
+                    data?.detail ||
+                    "Não foi possível carregar os locais.",
+                );
+            }
+
+            inventoryLocations = data;
+
+            renderLocationList(inventoryLocations);
+
+        } catch (error) {
+            console.error("Erro ao carregar locais:", error);
+
+            list.innerHTML = `
+                <div class="location-list-message">
+                    ${error.message || "Não foi possível carregar os locais."}
+                </div>
+            `;
+
+            inventory.showToast(
+                error.message ||
+                "Não foi possível carregar os locais.",
+                "!",
+            );
+
+        } finally {
+            locationsLoading = false;
+        }
+    }
+
+    function renderLocationList(locations) {
+        const list = document.getElementById("locationList");
+
+        if (!list) {
+            return;
+        }
+
+        if (!locations.length) {
+            list.innerHTML = `
+                <div class="location-list-message">
+                    NENHUM LOCAL ENCONTRADO.
+                </div>
+            `;
+            return;
+        }
+
+        list.replaceChildren(
+            ...locations.map((location) => {
+                const button = document.createElement("button");
+
+                button.type = "button";
+                button.className = "location-option";
+
+                if (
+                    Number(location.id) ===
+                    Number(selectedLocationId)
+                ) {
+                    button.classList.add("selected");
+                }
+
+                const name = document.createElement("span");
+                name.className = "location-option-name";
+                name.textContent = location.name;
+
+                const check = document.createElement("span");
+                check.className = "location-option-check";
+                check.textContent = "✓";
+
+                button.append(name, check);
+
+                button.addEventListener("click", () => {
+                    selectLocation(location);
+                });
+
+                return button;
+            }),
+        );
+    }
+
+    function selectLocation(location) {
+        selectedLocationId = Number(location.id);
+
+        const searchInput = document.getElementById(
+            "locationSearchInput",
+        );
+
+        const term = searchInput?.value?.trim().toLowerCase() || "";
+
+        renderLocationList(
+            getFilteredLocations(term),
+        );
+
+        const confirmButton = document.getElementById(
+            "confirmLocationButton",
+        );
+
+        if (confirmButton) {
+            confirmButton.disabled = false;
+        }
+
+        const status = document.getElementById(
+            "locationSelectionStatus",
+        );
+
+        if (status) {
+            status.textContent =
+                `LOCAL SELECIONADO: ${location.name}`;
+        }
+    }
+
+    function filterLocationList(event) {
+        const term = event.target.value.trim().toLowerCase();
+
+        renderLocationList(
+            getFilteredLocations(term),
+        );
+    }
+
+    function getFilteredLocations(term) {
+        if (!term) {
+            return inventoryLocations;
+        }
+
+        return inventoryLocations.filter((location) =>
+            String(location.name || "")
+                .toLowerCase()
+                .includes(term),
+        );
+    }
+
+    async function confirmLocationSelection() {
+        const pickingId = barcodeScannerPickingId;
+        const confirmButton = document.getElementById(
+            "confirmLocationButton",
+        );
+
+        if (
+            !pickingId ||
+            !selectedLocationId ||
+            inventory.isActionInProgress()
+        ) {
+            return;
+        }
+
+        const location = inventoryLocations.find(
+            (item) =>
+                Number(item.id) ===
+                Number(selectedLocationId),
+        );
+
+        if (!location) {
+            inventory.showToast(
+                "O local selecionado não foi encontrado.",
+                "!",
+            );
+            return;
+        }
+
+        const originalText =
+            confirmButton?.textContent || "CONFIRMAR";
+
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.textContent = "SALVANDO...";
+        }
+
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${pickingId}/location`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            location_id: selectedLocationId,
+                        }),
+                    },
+                );
+
+                const data = await response.json().catch(
+                    () => ({}),
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível definir o local.",
+                    );
+                }
+
+                const picking =
+                    inventory.getRecord(pickingId);
+
+                if (picking) {
+                    picking.local =
+                        data.local || location.name;
+
+                    picking.barcodeRegistered = Boolean(
+                        picking.local,
+                    );
+                }
+
+                window.AppUI.closeModal(
+                    "barcodeScannerModal",
+                );
+
+                inventory.render();
+
+                inventory.showToast(
+                    `LOCAL DEFINIDO: ${
+                        data.local || location.name
+                    }`,
+                );
+            });
+
+        } catch (error) {
+            console.error(
+                "Erro ao definir local manualmente:",
+                error,
+            );
+
+            inventory.showToast(
+                error.message ||
+                "Não foi possível definir o local.",
+                "!",
+            );
+
+        } finally {
+            if (confirmButton) {
+                confirmButton.disabled =
+                    !selectedLocationId;
+
+                confirmButton.textContent =
+                    originalText;
+            }
+        }
+    }
+
+    function resetLocationSelection() {
+        selectedLocationId = null;
+
+        const confirmButton = document.getElementById(
+            "confirmLocationButton",
+        );
+
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.textContent = "CONFIRMAR";
+        }
+
+        const status = document.getElementById(
+            "locationSelectionStatus",
+        );
+
+        if (status) {
+            status.textContent = "";
+        }
+
+        const list = document.getElementById(
+            "locationList",
+        );
+
+        if (
+            list &&
+            inventoryLocations.length
+        ) {
+            renderLocationList(
+                inventoryLocations,
+            );
+        }
     }
 
     async function openBarcodeScanner(pickingId) {
         if (barcodeScannerActive || !inventory.getRecord(pickingId)) {
             return;
         }
+
+        barcodeScannerPickingId = pickingId;
+        selectedLocationId = null;
+        showBarcodeScannerView();
+
         const video = document.getElementById("barcodeScannerVideo");
         const status = document.getElementById("barcodeScannerStatus");
         if (!video || !status) {
@@ -450,7 +846,6 @@
 
         window.AppUI.openModal("barcodeScannerModal");
         status.textContent = "Solicitando acesso à câmera...";
-        barcodeScannerPickingId = pickingId;
         barcodeScannerActive = true;
         const scanner = window.AppUI.createBarcodeScanner({
             video,
@@ -535,11 +930,15 @@
         }
     }
 
-    function stopBarcodeScanner() {
+    function stopBarcodeScanner(clearPicking = false) {
         barcodeScannerActive = false;
+
         barcodeScanner?.stop();
         barcodeScanner = null;
-        barcodeScannerPickingId = null;
+
+        if (clearPicking) {
+            barcodeScannerPickingId = null;
+        }
     }
 
     function getBarcodeScannerErrorMessage(error) {

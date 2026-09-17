@@ -18,49 +18,143 @@
 {% endblock %}
 
 {% block inventory_modals %}
-    <div id="photoModal" class="modal-overlay hidden" data-close-on-backdrop="false">
-        <div class="modal photo-modal">
-            <div class="modal-header">
-                <div>
-                    <span class="modal-kicker">REGISTRO FOTOGRÁFICO</span>
-                    <h2>FOTOS DO PRODUTO</h2>
-                    <p id="photoPickingInfo">-</p>
+    <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal barcode-scanner-modal">
+
+            <!-- ==============================
+                TELA DO LEITOR DE CÓDIGO
+            =============================== -->
+            <div id="barcodeScannerView">
+
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-kicker">LEITURA PELA CÂMERA</span>
+                        <h2>LER CÓDIGO DE BARRAS</h2>
+                        <p>Posicione o código da nota fiscal dentro da área de leitura.</p>
+                    </div>
+
+                    <button
+                        class="close-modal"
+                        type="button"
+                        data-close="barcodeScannerModal"
+                    >
+                        ×
+                    </button>
                 </div>
-                <button class="close-modal" type="button" data-close="photoModal">×</button>
+
+                <div class="barcode-camera-container">
+                    <video
+                        id="barcodeScannerVideo"
+                        autoplay
+                        muted
+                        playsinline
+                    ></video>
+
+                    <div
+                        class="barcode-scanner-guide"
+                        aria-hidden="true"
+                    ></div>
+                </div>
+
+                <p
+                    id="barcodeScannerStatus"
+                    class="barcode-scanner-status"
+                    role="status"
+                ></p>
+
+                <div class="barcode-manual-option">
+                    <span>Problemas com a câmera?</span>
+
+                    <button
+                        id="chooseLocationButton"
+                        class="barcode-choose-location-button"
+                        type="button"
+                    >
+                        ESCOLHER LOCAL
+                    </button>
+                </div>
+
+                <div class="modal-footer">
+                    <button
+                        class="secondary-button"
+                        type="button"
+                        data-close="barcodeScannerModal"
+                    >
+                        CANCELAR
+                    </button>
+                </div>
+
             </div>
-            <div class="photo-progress">
-                <span id="photoProgressText">0 DE 3 FOTOS</span>
-                <div class="progress-track"><div id="photoProgressBar" class="progress-fill"></div></div>
+
+
+            <!-- ==============================
+                TELA DE SELEÇÃO MANUAL
+            =============================== -->
+            <div id="locationSelectionView" class="hidden">
+
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-kicker">SELEÇÃO MANUAL</span>
+                        <h2>ESCOLHER LOCAL</h2>
+                        <p>Selecione o local de destino do produto.</p>
+                    </div>
+
+                    <button
+                        class="close-modal"
+                        type="button"
+                        data-close="barcodeScannerModal"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div class="location-search-container">
+                    <input
+                        id="locationSearchInput"
+                        class="location-search-input"
+                        type="search"
+                        placeholder="Pesquisar local..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div
+                    id="locationList"
+                    class="location-list"
+                ></div>
+
+                <p
+                    id="locationSelectionStatus"
+                    class="location-selection-status"
+                    role="status"
+                ></p>
+
+                <div class="modal-footer">
+                    <button
+                        id="backToBarcodeButton"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        VOLTAR
+                    </button>
+
+                    <button
+                        id="confirmLocationButton"
+                        class="primary-button"
+                        type="button"
+                        disabled
+                    >
+                        CONFIRMAR
+                    </button>
+                </div>
+
             </div>
-            <div id="photoInstruction" class="photo-instruction">Tirar foto da EMBALAGEM</div>
-            <div id="photoGrid" class="photo-grid"></div>
-            <div class="photo-message" id="photoMessage"></div>
-            <div class="modal-footer">
-                <button class="secondary-button" type="button" data-close="photoModal">FECHAR</button>
-                <button id="finishPhotosButton" class="primary-button" type="button" disabled>REGISTRAR FOTOS</button>
-            </div>
+
         </div>
     </div>
     <input id="photoCameraInput" class="photo-file-input" type="file" accept="image/*" capture="environment">
 
-    <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-        <div class="modal barcode-scanner-modal">
-            <div class="modal-header">
-                <div>
-                    <span class="modal-kicker">LEITURA PELA CÂMERA</span>
-                    <h2>LER CÓDIGO DE BARRAS</h2>
-                    <p>Posicione o código da nota fiscal dentro da área de leitura.</p>
-                </div>
-                <button class="close-modal" type="button" data-close="barcodeScannerModal">×</button>
-            </div>
-            <div class="barcode-camera-container">
-                <video id="barcodeScannerVideo" autoplay muted playsinline></video>
-                <div class="barcode-scanner-guide" aria-hidden="true"></div>
-            </div>
-            <p id="barcodeScannerStatus" class="barcode-scanner-status" role="status"></p>
-            <div class="modal-footer"><button class="secondary-button" type="button" data-close="barcodeScannerModal">CANCELAR</button></div>
-        </div>
-    </div>
+    <div 
 {% endblock %}
 
 {% block inventory_scripts %}

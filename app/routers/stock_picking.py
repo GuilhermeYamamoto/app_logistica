@@ -249,6 +249,45 @@ def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: Odoo
     return InventoryService.preencher_destino_estq_transitorio(client, picking_id, data.barcode)
 
 
+@router.get("/api/inventario/pickings/{picking_id}/location")
+def list_inventory_locations(
+    picking_id: int,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    return InventoryService.list_inventory_locations(
+        client,
+        picking_id,
+    )
+
+
+@router.post("/api/inventario/pickings/{picking_id}/location")
+def set_picking_location(
+    picking_id: int,
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    location_id = data.get("location_id")
+
+    if not location_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O local deve ser informado.",
+        )
+
+    try:
+        location_id = int(location_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O ID do local informado é inválido.",
+        )
+
+    return InventoryService.set_destination_location(
+        client,
+        picking_id,
+        location_id,
+    )
+
 
 ####################################
 #  CHAT DO RECEBIMENTO
