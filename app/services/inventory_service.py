@@ -72,8 +72,11 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "fotos_count", "pedido_compra_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
+            for picking in pickings:
+                result_package = client.execute("stock.move.line", "search_read", [("id", "=", picking["move_line_ids_without_package"])], fields=["result_package_id"])
+                print(result_package[0].get('result_package_id')[1])
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
             received_quantity_field = None
             if move_ids:
@@ -83,6 +86,7 @@ class InventoryService:
                 if received_quantity_field is not None:
                     fields.append(received_quantity_field)
                 moves = client.execute("stock.move", "search_read", [("id", "in", move_ids)], fields=fields)
+                
                 for move in moves:
                     moves_by_picking[move["picking_id"][0]].append(move)
         except (KeyError, OSError, xmlrpc.client.Error) as error:
@@ -121,6 +125,15 @@ class InventoryService:
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
+
+            print(result_package)
+
+            if isinstance(result_package, (list, tuple)) and result_package:
+                result_package_id = result_package[0]
+                result_package_name = result_package[1] if len(result_package) > 1 else None
+            else:
+                result_package_id = None
+                result_package_name = None
             photo_relation = picking.get("fotos_count") or []
             if isinstance(photo_relation, (list, tuple)):
                 photo_count = len(photo_relation)
@@ -142,6 +155,9 @@ class InventoryService:
                 "photosRegistered": photo_count >= 3,
                 "barcodeRegistered": bool(barcode_registered),
                 "local": local,
+                "resultPackageId": result_package_id,
+                "resultPackageName": result_package_name,
+                
             })
         return {"picking_type_id": picking_type_id, "records": records}
 
@@ -442,21 +458,18 @@ class InventoryService:
         centro_distruibuicao = 11 if picking_type_id == 137 else 5963
 
         try:
-            locations = client.execute(
-                "stock.location",
-                "search_read",
-                [
+            locations = client.execute("stock.location","search_read", [
                     ("active", "=", True),
                     ("usage", "in", ["internal", "transit"]),
                     ("location_id", "=", centro_distruibuicao)
-                ],
-                fields=[
-                    "id",
-                    "name",
-                    "complete_name",
-                    "barcode",
-                ],
-                order="complete_name asc, id asc",
+            ],
+            fields=[
+                "id",
+                "name",
+                "complete_name",
+                "barcode",
+            ],
+            order="complete_name asc, id asc",
             )
 
             return [
