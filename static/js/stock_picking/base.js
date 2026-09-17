@@ -54,6 +54,7 @@
         validateEndpoint: (record) => `/api/inventario/pickings/${record.id}/validar`,
         validationSuccessMessage: () => "REGISTRO VALIDADO COM SUCESSO",
         validationText: (record) => `Deseja realmente validar o registro ${record.pv || record.reference}?`,
+        canEditQuantity: false,
     };
 
     let records = [];
@@ -226,11 +227,22 @@
 
         const supplier = createElement("div", "client-info");
         const product = createElement("div", "product-info");
+        const quantity = createElement("div", "quantity-box");
         const primaryActions = createElement("div", "picking-actions");
         const secondaryActions = createElement(
             "div",
             "secondary-actions hidden",
         );
+        
+        const quantityInput = createElement("input", "quantity-input");
+        quantityInput.type = "number";
+        quantityInput.value = record.receivedQuantity;
+        quantityInput.min = 0.0; 
+        quantityInput.addEventListener("change", () => updateReceivedQuantity(record, quantityInput));
+        quantityInput.disabled = !options.canEditQuantity;
+
+        const expectedQuantity = createElement("span", "expected-quantity");
+        expectedQuantity.textContent = `Esperado: ${record.expectedQuantity} unidades`;
 
         identification.append(
             reference,
@@ -251,6 +263,16 @@
 
         );
 
+        quantity.append(
+            createElement(
+                "strong",
+                "",
+                "Quantidade Recebida",
+            ),
+            quantityInput,
+            expectedQuantity,
+        );
+
         product.append(
             createElement(
                 "strong",
@@ -263,10 +285,11 @@
                 record.product || "Sem produtos",
             ),
         );
-
+ 
         main.append(
             identification,
             supplier,
+            quantity,
             product,
         );
 
@@ -327,6 +350,54 @@
 
         return card;
     }
+
+    async function updateReceivedQuantity(record, input) {
+        const value = Number(input.value);
+        if (AppInventory.isActionInProgress()) {
+            input.value = record.receivedQuantity;
+            return;
+        }
+        if (Number.isNaN(value) || value < 0) {
+            input.value = record.receivedQuantity;
+            return;
+        }
+
+        const previousValue = record.receivedQuantity;
+        record.receivedQuantity = value;
+        try {
+            await AppInventory.runAction(async () => {
+                const response = await fetch("/api/received_quantity", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        picking_id: record.id,
+                        received_quantity: value,
+                    }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || "Erro ao atualizar quantidade.");
+                }
+                AppInventory.showToast("Quantidade atualizada.");
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar quantidade:", error);
+            record.receivedQuantity = previousValue;
+            AppInventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
+        } finally {
+            AppInventory.render();
+        }
+    }
+
+    function showQuantityWarning(record) {
+        const warning = document.getElementById("quantityWarning");
+        warning?.classList.toggle(
+            "hidden",
+            !(Number(record.receivedQuantity) < Number(record.expectedQuantity)),
+        );
+    }
+
+
 
     function render() {
         if (!elements.container) {
@@ -478,6 +549,8 @@
         selectedValidationRecord = record;
 
         options.onOpenValidation(record);
+
+        showQuantityWarning(record);
 
         if (elements.validationText) {
             elements.validationText.textContent =

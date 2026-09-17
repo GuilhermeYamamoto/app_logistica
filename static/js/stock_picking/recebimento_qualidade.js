@@ -45,23 +45,8 @@
     }
 
     function enhanceCard(card, picking, context) {
-        const quantityBox = document.createElement("div");
-        quantityBox.className = "quantity-box";
-        const quantityLabel = document.createElement("label");
-        quantityLabel.textContent = "QUANTIDADE RECEBIDA";
-        const quantityInput = document.createElement("input");
-        quantityInput.className = "quantity-input";
-        quantityInput.type = "number";
-        quantityInput.min = "0";
-        quantityInput.value = picking.receivedQuantity;
-        quantityInput.addEventListener("change", () => updateReceivedQuantity(picking, quantityInput));
-        const expectedQuantity = document.createElement("span");
-        expectedQuantity.className = "expected-quantity";
-        expectedQuantity.textContent = `Esperado: ${picking.expectedQuantity} unidades`;
-        quantityBox.append(quantityLabel, quantityInput, expectedQuantity);
-
+               
         const product = context.main.querySelector(".product-info");
-        context.main.insertBefore(quantityBox, product);
 
         context.replacePrimaryActions([
             context.createAction({
@@ -103,14 +88,6 @@
                 "main-action validation-action",
                 !picking.photosRegistered,
             ),
-        );
-    }
-
-    function showQuantityWarning(picking) {
-        const warning = document.getElementById("quantityWarning");
-        warning?.classList.toggle(
-            "hidden",
-            !(Number(picking.receivedQuantity) < Number(picking.expectedQuantity)),
         );
     }
 
@@ -198,44 +175,6 @@
             filteredPickingIds = [];
             inventory.render();
             inventory.showToast(error.message || "Não foi possível consultar a nota fiscal.", "!");
-        }
-    }
-
-    async function updateReceivedQuantity(picking, input) {
-        const value = Number(input.value);
-        if (inventory.isActionInProgress()) {
-            input.value = picking.receivedQuantity;
-            return;
-        }
-        if (Number.isNaN(value) || value < 0) {
-            input.value = picking.receivedQuantity;
-            return;
-        }
-
-        const previousValue = picking.receivedQuantity;
-        picking.receivedQuantity = value;
-        try {
-            await inventory.runAction(async () => {
-                const response = await fetch("/api/received_quantity", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        picking_id: picking.id,
-                        received_quantity: value,
-                    }),
-                });
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data.detail || "Erro ao atualizar quantidade.");
-                }
-                inventory.showToast("Quantidade atualizada.");
-            });
-        } catch (error) {
-            console.error("Erro ao atualizar quantidade:", error);
-            picking.receivedQuantity = previousValue;
-            inventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
-        } finally {
-            inventory.render();
         }
     }
 
@@ -548,6 +487,7 @@
     inventory.configure({
         beforeValidate,
         enhanceCard,
+        canEditQuantity: true, // Permite editar o campo de quantidade no cartão do pedido
         getSectionTitle: (filter) => filter === "andamento"
             ? "PEDIDOS EM ANDAMENTO"
             : "PEDIDOS PENDENTES",
@@ -558,7 +498,6 @@
         ),
         normalizeRecord,
         onInitialized: initializeQualityFeatures,
-        onOpenValidation: showQuantityWarning,
         refreshRecords,
         resultText: (count) => `${count} ${count === 1 ? "pedido" : "pedidos"}`,
         validationSuccessMessage: () => "PEDIDO VALIDADO COM SUCESSO",

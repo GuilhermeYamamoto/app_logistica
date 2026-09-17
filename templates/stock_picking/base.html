@@ -93,6 +93,10 @@
             <span class="modal-kicker">FINALIZAÇÃO</span>
             <h2>VALIDAR REGISTRO</h2>
             <p id="validationText">Deseja realmente validar este registro?</p>
+            <div id="quantityWarning" class="quantity-warning hidden">
+                ⚠️ A quantidade recebida é menor que a quantidade esperada.
+                <strong>Tem certeza que deseja prosseguir com a quantidade menor?</strong>
+            </div>
             {% block inventory_validation_content %}{% endblock %}
             <div class="modal-footer">
                 <button class="secondary-button" type="button" data-close="validationModal">CANCELAR</button>
