@@ -18,6 +18,32 @@
 {% endblock %}
 
 {% block inventory_modals %}
+
+    <div id="photoModal" class="modal-overlay hidden" data-close-on-backdrop="false">
+        <div class="modal photo-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">REGISTRO FOTOGRÁFICO</span>
+                    <h2>FOTOS DO PRODUTO</h2>
+                    <p id="photoPickingInfo">-</p>
+                </div>
+                <button class="close-modal" type="button" data-close="photoModal">×</button>
+            </div>
+            <div class="photo-progress">
+                <span id="photoProgressText">0 DE 3 FOTOS</span>
+                <div class="progress-track"><div id="photoProgressBar" class="progress-fill"></div></div>
+            </div>
+            <div id="photoInstruction" class="photo-instruction">Tirar foto da EMBALAGEM</div>
+            <div id="photoGrid" class="photo-grid"></div>
+            <div class="photo-message" id="photoMessage"></div>
+            <div class="modal-footer">
+                <button class="secondary-button" type="button" data-close="photoModal">FECHAR</button>
+                <button id="finishPhotosButton" class="primary-button" type="button" disabled>REGISTRAR FOTOS</button>
+            </div>
+        </div>
+    </div>
+    <input id="photoCameraInput" class="photo-file-input" type="file" accept="image/*" capture="environment">
+
     <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
         <div class="modal barcode-scanner-modal">
 
@@ -152,9 +178,7 @@
 
         </div>
     </div>
-    <input id="photoCameraInput" class="photo-file-input" type="file" accept="image/*" capture="environment">
 
-    <div 
 {% endblock %}
 
 {% block inventory_scripts %}
