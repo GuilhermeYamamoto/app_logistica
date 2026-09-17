@@ -204,8 +204,7 @@ def create_quality_alert(quality_alert_data: QualityAlert = Body(...), client=De
 ####################################
 
 @router.post("/api/received_quantity")
-def received_quantity(
-    data: ReceivedQuantity = Body(...), client=Depends(get_odoo_client)):
+def received_quantity(data: ReceivedQuantity = Body(...), client=Depends(get_odoo_client)):
     """
     Atualiza a quantidade recebida para um picking no Odoo.
     """
@@ -230,18 +229,12 @@ def received_quantity(
 ####################################
 
 @router.post("/api/inventario/pickings/photos")
-def save_picking_photos(
-    data: SavePickingPhotos = Body(...),
-    client=Depends(get_odoo_client),
-):
+def save_picking_photos(data: SavePickingPhotos = Body(...), client=Depends(get_odoo_client)):
     """
     Registra as fotos de um picking no Odoo.
     """
 
-    return InventoryService.save_picking_photos(
-        client,
-        data,
-    )
+    return InventoryService.save_picking_photos(client,data,)
 
 @router.post("/api/inventario/pickings/{picking_id}/barcode")
 def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: OdooClient = Depends(get_odoo_client)):
@@ -250,43 +243,24 @@ def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: Odoo
 
 
 @router.get("/api/inventario/pickings/{picking_id}/location")
-def list_inventory_locations(
-    picking_id: int,
-    client: OdooClient = Depends(get_odoo_client),
-):
-    return InventoryService.list_inventory_locations(
-        client,
-        picking_id,
-    )
+def list_inventory_locations(picking_id: int,client: OdooClient = Depends(get_odoo_client)):
+
+    return InventoryService.list_inventory_locations(client,picking_id,)
 
 
 @router.post("/api/inventario/pickings/{picking_id}/location")
-def set_picking_location(
-    picking_id: int,
-    data: Dict[str, Any] = Body(...),
-    client: OdooClient = Depends(get_odoo_client),
-):
+def set_picking_location(picking_id: int,data: Dict[str, Any] = Body(...),client: OdooClient = Depends(get_odoo_client)):
     location_id = data.get("location_id")
 
     if not location_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O local deve ser informado.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="O local deve ser informado.")
 
     try:
         location_id = int(location_id)
     except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O ID do local informado é inválido.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="O ID do local informado é inválido.")
 
-    return InventoryService.set_destination_location(
-        client,
-        picking_id,
-        location_id,
-    )
+    return InventoryService.set_destination_location(client, picking_id, location_id,)
 
 
 ####################################
