@@ -76,7 +76,6 @@ class InventoryService:
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             for picking in pickings:
                 result_package = client.execute("stock.move.line", "search_read", [("id", "=", picking["move_line_ids_without_package"])], fields=["result_package_id"])
-                print(result_package[0].get('result_package_id')[1])
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
             received_quantity_field = None
             if move_ids:
@@ -126,14 +125,13 @@ class InventoryService:
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
-            print(result_package)
-
             if isinstance(result_package, (list, tuple)) and result_package:
-                result_package_id = result_package[0]
-                result_package_name = result_package[1] if len(result_package) > 1 else None
+                result_package_id = result_package[0].get("result_package_id")[0]
+                result_package_name = result_package[0].get("result_package_id")[1] if result_package else None
             else:
                 result_package_id = None
                 result_package_name = None
+
             photo_relation = picking.get("fotos_count") or []
             if isinstance(photo_relation, (list, tuple)):
                 photo_count = len(photo_relation)
@@ -453,7 +451,6 @@ class InventoryService:
         de estoque, incluindo locais internos e de trânsito.
         """
 
-        print(picking_id)
         picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
         centro_distruibuicao = 11 if picking_type_id == 137 else 5963
 
