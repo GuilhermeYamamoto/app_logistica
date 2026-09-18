@@ -441,10 +441,15 @@
    ========================================= */
 
 .secondary-info-row {
+    grid-column: 1 / -1;
+    
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 50vh;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    
     width: 100%;
+    box-sizing: border-box;
+    
+    gap: 0;
 }
 
 .local-box {
@@ -452,7 +457,6 @@
     flex-direction: column;
     gap: 0;
     min-width: 0;
-
 }
 
 .local-label {
@@ -486,14 +490,16 @@
 .result-package-box {
     width: 100%;
     min-width: 0;
+    grid-column: 3;
 }
 
 .result-package-label {
+    display: block;
+    margin-bottom: 0;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 17.5px;
     font-weight: 750;
-    font-family: Arial, Helvetica, sans-serif;
     color: var(--muted);
-    margin-bottom: 0;
     text-transform: none;
 }
 
