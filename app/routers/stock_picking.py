@@ -190,6 +190,60 @@ def create_quality_alert(quality_alert_data: QualityAlert = Body(...), client=De
     return {"success": True, "message": "Alerta de qualidade criado com sucesso."}
 
 
+####################################
+#  RESPONSÁVEIS PELA SEPARAÇÃO
+####################################
+
+@router.get("/api/inventario/responsaveis")
+def list_responsible_users(
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Retorna os usuários ativos disponíveis para
+    serem definidos como responsáveis pela separação.
+    """
+
+    return InventoryService.list_active_responsible_users(client)
+
+
+@router.post("/api/inventario/pickings/{picking_id}/responsavel")
+def set_responsible_user(
+    picking_id: int,
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Define o responsável pela separação do picking.
+    """
+
+    user_id = data.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O responsável deve ser informado.",
+        )
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O ID do usuário informado é inválido.",
+        )
+
+    try:
+        return InventoryService.set_picking_responsible(
+            client,
+            picking_id,
+            user_id,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        )
+
 
 ####################################
 #  ATUALIZAÇÃO DA QUANTIDADE RECEBIDA

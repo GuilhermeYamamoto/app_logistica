@@ -1,0 +1,369 @@
+/* ============================================
+   PRÉ-SEPARAÇÃO
+   RESPONSÁVEL PELA SEPARAÇÃO
+   SELETOR INLINE
+   ============================================ */
+
+.responsible-selector {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.responsible-action {
+    width: 100%;
+    min-height: 72px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: var(--light-blue);
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    box-shadow: none;
+    overflow: hidden;
+    cursor: pointer;
+    transition: .15s ease;
+}
+
+.responsible-action:hover {
+    filter: brightness(.94);
+}
+
+.responsible-action:active {
+    transform: scale(0.99);
+}
+
+.responsible-action:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.responsible-action:disabled {
+    background: #d7dce4;
+    border-color: #d7dce4;
+    color: #8b929d;
+    opacity: 1;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.responsible-action-content {
+    width: auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+
+.responsible-action-icon {
+    width: auto;
+    height: auto;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #ffffff;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.responsible-action-label {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.responsible-action-arrow {
+    width: auto;
+    height: auto;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+/* ============================================
+   PAINEL DO RESPONSÁVEL
+   ============================================ */
+
+.responsible-selector-panel {
+    position: absolute;
+    z-index: 1100;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    display: none;
+    overflow: hidden;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow);
+}
+
+.responsible-selector.is-open
+.responsible-selector-panel {
+    display: block;
+}
+
+
+/* ============================================
+   PESQUISA
+   ============================================ */
+
+.responsible-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--app-surface);
+}
+
+.responsible-search-icon {
+    position: absolute;
+    left: 25px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: var(--app-muted);
+    font-size: 20px;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.responsible-search-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px 0 42px;
+    border: 1px solid var(--app-border);
+    border-radius: 9px;
+    outline: none;
+    background: var(--app-surface-secondary);
+    color: var(--app-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.responsible-search-input::placeholder {
+    color: var(--app-muted);
+}
+
+.responsible-search-input:focus {
+    border-color: var(--app-primary);
+    background: var(--app-surface);
+    box-shadow:
+        0 0 0 3px var(--odoo-focus);
+}
+
+
+/* ============================================
+   LISTA DE USUÁRIOS
+   ============================================ */
+
+.responsible-users-list {
+    max-height: 280px;
+    padding: 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.responsible-user-option {
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--app-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.responsible-user-option:hover {
+    border-color: var(--app-border);
+    background: var(--app-surface-secondary);
+}
+
+.responsible-user-option:active {
+    transform: scale(0.99);
+}
+
+.responsible-user-option:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: -2px;
+}
+
+.responsible-user-option.selected {
+    border-color: rgba(164, 67, 137, 0.28);
+    background: rgba(164, 67, 137, 0.08);
+}
+
+.responsible-user-icon {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--app-surface-secondary);
+    color: var(--app-primary);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.responsible-user-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--app-text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.responsible-user-check {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    color: transparent;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.responsible-user-option.selected
+.responsible-user-check {
+    background: var(--app-primary);
+    color: #ffffff;
+}
+
+
+/* ============================================
+   ESTADOS
+   ============================================ */
+
+.responsible-users-loading,
+.responsible-users-empty,
+.responsible-users-error {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--app-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.responsible-users-error {
+    color: var(--app-danger);
+}
+
+
+/* ============================================
+   SCROLLBAR DA LISTA
+   ============================================ */
+
+.responsible-users-list::-webkit-scrollbar {
+    width: 7px;
+}
+
+.responsible-users-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.responsible-users-list::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: var(--app-border);
+}
+
+.responsible-users-list::-webkit-scrollbar-thumb:hover {
+    background: var(--app-muted);
+}
+
+
+/* ============================================
+   MOBILE
+   ============================================ */
+
+@media (max-width: 760px) {
+    .responsible-selector-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        left: 0;
+    }
+
+    .responsible-users-list {
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .responsible-action {
+        padding: 0 13px;
+    }
+
+    .responsible-action-label {
+        font-size: 13px;
+    }
+
+    .responsible-selector-panel {
+        border-radius: 11px;
+    }
+
+    .responsible-search {
+        padding: 10px;
+    }
+
+    .responsible-users-list {
+        max-height: 230px;
+        padding: 7px;
+    }
+
+    .responsible-user-option {
+        min-height: 46px;
+    }
+}
