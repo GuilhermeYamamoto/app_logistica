@@ -182,11 +182,13 @@
     function createQualityAction(
         record,
         className = "main-action quality-action",
+        disabled = false,
     ) {
         return createAction({
             className,
             label: "ALERTA DE QUALIDADE",
             icon: "⚠️",
+            disabled,
             onClick: () => openQuality(record),
         });
     }
@@ -309,8 +311,8 @@
 
             createAction,
 
-            createQualityAction: (className) =>
-                createQualityAction(record, className),
+            createQualityAction: (className, disabled) =>
+                createQualityAction(record, className, disabled),
 
             createValidationAction: (className, disabled) =>
                 createValidationAction(record, className, disabled),

@@ -764,6 +764,13 @@ body {
     background: #424b5a;
 }
 
+.quality-action:disabled {
+    background: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+    filter: none;
+}
+
 
 /* =========================================================
    EMPTY STATE
