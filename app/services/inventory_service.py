@@ -76,7 +76,7 @@ class InventoryService:
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             for picking in pickings:
                 result_package = client.execute("stock.move.line", "search_read", [("id", "=", picking["move_line_ids_without_package"])], fields=["result_package_id"])
-                print(result_package[0].get('result_package_id')[1])
+                
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
             received_quantity_field = None
             if move_ids:
@@ -125,8 +125,6 @@ class InventoryService:
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
-
-            print(result_package)
 
             if isinstance(result_package, (list, tuple)) and result_package:
                 result_package_id = result_package[0]
