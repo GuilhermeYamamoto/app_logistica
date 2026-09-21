@@ -74,8 +74,7 @@ class InventoryService:
         try:
             pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
-            for picking in pickings:
-                result_package = client.execute("stock.move.line", "search_read", [("id", "=", picking["move_line_ids_without_package"])], fields=["result_package_id"])
+            move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
             received_quantity_field = None
             if move_ids:
@@ -85,9 +84,10 @@ class InventoryService:
                 if received_quantity_field is not None:
                     fields.append(received_quantity_field)
                 moves = client.execute("stock.move", "search_read", [("id", "in", move_ids)], fields=fields)
-                
+
                 for move in moves:
                     moves_by_picking[move["picking_id"][0]].append(move)
+
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings da etapa solicitada")) from error
 
@@ -101,7 +101,7 @@ class InventoryService:
         if destination_move_ids:
             destination_moves = client.execute("stock.move", "search_read", [("id", "in", destination_move_ids)], fields=["id", "location_dest_id"])
             destination_moves_by_id = {move["id"]: move for move in destination_moves}
-
+    
         records = []
         for picking in pickings:
             moves = moves_by_picking[picking["id"]]
@@ -121,23 +121,17 @@ class InventoryService:
                         break
                 if local:
                     break
+
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
-
-            if isinstance(result_package, (list, tuple)) and result_package:
-                result_package_id = result_package[0].get("result_package_id")[0]
-                result_package_name = result_package[0].get("result_package_id")[1] if result_package else None
-            else:
-                result_package_id = None
-                result_package_name = None
 
             photo_relation = picking.get("fotos_count") or []
             if isinstance(photo_relation, (list, tuple)):
                 photo_count = len(photo_relation)
             else:
                 photo_count = int(photo_relation or 0)
-            records.append({
+            record = {
                 "nf_number": nf_number,
                 "id": picking["id"],
                 "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
@@ -153,10 +147,19 @@ class InventoryService:
                 "photosRegistered": photo_count >= 3,
                 "barcodeRegistered": bool(barcode_registered),
                 "local": local,
-                "resultPackageId": result_package_id,
-                "resultPackageName": result_package_name,
-                
-            })
+            }
+
+            result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
+            if result_package_ids:
+                for package in result_package_ids:
+                    picking_id = package.get("picking_id")[0]
+                    if picking_id == picking.get("id"):
+                        if package.get("result_package_id"):
+                            record["resultPackageName"] = package.get("result_package_id")[1]
+                            break
+
+            records.append(record)
+
         return {"picking_type_id": picking_type_id, "records": records}
 
     ####################################
