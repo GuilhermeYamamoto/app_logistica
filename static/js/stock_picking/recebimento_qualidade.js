@@ -32,6 +32,7 @@
             photosRegistered: Boolean(record.photosRegistered),
             photoCount: Number(record.photoCount || 0),
             local: record.local || null,
+            barcodeRegistered: Boolean(record.barcodeRegistered),
         };
     }
 
@@ -65,6 +66,7 @@
         context.addSecondaryAction(
             context.createQualityAction(
                 "secondary-action quality-action",
+                !picking.photosRegistered,
             ),
         );
 
@@ -83,6 +85,7 @@
                 label: "LER CÓDIGO",
                 icon: "▥",
                 ariaLabel: "Ler código de barras",
+                disabled: !picking.photosRegistered,
                 onClick: () => openBarcodeScanner(picking.id),
             }),
         );
@@ -90,7 +93,9 @@
         context.addSecondaryAction(
             context.createValidationAction(
                 "main-action validation-action",
-                !picking.photosRegistered,
+                !picking.photosRegistered ||
+                    !picking.local ||
+                    picking.local === "CD/STO",
             ),
         );
 
@@ -142,12 +147,25 @@
     }
 
     async function beforeValidate(picking) {
-        if (picking.photosRegistered) {
+        const hasValidLocation =
+            picking.local && picking.local !== "CD/STO";
+
+        if (picking.photosRegistered && hasValidLocation) {
             return true;
         }
+
         window.AppUI.closeModal("validationModal");
+
+        if (!picking.photosRegistered) {
+            inventory.showToast(
+                "É necessário registrar pelo menos 3 fotos antes de validar o pedido.",
+                "!",
+            );
+            return false;
+        }
+
         inventory.showToast(
-            "É necessário registrar pelo menos 3 fotos antes de validar o pedido.",
+            "É necessário ler o código ou selecionar o local antes de validar o pedido.",
             "!",
         );
         return false;
