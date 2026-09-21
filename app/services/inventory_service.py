@@ -147,6 +147,14 @@ class InventoryService:
                 "photosRegistered": photo_count >= 3,
                 "barcodeRegistered": bool(barcode_registered),
                 "local": local,
+                "responsible": (
+                    {
+                        "id": picking["user_id"][0],
+                        "name": picking["user_id"][1],
+                    }
+                    if picking.get("user_id")
+                    else None
+                ),
             }
 
             result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
@@ -720,3 +728,79 @@ class InventoryService:
             raise
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível registrar a mensagem no Chatter.") from error
+
+
+    @staticmethod
+    def list_active_responsible_users(client: OdooClient):
+        """
+        Retorna todos os usuários ativos do Odoo.
+
+        Inicialmente não existe nenhum filtro adicional.
+        Futuramente podemos restringir os usuários de acordo
+        com algum grupo, função ou condição específica.
+        """
+
+        return client.execute(
+            "res.users",
+            "search_read",
+            [("active", "=", True)],
+            fields=[
+                "id",
+                "name",
+            ],
+            order="name asc, id asc",
+        )
+
+
+    @staticmethod
+    def set_picking_responsible(
+        client: OdooClient,
+        picking_id: int,
+        user_id: int,
+    ):
+        """
+        Define o responsável pela separação no picking.
+
+        O campo stock.picking.user_id é um Many2One
+        relacionado ao modelo res.users.
+        """
+
+        users = client.execute(
+            "res.users",
+            "search_read",
+            [
+                ("id", "=", user_id),
+                ("active", "=", True),
+            ],
+            fields=[
+                "id",
+                "name",
+            ],
+            limit=1,
+        )
+
+        if not users:
+            raise ValueError(
+                "O usuário selecionado não existe ou está inativo."
+            )
+
+        result = client.execute(
+            "stock.picking",
+            "write",
+            [picking_id],
+            {
+                "user_id": user_id,
+            },
+        )
+
+        if not result:
+            raise ValueError(
+                "Não foi possível definir o responsável pelo picking."
+            )
+
+        return {
+            "success": True,
+            "picking_id": picking_id,
+            "user_id": user_id,
+            "user_name": users[0]["name"],
+        }
