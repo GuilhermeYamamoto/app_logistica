@@ -27,25 +27,6 @@
             .forEach((selector) => {
                 if (selector !== except) {
                     selector.classList.remove("is-open");
-
-                    const arrow = selector.querySelector(
-                        ".responsible-action-arrow",
-                    );
-
-                    if (arrow) {
-                        arrow.textContent = "▼";
-                    }
-
-                    const button = selector.querySelector(
-                        ".responsible-action",
-                    );
-
-                    if (button) {
-                        button.setAttribute(
-                            "aria-expanded",
-                            "false",
-                        );
-                    }
                 }
             });
 
@@ -405,11 +386,6 @@
                 closeAllSelectors();
 
                 if (isOpen) {
-                    arrow.textContent = "▼";
-                    button.setAttribute(
-                        "aria-expanded",
-                        "false",
-                    );
                     return;
                 }
 
@@ -418,8 +394,6 @@
                 );
 
                 openSelector = selector;
-
-                arrow.textContent = "▲";
 
                 button.setAttribute(
                     "aria-expanded",
@@ -579,14 +553,30 @@
         const selector =
             createResponsibleSelector(record);
 
-        /*
-         * O campo RESPONSÁVEL continua sendo
-         * a primeira ação do card.
-         */
+        const validationButton =
+            context.primaryActions.querySelector(
+                ".validation-action",
+            );
+
+        const qualityButton =
+            context.primaryActions.querySelector(
+                ".quality-action",
+            );
+
         context.primaryActions.insertBefore(
             selector,
             context.primaryActions.firstChild,
         );
+
+        if (
+            qualityButton &&
+            validationButton
+        ) {
+            context.primaryActions.insertBefore(
+                qualityButton,
+                validationButton,
+            );
+        }
     }
 
     function initialize() {
