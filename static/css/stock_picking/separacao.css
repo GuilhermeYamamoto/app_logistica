@@ -4,13 +4,13 @@
 }
 
 .secondary-info-row {
-    grid-column: 1 / span 4;
+    grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     box-sizing: border-box;
     gap: 0;
-}
+   }
 
 .local-box {
     display: flex;
