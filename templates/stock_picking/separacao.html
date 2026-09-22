@@ -1,1 +1,19 @@
 {% extends "stock_picking/base.html" %}
+
+{% block title %}Separação{% endblock %}
+
+{% block inventory_head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/stock_picking/separacao.css') }}?v={{ static_asset_version('css/stock_picking/separacao.css') }}">
+{% endblock %}
+
+
+{% block inventory_scripts %}
+    <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"></script>
+    <script src="{{ url_for('static', path='js/stock_picking/separacao.js') }}?v={{ static_asset_version('js/stock_picking/separacao.js') }}"></script>
+{% endblock %}
+
+{% block inventory_base_script %}
+    {{ super() }}
+{% endblock %}
