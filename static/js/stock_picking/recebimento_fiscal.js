@@ -37,7 +37,11 @@
             }, 100);   
         });
 
-        context.addSecondaryAction(definirQtdAction);
+        context.replacePrimaryActions([
+            definirQtdAction,
+            context.createQualityAction("main-action quality-action"),
+            context.createValidationAction("main-action validation-action"),
+        ]);
     };
 
     // Configura o módulo de inventário com a função enhanceCard e permite a edição de quantidade
