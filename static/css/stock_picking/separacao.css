@@ -43,7 +43,7 @@
 .result-package-box {
     width: 100%;
     min-width: 0;
-    grid-column: 2;
+    grid-column: 3;
 }
 
 .result-package-label {
