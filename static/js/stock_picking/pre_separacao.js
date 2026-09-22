@@ -25,10 +25,17 @@
         return element;
     }
 
-    function isDefaultResponsible(userName) {
-        const normalizedName = String(userName || "")
+    function normalizeResponsibleName(userName) {
+        return String(userName || "")
             .trim()
-            .toLocaleLowerCase("pt-BR");
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLocaleLowerCase("pt-BR")
+            .replace(/\s+/g, " ");
+    }
+
+    function isDefaultResponsible(userName) {
+        const normalizedName = normalizeResponsibleName(userName);
 
         return DEFAULT_RESPONSIBLES.has(normalizedName);
     }
@@ -561,6 +568,21 @@
         }
     }
 
+    function hasSelectedResponsible(record) {
+        if (!record) {
+            return false;
+        }
+
+        const hasUserId = Number(record.userId) > 0;
+        const userIsDefaultResponsible = isDefaultResponsible(record.userName);
+
+        return hasUserId && !userIsDefaultResponsible;
+    }
+
+    function canValidateResponsible(record) {
+        return hasSelectedResponsible(record);
+    }
+
     function enhanceCard(
         card,
         record,
@@ -579,6 +601,14 @@
                 ".quality-action",
             );
 
+        if (validationButton) {
+            const canValidate = canValidateResponsible(record);
+            validationButton.disabled = !canValidate;
+            validationButton.title = canValidate
+                ? "Validar separação"
+                : "Selecione um responsável antes de validar.";
+        }
+
         context.primaryActions.insertBefore(
             selector,
             context.primaryActions.firstChild,
@@ -593,6 +623,18 @@
                 validationButton,
             );
         }
+    }
+
+    function beforeValidate(record) {
+        if (canValidateResponsible(record)) {
+            return true;
+        }
+
+        window.AppInventory.showToast(
+            "Selecione um responsável válido antes de validar a pré-separação.",
+            "!",
+        );
+        return false;
     }
 
     function initialize() {
@@ -612,6 +654,7 @@
 
         window.AppInventory.configure({
             enhanceCard,
+            beforeValidate,
         });
 
         document.addEventListener(

@@ -1,3 +1,16 @@
+.picking-actions,
+.secondary-actions {
+   display: grid;
+   grid-template-columns: 1fr;
+   gap: 8px;
+}
+
+.main-action,
+.secondary-action,
+.responsible-action {
+   width: 100%;
+}
+
 /* ============================================
    PRÉ-SEPARAÇÃO
    RESPONSÁVEL PELA SEPARAÇÃO

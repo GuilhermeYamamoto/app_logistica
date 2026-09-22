@@ -1,12 +1,22 @@
+.picking-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
 .secondary-actions {
     display: grid;
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: 1fr;
     gap: 8px;
     margin-top: 8px;
 }
 
+.main-action,
+.secondary-action,
+.definir-qtd-action {
+    width: 100%;
+}
 
 .definir-qtd-action {
     background: var(--blue);
-    width: 100%;
 }
