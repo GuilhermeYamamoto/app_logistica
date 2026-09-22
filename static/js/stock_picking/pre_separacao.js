@@ -6,6 +6,10 @@
     let loadingUsers = false;
     let initialized = false;
     let openSelector = null;
+    const DEFAULT_RESPONSIBLES = new Set([
+        "silvando ferrei",
+        "jose santos",
+    ]);
 
     function createElement(tagName, className, text) {
         const element = document.createElement(tagName);
@@ -19,6 +23,14 @@
         }
 
         return element;
+    }
+
+    function isDefaultResponsible(userName) {
+        const normalizedName = String(userName || "")
+            .trim()
+            .toLocaleLowerCase("pt-BR");
+
+        return DEFAULT_RESPONSIBLES.has(normalizedName);
     }
 
     function closeAllSelectors(except = null) {
@@ -273,6 +285,10 @@
 
         selector._responsibleRecord = record;
 
+        const hasSelectedResponsible =
+            record.userName &&
+            !isDefaultResponsible(record.userName);
+
         const button = document.createElement("button");
 
         button.type = "button";
@@ -293,7 +309,7 @@
         const label = createElement(
             "span",
             "responsible-action-label",
-            record.userName
+            hasSelectedResponsible
                 ? `RESPONSÁVEL: ${record.userName}`
                 : "RESPONSÁVEL PELA SEPARAÇÃO",
         );
@@ -319,7 +335,7 @@
 
         button.setAttribute(
             "aria-label",
-            record.userName
+            hasSelectedResponsible
                 ? `Responsável escolhido: ${record.userName}. Clique para alterar.`
                 : "Selecionar responsável pela separação",
         );
