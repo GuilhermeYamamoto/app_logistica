@@ -753,16 +753,21 @@
                 responsibleAction.className = 'responsible-action';
                 responsibleAction.textContent = 'RESPONSÁVEL PELA SEPARAÇÃO';
 
-                // contador visual (validados/total)
-                const counter = document.createElement('div');
-                counter.className = 'pv-counter';
+                // Aba semelhante ao chat (usar mesmo estilo .chat-tab), contendo o contador
                 const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
                 const totalCount = (group.pickings || []).length;
-                counter.textContent = `${validatedCount}/${totalCount}`;
+                const pvChatTab = document.createElement('button');
+                pvChatTab.type = 'button';
+                pvChatTab.className = 'chat-tab pv-counter-tab';
+                pvChatTab.setAttribute('aria-label', `Contador: ${validatedCount} de ${totalCount}`);
+                pvChatTab.textContent = `${validatedCount}/${totalCount}`;
+                // Não deve abrir chat — comportamento apenas visual aqui
+                pvChatTab.addEventListener('click', (e) => { e.stopPropagation(); });
 
                 responsibleButton.appendChild(responsibleAction);
                 right.appendChild(responsibleButton);
-                right.appendChild(counter);
+                // pvChatTab appended last for alignment
+                right.appendChild(pvChatTab);
 
                 header.appendChild(left);
                 header.appendChild(right);
@@ -795,6 +800,14 @@
                     }
 
                     if (match) {
+                        // Remover aba de chat do card movido (na pré-separação o chat por picking não é exibido)
+                        try {
+                            const chatTab = match.querySelector('.chat-tab');
+                            if (chatTab) chatTab.remove();
+                        } catch (e) {
+                            // ignore
+                        }
+
                         pickingsList.appendChild(match);
                         // também remover do array para não reusar
                         const idx = existingCards.indexOf(match);
@@ -951,11 +964,20 @@
                 for (const [key, group] of groupsById.entries()) {
                     const pvCard = container.querySelector(`.pv-card[data-pv-id="${key}"]`);
                     if (!pvCard) continue;
-                    const counterEl = pvCard.querySelector('.pv-counter');
                     const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
                     const totalCount = (group.pickings || []).length;
+
+                    // atualizar contador estrutural (caso exista)
+                    const counterEl = pvCard.querySelector('.pv-counter');
                     if (counterEl) {
                         counterEl.textContent = `${validatedCount}/${totalCount}`;
+                    }
+
+                    // atualizar aba estilo chat que agora mostra o contador
+                    const chatCounter = pvCard.querySelector('.chat-tab.pv-counter-tab');
+                    if (chatCounter) {
+                        chatCounter.textContent = `${validatedCount}/${totalCount}`;
+                        chatCounter.setAttribute('aria-label', `Contador: ${validatedCount} de ${totalCount}`);
                     }
                 }
             } catch (e) {

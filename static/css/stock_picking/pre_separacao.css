@@ -151,7 +151,10 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     margin-bottom: 12px;
-    overflow: hidden;
+    /* Permitir que abas absolutas (ex.: chat-tab) ultrapassem a borda do cartão */
+    overflow: visible;
+    /* Permitir que abas absolutas (ex.: chat-tab) sejam posicionadas corretamente */
+    position: relative;
 }
 
 .pv-header {
@@ -424,6 +427,38 @@
         max-height: 250px;
     }
 }
+
+/* PV chat-tab counter visual (usa o estilo da aba de chat, mas mostra texto)
+   Apenas para a pré-separação: exibe contador na mesma aparência da aba do chat */
+.pv-card .chat-tab.pv-counter-tab {
+    min-width: 52px;
+    min-height: 36px;
+    border-radius: 8px;
+    background: var(--blue);
+    color: #ffffff;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    font-size: 13px;
+    /* Garantir que fique acima do conteúdo do cartão */
+    z-index: 60;
+    /* Pequeno realce para destacar sobre o fundo */
+    box-shadow: 0 -3px 10px rgba(0,0,0,0.14);
+}
+
+/* Garantir que o hover mantenha aparência consistente */
+.pv-card .chat-tab.pv-counter-tab:hover {
+    filter: brightness(.96);
+}
+
+/* Não interativo visualmente (apenas estrutural) */
+.pv-card .chat-tab.pv-counter-tab:active,
+.pv-card .chat-tab.pv-counter-tab:focus {
+    outline: none;
+}
+
 
 @media (max-width: 480px) {
     .responsible-action {
