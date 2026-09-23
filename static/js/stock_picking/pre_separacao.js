@@ -707,7 +707,7 @@
             const container = document.getElementById('pickingsContainer');
             if (!container) return;
 
-            // Coleta os cards gerados pelo AppInventory
+            // Coleta os cards gerados pelo AppInventory (antes de esvaziar o container)
             const existingCards = Array.from(container.querySelectorAll('.picking-card'));
 
             // Limpa o container para inserir grupos (será re-populado com PV containers)
@@ -716,6 +716,10 @@
             for (const group of pvGroups) {
                 const pvCard = document.createElement('section');
                 pvCard.className = 'pv-card';
+                // identificar PV no DOM para atualizações dinâmicas
+                const pvKey = group.pedido_venda_id === null ? '__NO_PV__' : String(group.pedido_venda_id);
+                try { pvCard.dataset.pvId = pvKey; } catch (e) { /* non critical */ }
+
 
                 // Header
                 const header = document.createElement('div');
@@ -749,10 +753,12 @@
                 responsibleAction.className = 'responsible-action';
                 responsibleAction.textContent = 'RESPONSÁVEL PELA SEPARAÇÃO';
 
-                // contador visual (estrutural)
+                // contador visual (validados/total)
                 const counter = document.createElement('div');
                 counter.className = 'pv-counter';
-                counter.textContent = String(group.pickings.length);
+                const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
+                const totalCount = (group.pickings || []).length;
+                counter.textContent = `${validatedCount}/${totalCount}`;
 
                 responsibleButton.appendChild(responsibleAction);
                 right.appendChild(responsibleButton);
@@ -769,14 +775,24 @@
 
                 // Mover os cards correspondentes a este grupo
                 for (const picking of group.pickings) {
-                    // Tentar localizar o card existente pelo texto da identificação (pv ou reference)
-                    const match = existingCards.find((card) => {
-                        const refEl = card.querySelector('.picking-identification strong');
-                        if (!refEl) return false;
-                        const text = (refEl.textContent || '').trim();
-                        const candidate = String(picking.pv || picking.reference || '').trim();
-                        return text === candidate;
-                    });
+                    // Preferir localizar o card pelo dataset.recordId (adicionado em base.createCard)
+                    const recordId = String(picking.id || picking.id === 0 ? picking.id : '');
+                    let match = null;
+
+                    if (recordId) {
+                        match = existingCards.find((card) => String(card.dataset.recordId || '') === recordId);
+                    }
+
+                    // Fallback: ainda tentar por referência de texto (compatibilidade)
+                    if (!match) {
+                        match = existingCards.find((card) => {
+                            const refEl = card.querySelector('.picking-identification strong');
+                            if (!refEl) return false;
+                            const text = (refEl.textContent || '').trim();
+                            const candidate = String(picking.pv || picking.reference || '').trim();
+                            return text === candidate;
+                        });
+                    }
 
                     if (match) {
                         pickingsList.appendChild(match);
@@ -916,10 +932,64 @@
             }
         }
 
+        function updatePVCounters() {
+            try {
+                const records = window.AppInventory.getRecords ? window.AppInventory.getRecords() : [];
+                const groupsById = new Map();
+                for (const record of records || []) {
+                    const pvId = record?.pedido_venda_id ?? null;
+                    const key = pvId === null ? '__NO_PV__' : String(pvId);
+                    if (!groupsById.has(key)) {
+                        groupsById.set(key, { pickings: [] });
+                    }
+                    groupsById.get(key).pickings.push(record);
+                }
+
+                const container = document.getElementById('pickingsContainer');
+                if (!container) return;
+
+                for (const [key, group] of groupsById.entries()) {
+                    const pvCard = container.querySelector(`.pv-card[data-pv-id="${key}"]`);
+                    if (!pvCard) continue;
+                    const counterEl = pvCard.querySelector('.pv-counter');
+                    const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
+                    const totalCount = (group.pickings || []).length;
+                    if (counterEl) {
+                        counterEl.textContent = `${validatedCount}/${totalCount}`;
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao atualizar contadores de PV:', e);
+            }
+        }
+
+        function handleAfterRender(records) {
+            try {
+                // Usar os registros atuais fornecidos pelo AppInventory
+                buildPVGroups(window.AppInventory.getRecords ? window.AppInventory.getRecords() : []);
+                // Reaplicar a estrutura visual dos PVs e pickings
+                renderPVGroupsDOM();
+                // Atualizar apenas os contadores
+                updatePVCounters();
+            } catch (e) {
+                console.error('Erro ao processar onAfterRender (pre_separacao):', e);
+            }
+        }
+
         window.AppInventory.configure({
             enhanceCard,
             beforeValidate,
             onRecordsReplaced,
+            onAfterRender: handleAfterRender,
+        });
+
+        // Fallback: caso o evento seja disparado diretamente
+        document.addEventListener('appinventory:afterRender', (ev) => {
+            try {
+                handleAfterRender(ev?.detail?.records || []);
+            } catch (e) {
+                console.error('Erro no listener appinventory:afterRender (pre_separacao):', e);
+            }
         });
 
         document.addEventListener(
