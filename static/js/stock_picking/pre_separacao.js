@@ -867,10 +867,8 @@
                 toggleButton.appendChild(toggleIcon);
                 pvCard.appendChild(toggleButton);
 
-                // Ações: toggle abrir/fechar
-                toggleButton.addEventListener('click', (event) => {
-                    event.stopPropagation();
-
+                // Função centralizada para abrir/fechar o PV
+                function togglePV() {
                     const isOpen = !pickingsList.classList.contains('hidden');
 
                     if (isOpen) {
@@ -884,6 +882,29 @@
                         toggleButton.setAttribute('aria-expanded', 'true');
                         toggleButton.setAttribute('aria-label', 'Recolher PV');
                     }
+                }
+
+                // Clique na bolinha/seta
+                toggleButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    togglePV();
+                });
+
+                // Clique no próprio card do PV
+                pvCard.addEventListener('click', (event) => {
+                    // Se o clique veio de algum elemento interno que não deve
+                    // controlar a expansão, não faz nada.
+                    if (
+                        event.target.closest('.responsible-action') ||
+                        event.target.closest('.pv-counter-tab') ||
+                        event.target.closest('.pv-toggle') ||
+                        event.target.closest('.pv-pickings') ||
+                        event.target.closest('.pv-responsible-panel')
+                    ) {
+                        return;
+                    }
+
+                    togglePV();
                 });
 
                 // RESPONSÁVEL: abrir painel de seleção de usuário e atribuir a todos os pickings do grupo
@@ -921,6 +942,9 @@
                     panel.appendChild(list);
 
                     pvCard.appendChild(panel);
+                    panel.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                    });
 
                     // carrega usuários (reaproveita loadUsers())
                     // loadUsers atualiza a variável users e também atualiza seletores abertos;

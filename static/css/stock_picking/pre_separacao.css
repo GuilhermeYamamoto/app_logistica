@@ -126,6 +126,7 @@
     margin-bottom: 12px;
     overflow: visible;
     position: relative;
+    cursor: pointer;
 }
 
 .pv-header {
@@ -228,6 +229,11 @@
 
 .pv-pickings.hidden {
     display: none;
+}
+
+.pv-pickings,
+.pv-responsible-panel {
+    cursor: default;
 }
 
 .pv-responsible-panel {
