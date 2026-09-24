@@ -502,7 +502,7 @@
         }
     }
 
-    async function assignResponsible(user, record) {
+    async function assignResponsible(user, record, options = {},) {    
         if (
             !record ||
             !user ||
@@ -547,11 +547,15 @@
 
                     closeAllSelectors();
 
-                    window.AppInventory.render();
+                    if (options.render !== false) {
+                        window.AppInventory.render();
+                    }
 
-                    window.AppInventory.showToast(
-                        `RESPONSÁVEL DEFINIDO: ${user.name}`,
-                    );
+                    if (options.showToast !== false) {
+                        window.AppInventory.showToast(
+                            `RESPONSÁVEL DEFINIDO: ${user.name}`,
+                        );
+                    }
                 },
             );
         } catch (error) {
@@ -588,9 +592,6 @@
         record,
         context,
     ) {
-        const selector =
-            createResponsibleSelector(record);
-
         const validationButton =
             context.primaryActions.querySelector(
                 ".validation-action",
@@ -603,16 +604,13 @@
 
         if (validationButton) {
             const canValidate = canValidateResponsible(record);
+
             validationButton.disabled = !canValidate;
+
             validationButton.title = canValidate
                 ? "Validar separação"
-                : "Selecione um responsável antes de validar.";
+                : "Selecione um separador antes de validar.";
         }
-
-        context.primaryActions.insertBefore(
-            selector,
-            context.primaryActions.firstChild,
-        );
 
         if (
             qualityButton &&
@@ -702,6 +700,35 @@
             }, 0);
         }
 
+        function getPVResponsibleName(group) {
+            const pickings = group?.pickings || [];
+
+            if (!pickings.length) {
+                return null;
+            }
+
+            const responsiblePickings = pickings.filter(
+                (record) =>
+                    Number(record?.userId) > 0 &&
+                    record?.userName &&
+                    !isDefaultResponsible(record.userName),
+            );
+
+            if (!responsiblePickings.length) {
+                return null;
+            }
+
+            const firstName = responsiblePickings[0].userName;
+
+            const allSameResponsible = responsiblePickings.every(
+                (record) =>
+                    normalizeResponsibleName(record.userName) ===
+                    normalizeResponsibleName(firstName),
+            );
+
+            return allSameResponsible ? firstName : null;
+        }
+
         // Renderiza a estrutura visual dos grupos de PV e move os cards existentes
         function renderPVGroupsDOM() {
             const container = document.getElementById('pickingsContainer');
@@ -751,7 +778,19 @@
                 const responsibleAction = document.createElement('button');
                 responsibleAction.type = 'button';
                 responsibleAction.className = 'responsible-action';
-                responsibleAction.textContent = 'SELECIONAR SEPARADOR';
+
+                const currentPVResponsible = getPVResponsibleName(group);
+
+                responsibleAction.textContent = currentPVResponsible
+                    ? `SEPARADOR: ${currentPVResponsible}`
+                    : 'SELECIONAR SEPARADOR';
+
+                responsibleAction.setAttribute(
+                    'aria-label',
+                    currentPVResponsible
+                        ? `Separador atual: ${currentPVResponsible}. Clique para alterar.`
+                        : 'Selecionar separador',
+                );
 
                 // Aba semelhante ao chat (usar mesmo estilo .chat-tab), contendo o contador
                 const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
@@ -907,20 +946,42 @@
 
                                 btn.addEventListener('click', async (ev) => {
                                     ev.stopPropagation();
-                                    // Atribuir responsável para cada picking do grupo
-                                    for (const p of group.pickings) {
-                                        try {
-                                            // Reutiliza assignResponsible existente
-                                            // assignResponsible espera (user, record)
-                                            // Aqui chamamos sequencialmente — cada chamada faz POST para /responsavel
-                                            await assignResponsible(user, p);
-                                        } catch (err) {
-                                            console.error('Erro ao atribuir responsável a picking', p, err);
-                                        }
-                                    }
 
-                                    // Fecha painel
-                                    panel.remove();
+                                    try {
+                                        for (const p of group.pickings) {
+                                            await assignResponsible(user, p, {
+                                                render: false,
+                                                showToast: false,
+                                            });
+                                        }
+
+                                        for (const p of group.pickings) {
+                                            p.userId = user.id;
+                                            p.userName = user.name;
+                                        }
+
+                                        responsibleAction.textContent =
+                                            `SEPARADOR: ${user.name}`;
+
+                                        responsibleAction.setAttribute(
+                                            'aria-label',
+                                            `Separador atual: ${user.name}. Clique para alterar.`,
+                                        );
+
+                                        panel.remove();
+
+                                        window.AppInventory.render();
+
+                                        window.AppInventory.showToast(
+                                            `SEPARADOR DEFINIDO: ${user.name}`,
+                                        );
+
+                                    } catch (err) {
+                                        console.error(
+                                            'Erro ao atribuir separador ao PV:',
+                                            err,
+                                        );
+                                    }
                                 });
 
                                 list.appendChild(btn);

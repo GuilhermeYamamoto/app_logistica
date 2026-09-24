@@ -17,12 +17,6 @@
    SELETOR INLINE
    ============================================ */
 
-.responsible-selector {
-    position: relative;
-    width: 100%;
-    min-width: 0;
-}
-
 .responsible-action {
     width: 100%;
     min-height: 72px;
@@ -102,6 +96,18 @@
     line-height: 1;
 }
 
+.pv-responsible-container {
+    position: relative;
+    min-width: 0;
+}
+
+.pv-responsible-container .responsible-action {
+    min-width: 220px;
+    width: auto;
+    padding: 0 18px;
+    white-space: nowrap;
+}
+
 .responsible-action-arrow {
     width: auto;
     height: auto;
@@ -115,29 +121,6 @@
     font-size: 17px;
     font-weight: 900;
     line-height: 1;
-}
-
-/* ============================================
-   PAINEL DO RESPONSÁVEL
-   ============================================ */
-
-.responsible-selector-panel {
-    position: absolute;
-    z-index: 1100;
-    top: calc(100% + 8px);
-    right: 0;
-    left: 0;
-    display: none;
-    overflow: hidden;
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius);
-    background: var(--app-surface);
-    box-shadow: var(--app-shadow);
-}
-
-.responsible-selector.is-open
-.responsible-selector-panel {
-    display: block;
 }
 
 
@@ -415,13 +398,6 @@
    ============================================ */
 
 @media (max-width: 760px) {
-    .responsible-selector-panel {
-        position: absolute;
-        top: calc(100% + 6px);
-        right: 0;
-        left: 0;
-    }
-
     .responsible-users-list {
         max-height: 250px;
     }
@@ -464,10 +440,6 @@
 
     .responsible-action-label {
         font-size: 13px;
-    }
-
-    .responsible-selector-panel {
-        border-radius: 11px;
     }
 
     .responsible-search {
