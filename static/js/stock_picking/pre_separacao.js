@@ -751,7 +751,7 @@
                 const responsibleAction = document.createElement('button');
                 responsibleAction.type = 'button';
                 responsibleAction.className = 'responsible-action';
-                responsibleAction.textContent = 'RESPONSÁVEL PELA SEPARAÇÃO';
+                responsibleAction.textContent = 'SELECIONAR SEPARADOR';
 
                 // Aba semelhante ao chat (usar mesmo estilo .chat-tab), contendo o contador
                 const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;

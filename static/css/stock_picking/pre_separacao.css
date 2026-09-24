@@ -147,13 +147,12 @@
 
 /* PV CARD */
 .pv-card {
-    background: var(--surface);
+    background: transparent;
+    border: 2px solid var(--blue);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: none;
     margin-bottom: 12px;
-    /* Permitir que abas absolutas (ex.: chat-tab) ultrapassem a borda do cartão */
     overflow: visible;
-    /* Permitir que abas absolutas (ex.: chat-tab) sejam posicionadas corretamente */
     position: relative;
 }
 
@@ -163,7 +162,8 @@
     justify-content: space-between;
     gap: 12px;
     padding: 14px;
-    background: var(--surface-secondary);
+    background: transparent;
+    color: var(--text);
 }
 
 .pv-header-left {
@@ -194,14 +194,13 @@
     min-width: 36px;
     min-height: 36px;
     border-radius: 8px;
-    background: var(--blue);
-    color: white;
+    background: var(--background);
+    color: var(--text);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
 }
-
 .pv-pickings {
     padding: 10px 14px 18px 32px;
     display: flex;
@@ -434,17 +433,15 @@
     min-width: 52px;
     min-height: 36px;
     border-radius: 8px;
-    background: var(--blue);
-    color: #ffffff;
+    background: var(--background);
+    color: var(--text);
     font-weight: 900;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 6px 10px;
     font-size: 13px;
-    /* Garantir que fique acima do conteúdo do cartão */
     z-index: 60;
-    /* Pequeno realce para destacar sobre o fundo */
     box-shadow: 0 -3px 10px rgba(0,0,0,0.14);
 }
 
