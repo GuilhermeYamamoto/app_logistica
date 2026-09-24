@@ -72,7 +72,7 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id"], order="scheduled_date asc, id asc")
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
@@ -156,6 +156,18 @@ class InventoryService:
                 "userName": (
                     picking["user_id"][1]
                     if picking.get("user_id")
+                    else None
+                ),
+
+                "pedido_venda_id": (
+                    picking["pedido_venda_id"][0]
+                    if picking.get("pedido_venda_id")
+                    else None
+                ),
+
+                "pedido_venda_name": (
+                    picking["pedido_venda_id"][1]
+                    if picking.get("pedido_venda_id")
                     else None
                 ),
             }

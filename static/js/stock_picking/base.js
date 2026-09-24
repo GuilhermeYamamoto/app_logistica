@@ -43,6 +43,7 @@
         onInitialized: () => {},
         onOpenValidation: () => {},
         onRecordsReplaced: () => {},
+        onAfterRender: null,
         refreshRecords: null,
 
         search: {
@@ -350,6 +351,16 @@
             secondaryActions,
         );
 
+        // Expor o id do registro no DOM para permitir que etapas externas
+        // (como pre_separacao) localizem e movam os cards sem depender de
+        // parsers de texto. Valor como string por consistência.
+        try {
+            card.dataset.recordId = String(record.id || '');
+        } catch (e) {
+            // não crítico — apenas log para depuração
+            console.warn('Não foi possível definir data-record-id no card:', e);
+        }
+
         return card;
     }
 
@@ -448,6 +459,27 @@
             "hidden",
             visibleRecords.length > 0,
         );
+
+        // Hook pós-render: permitir que etapas reajam após o render principal
+        try {
+            if (typeof options.onAfterRender === 'function') {
+                try {
+                    options.onAfterRender(visibleRecords);
+                } catch (e) {
+                    console.error('Erro em onAfterRender handler:', e);
+                }
+            }
+
+            // Event público para listeners externos (ex.: pre_separacao)
+            try {
+                document.dispatchEvent(new CustomEvent('appinventory:afterRender', { detail: { records: visibleRecords } }));
+            } catch (e) {
+                // Não crítico se dispatch falhar em ambientes restritos
+                console.warn('Não foi possível disparar appinventory:afterRender:', e);
+            }
+        } catch (e) {
+            console.error('Erro ao executar hooks pós-render:', e);
+        }
     }
 
     function showLoading() {
