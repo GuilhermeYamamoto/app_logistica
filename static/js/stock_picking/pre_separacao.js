@@ -1022,6 +1022,8 @@
                 const container = document.getElementById('pickingsContainer');
                 if (!container) return;
 
+                container.classList.add('pre-separacao-container');
+
                 for (const [key, group] of groupsById.entries()) {
                     const pvCard = container.querySelector(`.pv-card[data-pv-id="${key}"]`);
                     if (!pvCard) continue;

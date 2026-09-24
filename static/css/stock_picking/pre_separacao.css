@@ -20,7 +20,7 @@
 .responsible-action {
     width: 100%;
     min-height: 72px;
-    padding: 0;
+    padding: 0 16px;
     border: none;
     border-radius: 10px;
     background: var(--light-blue);
@@ -96,17 +96,6 @@
     line-height: 1;
 }
 
-.pv-responsible-container {
-    position: relative;
-    min-width: 0;
-}
-
-.pv-responsible-container .responsible-action {
-    min-width: 220px;
-    width: auto;
-    padding: 0 18px;
-    white-space: nowrap;
-}
 
 .responsible-action-arrow {
     width: auto;

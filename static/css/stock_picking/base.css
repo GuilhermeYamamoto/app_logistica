@@ -554,6 +554,14 @@ body {
     border-left: 7px solid var(--orange);
 }
 
+.pre-separacao-container .picking-card {
+    border: 2px solid var(--orange);
+}
+
+.pre-separacao-container .picking-card.completed-card {
+    border-color: var(--green);
+}
+
 .picking-card.completed-card {
     border-left-color: var(--green);
 }
