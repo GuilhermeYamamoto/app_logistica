@@ -145,10 +145,55 @@
 }
 
 .pv-toggle {
-    background: transparent;
-    border: none;
-    font-size: 18px;
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+
+    width: 28px;
+    height: 28px;
+
+    padding: 0;
+    border: 2px solid var(--blue);
+    border-radius: 50%;
+
+    background: var(--app-surface);
+    color: var(--text);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     cursor: pointer;
+    z-index: 70;
+
+    box-sizing: border-box;
+}
+
+.pv-toggle:hover {
+    filter: brightness(.96);
+}
+
+.pv-toggle:active {
+    transform: translate(-50%, 50%) scale(.94);
+}
+
+.pv-toggle:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.pv-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
 }
 
 .pv-title {
@@ -173,8 +218,9 @@
     justify-content: center;
     font-weight: 900;
 }
+
 .pv-pickings {
-    padding: 10px 14px 18px 32px;
+    padding: 10px 14px 26px 32px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -408,6 +454,7 @@
     font-size: 13px;
     z-index: 60;
     box-shadow: 0 -3px 10px rgba(0,0,0,0.14);
+    transform: translateY(-10px);
 }
 
 /* Garantir que o hover mantenha aparência consistente */

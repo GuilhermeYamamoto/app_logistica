@@ -755,17 +755,14 @@
                 const left = document.createElement('div');
                 left.className = 'pv-header-left';
 
-                const toggleButton = document.createElement('button');
-                toggleButton.type = 'button';
-                toggleButton.className = 'pv-toggle';
-                toggleButton.setAttribute('aria-expanded', 'false');
-                toggleButton.textContent = '▶';
-
                 const pvTitle = document.createElement('strong');
                 pvTitle.className = 'pv-title';
-                pvTitle.textContent = group.pedido_venda_name || (group.pedido_venda_id ? `PV ${group.pedido_venda_id}` : 'SEM PV');
+                pvTitle.textContent = group.pedido_venda_name || (
+                    group.pedido_venda_id
+                        ? `PV ${group.pedido_venda_id}`
+                        : 'SEM PV'
+                );
 
-                left.appendChild(toggleButton);
                 left.appendChild(pvTitle);
 
                 const right = document.createElement('div');
@@ -856,17 +853,36 @@
 
                 pvCard.appendChild(pickingsList);
 
+                // Botão de expansão do PV
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'button';
+                toggleButton.className = 'pv-toggle';
+                toggleButton.setAttribute('aria-expanded', 'false');
+                toggleButton.setAttribute('aria-label', 'Expandir PV');
+
+                const toggleIcon = document.createElement('span');
+                toggleIcon.className = 'pv-toggle-icon';
+                toggleIcon.textContent = '▾';
+
+                toggleButton.appendChild(toggleIcon);
+                pvCard.appendChild(toggleButton);
+
                 // Ações: toggle abrir/fechar
-                toggleButton.addEventListener('click', () => {
+                toggleButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+
                     const isOpen = !pickingsList.classList.contains('hidden');
+
                     if (isOpen) {
                         pickingsList.classList.add('hidden');
-                        toggleButton.textContent = '▶';
+                        toggleIcon.textContent = '▾';
                         toggleButton.setAttribute('aria-expanded', 'false');
+                        toggleButton.setAttribute('aria-label', 'Expandir PV');
                     } else {
                         pickingsList.classList.remove('hidden');
-                        toggleButton.textContent = '▼';
+                        toggleIcon.textContent = '▴';
                         toggleButton.setAttribute('aria-expanded', 'true');
+                        toggleButton.setAttribute('aria-label', 'Recolher PV');
                     }
                 });
 
