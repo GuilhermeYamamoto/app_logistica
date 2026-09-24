@@ -129,6 +129,24 @@
     cursor: pointer;
 }
 
+/* ============================================
+   PV EM MODO FOCO
+   ============================================ */
+
+.pv-card.pv-focus-open {
+    display: flex;
+    flex-direction: column;
+
+    max-height: 70vh;
+
+    overflow: visible;
+
+    background: var(--app-surface);
+    border-color: var(--blue);
+
+    box-sizing: border-box;
+}
+
 .pv-header {
     display: flex;
     align-items: center;
@@ -137,6 +155,8 @@
     padding: 14px;
     background: transparent;
     color: var(--text);
+
+    flex: 0 0 auto;
 }
 
 .pv-header-left {
@@ -222,13 +242,41 @@
 
 .pv-pickings {
     padding: 10px 14px 26px 32px;
+
     display: flex;
     flex-direction: column;
     gap: 10px;
+
+    flex: 1 1 auto;
+    min-height: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    overscroll-behavior: contain;
+
+    scrollbar-width: thin;
 }
 
 .pv-pickings.hidden {
     display: none;
+}
+
+.pv-pickings::-webkit-scrollbar {
+    width: 8px;
+}
+
+.pv-pickings::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.pv-pickings::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: var(--app-border);
+}
+
+.pv-pickings::-webkit-scrollbar-thumb:hover {
+    background: var(--app-muted);
 }
 
 .pv-pickings,
@@ -238,9 +286,13 @@
 
 .pv-responsible-panel {
     padding: 12px;
+
+    background: var(--app-surface);
+    border-top: 1px solid var(--app-border);
+
+    box-sizing: border-box;
+    flex: 0 0 auto;
 }
-
-
 
 .responsible-search {
     position: relative;
@@ -495,5 +547,13 @@
 
     .responsible-user-option {
         min-height: 46px;
+    }
+
+    .pv-card.pv-focus-open {
+        max-height: 75vh;
+    }
+
+    .pv-pickings {
+        padding: 8px 10px 24px 14px;
     }
 }

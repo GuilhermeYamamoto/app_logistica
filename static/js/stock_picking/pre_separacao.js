@@ -652,6 +652,39 @@
 
         // Estrutura para agrupar pickings por pedido_venda_id
         let pvGroups = [];
+        let activePVCard = null;
+
+        function scrollToExpandedPV(pvCard) {
+            if (!pvCard) {
+                return;
+            }
+
+            requestAnimationFrame(() => {
+                const topbar = document.querySelector(".topbar");
+
+                const topbarHeight =
+                    topbar?.getBoundingClientRect().height ||
+                    parseFloat(
+                        getComputedStyle(document.documentElement)
+                            .getPropertyValue("--topbar-height"),
+                    ) ||
+                    0;
+
+                const currentTop =
+                    pvCard.getBoundingClientRect().top +
+                    window.scrollY;
+
+                const targetTop =
+                    currentTop -
+                    topbarHeight -
+                    12;
+
+                window.scrollTo({
+                    top: Math.max(0, targetTop),
+                    behavior: "smooth",
+                });
+            });
+        }
 
         function buildPVGroups(records) {
             const groupsById = new Map();
@@ -872,16 +905,44 @@
                     const isOpen = !pickingsList.classList.contains('hidden');
 
                     if (isOpen) {
+                        // Fecha o PV atual
                         pickingsList.classList.add('hidden');
+
                         toggleIcon.textContent = '▾';
                         toggleButton.setAttribute('aria-expanded', 'false');
                         toggleButton.setAttribute('aria-label', 'Expandir PV');
-                    } else {
-                        pickingsList.classList.remove('hidden');
-                        toggleIcon.textContent = '▴';
-                        toggleButton.setAttribute('aria-expanded', 'true');
-                        toggleButton.setAttribute('aria-label', 'Recolher PV');
+
+                        pvCard.classList.remove('pv-focus-open');
+
+                        if (activePVCard === pvCard) {
+                            activePVCard = null;
+                        }
+
+                        return;
                     }
+
+                    // Impede abrir outro PV enquanto já existe um PV aberto
+                    if (
+                        activePVCard &&
+                        activePVCard !== pvCard
+                    ) {
+                        return;
+                    }
+
+                    // Abre o PV
+                    activePVCard = pvCard;
+
+                    pickingsList.classList.remove('hidden');
+
+                    toggleIcon.textContent = '▴';
+                    toggleButton.setAttribute('aria-expanded', 'true');
+                    toggleButton.setAttribute('aria-label', 'Recolher PV');
+
+                    pvCard.classList.add('pv-focus-open');
+
+                    // Depois que o PV for expandido e o layout recalculado,
+                    // posiciona o PV no topo da área útil da tela.
+                    scrollToExpandedPV(pvCard);
                 }
 
                 // Clique na bolinha/seta
@@ -892,8 +953,8 @@
 
                 // Clique no próprio card do PV
                 pvCard.addEventListener('click', (event) => {
-                    // Se o clique veio de algum elemento interno que não deve
-                    // controlar a expansão, não faz nada.
+                    // Elementos que possuem comportamento próprio
+                    // e não devem abrir/fechar o PV.
                     if (
                         event.target.closest('.responsible-action') ||
                         event.target.closest('.pv-counter-tab') ||
