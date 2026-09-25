@@ -590,6 +590,110 @@
         return hasSelectedResponsible(record);
     }
 
+    function validarEmbalagem(codigoLido, picking) {
+        const codigo = String(codigoLido ?? "").trim();
+        const embalagemEsperada = String(picking?.resultPackageName ?? "").trim();
+
+        if (!embalagemEsperada) {
+            console.warn("O picking não possui embalagem definida.");
+            return false;
+        }
+
+        return codigo === embalagemEsperada;
+    }
+
+    function mostrarResultadoValidacao(card, valido) {
+
+        if (valido) {
+
+            console.log("Embalagem correta.");
+
+            void card.offsetWidth;
+
+            card.classList.remove("embalagem-invalida");
+            card.classList.add("embalagem-validada");
+
+            window.AppInventory.showToast(
+                "Embalagem correta.",
+                "✓"
+            );
+
+            setTimeout(() => {
+                card.classList.remove("embalagem-validada");
+            }, 1950);
+
+            return;
+        }
+
+        console.warn("Embalagem incorreta.");
+
+        void card.offsetWidth;
+
+        card.classList.remove("embalagem-validada");
+        card.classList.add("embalagem-invalida");
+
+        window.AppInventory.showToast(
+            "Embalagem incorreta.",
+            "!"
+        );
+
+        setTimeout(() => {
+            card.classList.remove("embalagem-invalida");
+        }, 1950);
+    }
+
+    async function openVerificacaoEmbalagemScanner(picking, onSuccess) {
+        const video = document.getElementById("barcodeScannerVideo");
+        const status = document.getElementById("barcodeScannerStatus");
+
+        if (!video || !status) {
+            console.error("Elementos do modal do scanner de embalagem não foram encontrados.");
+            window.AppInventory.showToast("Leitor de código de barras não disponível.", "!");
+            return;
+        }
+
+        if (!window.AppUI || typeof window.AppUI.createBarcodeScanner !== "function") {
+            console.error("window.AppUI.createBarcodeScanner não está disponível.");
+            window.AppInventory.showToast("O leitor de código de barras não foi carregado.", "!");
+            return;
+        }
+
+        window.AppUI.openModal("barcodeScannerModal");
+        status.textContent = "Solicitando acesso à câmera...";
+
+        const scanner = window.AppUI.createBarcodeScanner({
+            video,
+            onResult(result) {
+                if (!result) {
+                    return;
+                }
+
+                const codigoLido = String(result.text ?? "").trim();
+                console.log("Código de barras lido para embalagem: ", codigoLido);
+
+                scanner.stop();
+                window.AppUI.closeModal("barcodeScannerModal");
+
+                if (onSuccess) {
+                    onSuccess(codigoLido, picking);
+                }
+            },
+            onError(error) {
+                console.error("Erro ao ler código de barras da embalagem: ", error);
+                status.textContent = "Não foi possível iniciar a câmera. Tente novamente.";
+            },
+        });
+
+        try {
+            await scanner.start();
+            status.textContent = "Aponte a câmera para o código da embalagem.";
+        } catch (error) {
+            console.error("Não foi possível iniciar o scanner de embalagem: ", error);
+            status.textContent = "Não foi possível iniciar a câmera. Tente novamente.";
+            scanner.stop();
+        }
+    }
+
     function enhanceCard(
         card,
         record,
@@ -621,7 +725,7 @@
         }
 
         // *********************************
-        // *** Botão LER CÓDIGO ************
+        // *** Botão VERIFICAR EMBALAGEM **
         // *********************************
 
         context.addSecondaryAction(
@@ -629,9 +733,19 @@
                 className: "main-action barcode-scanner-action",
                 label: "VERIFICAR EMBALAGEM",
                 icon: "▥",
-                ariaLabel: "Ler código de barras",
+                ariaLabel: "Verificar embalagem do picking",
                 disabled: false,
-                onClick: () => openBarcodeScanner(record.id),
+                onClick: () => {
+                    openVerificacaoEmbalagemScanner(record, (codigoLido) => {
+                        const validacao = validarEmbalagem(codigoLido, record);
+                        mostrarResultadoValidacao(card, validacao);
+
+                        if (validacao) {
+                            card.classList.remove("embalagem-invalida");
+                            card.classList.add("embalagem-validada");
+                        }
+                    });
+                },
             }),
         );
 

@@ -458,18 +458,82 @@
    ESTADOS
    ============================================ */
 
+.embalagem-validada {
+    background: rgba(40, 167, 69, 0.08);
+    animation: embalagem-feedback-valid 0.65s ease-in-out 3;
+}
+
+.embalagem-invalida {
+    background: rgba(220, 53, 69, 0.08);
+    animation: embalagem-feedback-invalida 0.65s ease-in-out 3;
+}
+
+@keyframes embalagem-feedback-valid {
+    0%,
+    100% {
+        transform: scale(1);
+        background: rgba(40, 167, 69, 0.08);
+        box-shadow: none;
+    }
+
+    25% {
+        transform: scale(1.004);
+        background: rgba(40, 167, 69, 0.18);
+        box-shadow: none;
+    }
+
+    50% {
+        transform: scale(1.008);
+        background: rgba(40, 167, 69, 0.28);
+        box-shadow: none;
+    }
+
+    75% {
+        transform: scale(1.004);
+        background: rgba(40, 167, 69, 0.18);
+        box-shadow: none;
+    }
+}
+
+@keyframes embalagem-feedback-invalida {
+    0%,
+    100% {
+        transform: scale(1);
+        background: rgba(220, 53, 69, 0.08);
+        box-shadow: none;
+    }
+
+    25% {
+        transform: scale(1.004);
+        background: rgba(220, 53, 69, 0.18);
+        box-shadow: none;
+    }
+
+    50% {
+        transform: scale(1.008);
+        background: rgba(220, 53, 69, 0.28);
+        box-shadow: none;
+    }
+
+    75% {
+        transform: scale(1.004);
+        background: rgba(220, 53, 69, 0.18);
+        box-shadow: none;
+    }
+}
+
 .responsible-users-loading,
 .responsible-users-empty,
 .responsible-users-error {
-    padding: 28px 16px;
-    text-align: center;
-    color: var(--app-muted);
-    font-size: 13px;
-    font-weight: 700;
+   padding: 28px 16px;
+   text-align: center;
+   color: var(--app-muted);
+   font-size: 13px;
+   font-weight: 700;
 }
 
 .responsible-users-error {
-    color: var(--app-danger);
+   color: var(--app-danger);
 }
 
 
