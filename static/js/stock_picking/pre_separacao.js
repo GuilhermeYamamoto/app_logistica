@@ -634,6 +634,52 @@
                 onClick: () => openBarcodeScanner(record.id),
             }),
         );
+
+        const secondaryInfoRow = document.createElement("div");
+        secondaryInfoRow.className = "secondary-info-row";
+
+        // LOCAL
+        const localBox = document.createElement("div");
+        localBox.className = "local-box";
+
+        const localLabel = document.createElement("div");
+        localLabel.className = "local-label";
+        localLabel.textContent = "Local";
+
+        const localValue = document.createElement("div");
+        localValue.className = "local-value";
+        localValue.textContent =
+            record.local && record.local !== "CD/STO"
+                ? record.local
+                : "Não definido";
+
+        localBox.appendChild(localLabel);
+        localBox.appendChild(localValue);
+
+        // RESULT PACKAGE
+        const resultPackageBox = document.createElement("div");
+        resultPackageBox.className = "result-package-box";
+
+        const resultPackageLabel = document.createElement("div");
+        resultPackageLabel.className = "result-package-label";
+        resultPackageLabel.textContent = "Embalagem";
+
+        const resultPackageValue = document.createElement("div");
+        resultPackageValue.className = "result-package-value";
+
+        resultPackageValue.textContent =
+            record.resultPackageName ||
+            "Não definido";
+
+        resultPackageBox.appendChild(resultPackageLabel);
+        resultPackageBox.appendChild(resultPackageValue);
+
+        // Adiciona os dois na mesma linha
+        secondaryInfoRow.appendChild(localBox);
+        secondaryInfoRow.appendChild(resultPackageBox);
+
+        // Adiciona a segunda linha ao card
+        context.main.appendChild(secondaryInfoRow);
     }
 
     // *********************************
