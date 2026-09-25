@@ -602,6 +602,11 @@
                 ".quality-action",
             );
 
+        // Na PRÉ SEPARAÇÃO, o ALERTA DE QUALIDADE não deve ser exibido.
+        if (qualityButton) {
+            qualityButton.remove();
+        }
+
         if (validationButton) {
             const canValidate = canValidateResponsible(record);
 
@@ -610,16 +615,6 @@
             validationButton.title = canValidate
                 ? "Validar separação"
                 : "Selecione um separador antes de validar.";
-        }
-
-        if (
-            qualityButton &&
-            validationButton
-        ) {
-            context.primaryActions.insertBefore(
-                qualityButton,
-                validationButton,
-            );
         }
     }
 
