@@ -173,7 +173,7 @@
     ) {
         return createAction({
             className,
-            label: "VALIDAR",
+            label: "CONCLUÍDO",
             icon: "✓",
             disabled,
             onClick: () => openValidation(record),

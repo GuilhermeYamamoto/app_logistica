@@ -627,7 +627,7 @@
         context.addSecondaryAction(
             context.createAction({
                 className: "main-action barcode-scanner-action",
-                label: "LER CÓDIGO",
+                label: "VERIFICAR EMBALAGEM",
                 icon: "▥",
                 ariaLabel: "Ler código de barras",
                 disabled: false,
