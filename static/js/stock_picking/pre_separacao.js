@@ -649,12 +649,12 @@
         const localValue = document.createElement("div");
         localValue.className = "local-value";
         localValue.textContent =
-            record.local && record.local !== "CD/STO"
-                ? record.local
-                : "Não definido";
+            record.local ? record.local : "Não definido";
 
         localBox.appendChild(localLabel);
         localBox.appendChild(localValue);
+
+        console.log(record.local);
 
         // RESULT PACKAGE
         const resultPackageBox = document.createElement("div");
