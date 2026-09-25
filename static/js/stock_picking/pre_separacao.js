@@ -603,24 +603,13 @@
     }
 
     function mostrarResultadoValidacao(card, valido) {
-
         if (valido) {
-
             console.log("Embalagem correta.");
 
             void card.offsetWidth;
-
             card.classList.remove("embalagem-invalida");
             card.classList.add("embalagem-validada");
-
-            window.AppInventory.showToast(
-                "Embalagem correta.",
-                "✓"
-            );
-
-            setTimeout(() => {
-                card.classList.remove("embalagem-validada");
-            }, 1950);
+            window.AppInventory.showToast("Embalagem correta.", "✓");
 
             return;
         }
@@ -628,18 +617,13 @@
         console.warn("Embalagem incorreta.");
 
         void card.offsetWidth;
-
         card.classList.remove("embalagem-validada");
         card.classList.add("embalagem-invalida");
-
-        window.AppInventory.showToast(
-            "Embalagem incorreta.",
-            "!"
-        );
+        window.AppInventory.showToast("Embalagem incorreta.", "!");
 
         setTimeout(() => {
             card.classList.remove("embalagem-invalida");
-        }, 1950);
+        }, 5000);
     }
 
     async function openVerificacaoEmbalagemScanner(picking, onSuccess) {
@@ -1450,7 +1434,6 @@
                 responsibleAction.addEventListener('click', (ev) => {
                     ev.stopPropagation();
 
-                    // Se já existe um painel aberto, remover
                     const existing = pvCard.querySelector('.pv-responsible-panel');
                     if (existing) {
                         existing.remove();
@@ -1480,7 +1463,14 @@
                     panel.appendChild(searchWrapper);
                     panel.appendChild(list);
 
-                    pvCard.appendChild(panel);
+                    const pvExpanded = !pickingsList.classList.contains('hidden');
+
+                    if (pvExpanded) {
+                        pickingsList.insertBefore(panel, pickingsList.firstChild);
+                    } else {
+                        pvCard.appendChild(panel);
+                    }
+
                     panel.addEventListener('click', (event) => {
                         event.stopPropagation();
                     });
