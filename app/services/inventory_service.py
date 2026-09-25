@@ -72,7 +72,7 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
@@ -109,18 +109,21 @@ class InventoryService:
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
             local = None
-            for move in moves:
-                for move_dest_id in move.get("move_dest_ids", []):
-                    destination_move = destination_moves_by_id.get(move_dest_id, {})
-                    location_dest = destination_move.get("location_dest_id")
-                    if location_dest:
-                        if isinstance(location_dest, (list, tuple)):
-                            local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
-                        else:
-                            local = str(location_dest)
+            if picking_type_id == 137:
+                for move in moves:
+                    for move_dest_id in move.get("move_dest_ids", []):
+                        destination_move = destination_moves_by_id.get(move_dest_id, {})
+                        location_dest = destination_move.get("location_dest_id")
+                        if location_dest:
+                            if isinstance(location_dest, (list, tuple)):
+                                local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
+                            else:
+                                local = str(location_dest)
+                            break
+                    if local:
                         break
-                if local:
-                    break
+            else:
+                local = picking["x_studio_local_do_material"]    
 
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
@@ -478,7 +481,7 @@ class InventoryService:
         """
 
         picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
-        centro_distruibuicao = 11 if picking_type_id == 137 else 5963
+        centro_distruibuicao = 11 if picking_type_id in [137, 138] else 5963
 
         try:
             locations = client.execute("stock.location","search_read", [
