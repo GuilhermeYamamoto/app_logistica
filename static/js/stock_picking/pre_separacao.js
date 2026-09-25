@@ -6,6 +6,9 @@
     let loadingUsers = false;
     let initialized = false;
     let openSelector = null;
+    let barcodeScanner = null;
+    let barcodeScannerActive = false;
+    let barcodeScannerPickingId = null;
     const DEFAULT_RESPONSIBLES = new Set([
         "silvando ferrei",
         "jose santos",
@@ -616,7 +619,325 @@
                 ? "Validar separação"
                 : "Selecione um separador antes de validar.";
         }
+
+        // *********************************
+        // *** Botão LER CÓDIGO ************
+        // *********************************
+
+        context.addSecondaryAction(
+            context.createAction({
+                className: "main-action barcode-scanner-action",
+                label: "LER CÓDIGO",
+                icon: "▥",
+                ariaLabel: "Ler código de barras",
+                disabled: false,
+                onClick: () => openBarcodeScanner(record.id),
+            }),
+        );
     }
+
+    // *********************************
+    // *** SCANNER DE CÓDIGO DE BARRAS *
+    // *********************************
+
+    async function openBarcodeScanner(pickingId) {
+        if (
+            barcodeScannerActive ||
+            !window.AppInventory.getRecord(pickingId)
+        ) {
+            return;
+        }
+
+        barcodeScannerPickingId = pickingId;
+
+        const video = document.getElementById(
+            "barcodeScannerVideo",
+        );
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!video || !status) {
+            console.error(
+                "Elementos do modal do scanner não foram encontrados.",
+            );
+
+            window.AppInventory.showToast(
+                "Leitor de código de barras não disponível.",
+                "!",
+            );
+
+            return;
+        }
+
+        if (
+            !window.AppUI ||
+            typeof window.AppUI.createBarcodeScanner !==
+                "function"
+        ) {
+            console.error(
+                "window.AppUI.createBarcodeScanner não está disponível.",
+            );
+
+            window.AppInventory.showToast(
+                "O leitor de código de barras não foi carregado.",
+                "!",
+            );
+
+            return;
+        }
+
+        window.AppUI.openModal(
+            "barcodeScannerModal",
+        );
+
+        status.textContent =
+            "Solicitando acesso à câmera...";
+
+        barcodeScannerActive = true;
+
+        const scanner =
+            window.AppUI.createBarcodeScanner({
+                video,
+
+                onResult: handleBarcodeScanResult,
+
+                onError: (error) => {
+                    status.textContent =
+                        getBarcodeScannerErrorMessage(
+                            error,
+                        );
+                },
+            });
+
+        barcodeScanner = scanner;
+
+        try {
+            await scanner.start();
+
+            if (
+                !barcodeScannerActive ||
+                barcodeScanner !== scanner
+            ) {
+                scanner.stop();
+            }
+        } catch (error) {
+            if (barcodeScanner === scanner) {
+                barcodeScannerActive = false;
+                barcodeScanner = null;
+
+                status.textContent =
+                    getBarcodeScannerErrorMessage(
+                        error,
+                    );
+
+                console.error(
+                    "Erro ao iniciar o leitor de código de barras:",
+                    error,
+                );
+            }
+        }
+    }
+
+    async function handleBarcodeScanResult(result) {
+        if (
+            !barcodeScannerActive ||
+            !result
+        ) {
+            return;
+        }
+
+        const barcode =
+            result.getText?.().trim();
+
+        if (!barcode) {
+            return;
+        }
+
+        const pickingId =
+            barcodeScannerPickingId;
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!pickingId || !status) {
+            return;
+        }
+
+        barcodeScannerActive = false;
+
+        status.textContent =
+            "Enviando código lido...";
+
+        try {
+            const response = await fetch(
+                `/api/inventario/pickings/${pickingId}/barcode`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify({
+                        barcode,
+                    }),
+                },
+            );
+
+            const data =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                        "Não foi possível enviar o código lido.",
+                );
+            }
+
+            const picking =
+                window.AppInventory.getRecord(
+                    pickingId,
+                );
+
+            if (picking) {
+                picking.local =
+                    data.local || null;
+
+                picking.barcodeRegistered =
+                    Boolean(data.local);
+            }
+
+            window.AppUI.closeModal(
+                "barcodeScannerModal",
+            );
+
+            window.AppInventory.render();
+
+            window.AppInventory.showToast(
+                `LOCAL DEFINIDO: ${
+                    data.local || "Não definido"
+                }`,
+            );
+
+        } catch (error) {
+            console.error(
+                "Erro ao enviar código de barras:",
+                error,
+            );
+
+            status.textContent =
+                error.message ||
+                "Não foi possível enviar o código. Tente novamente.";
+
+            barcodeScannerActive = true;
+        }
+    }
+
+    function stopBarcodeScanner(
+        clearPicking = false,
+    ) {
+        barcodeScannerActive = false;
+
+        barcodeScanner?.stop();
+
+        barcodeScanner = null;
+
+        if (clearPicking) {
+            barcodeScannerPickingId = null;
+        }
+    }
+
+    function getBarcodeScannerErrorMessage(error) {
+        if (
+            error?.name === "NotAllowedError" ||
+            error?.name === "SecurityError"
+        ) {
+            return "Permita o acesso à câmera para realizar a leitura.";
+        }
+
+        if (
+            error?.name === "NotFoundError" ||
+            error?.name === "OverconstrainedError"
+        ) {
+            return "Nenhuma câmera compatível foi encontrada.";
+        }
+
+        return "Não foi possível iniciar a câmera. Tente novamente.";
+    }
+
+    function setupBarcodeScanner() {
+        const video = document.getElementById(
+            "barcodeScannerVideo",
+        );
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!video || !status) {
+            return;
+        }
+
+        // Botão de escolha manual de localização.
+        // Mantido porque pertence ao fluxo existente.
+        document
+            .getElementById("chooseLocationButton")
+            ?.addEventListener(
+                "click",
+                openLocationSelection,
+            );
+
+        document
+            .getElementById("backToBarcodeButton")
+            ?.addEventListener(
+                "click",
+                backToBarcodeScanner,
+            );
+
+        document
+            .getElementById("confirmLocationButton")
+            ?.addEventListener(
+                "click",
+                confirmLocationSelection,
+            );
+
+        document
+            .getElementById("locationSearchInput")
+            ?.addEventListener(
+                "input",
+                filterLocationList,
+            );
+    }
+
+    // Fecha/paralisa a câmera quando a página é abandonada.
+    window.addEventListener(
+        "pagehide",
+        () => {
+            stopBarcodeScanner(true);
+        },
+    );
+
+    // Fecha o scanner quando o modal é fechado.
+    document.addEventListener(
+        "app:modal-close",
+        (event) => {
+            if (
+                event.detail?.id ===
+                "barcodeScannerModal"
+            ) {
+                stopBarcodeScanner(true);
+
+                // Essas funções pertencem ao fluxo
+                // de seleção manual de localização.
+                resetLocationSelection();
+                showBarcodeScannerView();
+            }
+        },
+    );
 
     function beforeValidate(record) {
         if (canValidateResponsible(record)) {
@@ -644,6 +965,8 @@
 
             return;
         }
+
+        setupBarcodeScanner();
 
         // Estrutura para agrupar pickings por pedido_venda_id
         let pvGroups = [];
