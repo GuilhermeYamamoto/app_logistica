@@ -590,6 +590,33 @@
         return hasSelectedResponsible(record);
     }
 
+    function canValidate(record) {
+        const responsavelValido = canValidateResponsible(record);
+        const embalagemValida = record?.embalagemVerificada === true;
+
+        return responsavelValido && embalagemValida;
+    }
+
+    function updateValidationButton(record, validationButton) {
+        if (!validationButton) {
+            return;
+        }
+
+        const canValidateNow = canValidate(record);
+
+        validationButton.disabled = !canValidateNow;
+
+        if (canValidateNow) {
+            validationButton.title = "Validar separação";
+        } else if (!canValidateResponsible(record)) {
+            validationButton.title =
+                "Selecione um separador antes de validar.";
+        } else {
+            validationButton.title =
+                "Verifique se a embalagem está correta antes de validar.";
+        }
+    }
+
     function validarEmbalagem(codigoLido, picking) {
         const codigo = String(codigoLido ?? "").trim();
         const embalagemEsperada = String(picking?.resultPackageName ?? "").trim();
@@ -699,13 +726,10 @@
         }
 
         if (validationButton) {
-            const canValidate = canValidateResponsible(record);
-
-            validationButton.disabled = !canValidate;
-
-            validationButton.title = canValidate
-                ? "Validar separação"
-                : "Selecione um separador antes de validar.";
+            updateValidationButton(
+                record,
+                validationButton
+            );
         }
 
         // *********************************
@@ -735,6 +759,8 @@
                         );
 
                         if (validacao) {
+                            record.embalagemVerificada = true;
+
                             card.classList.remove(
                                 "embalagem-invalida",
                             );
@@ -742,7 +768,27 @@
                             card.classList.add(
                                 "embalagem-validada",
                             );
+                        } else {
+                            record.embalagemVerificada = false;
+
+                            card.classList.remove(
+                                "embalagem-validada",
+                            );
+
+                            card.classList.add(
+                                "embalagem-invalida",
+                            );
                         }
+
+                        const validationButton =
+                            context.secondaryActions.querySelector(
+                                ".validation-action",
+                            );
+
+                        updateValidationButton(
+                            record,
+                            validationButton,
+                        );
                     },
                 );
             },
@@ -1140,15 +1186,23 @@
     );
 
     function beforeValidate(record) {
-        if (canValidateResponsible(record)) {
-            return true;
+        if (!canValidateResponsible(record)) {
+            window.AppInventory.showToast(
+                "Selecione um responsável válido antes de validar a pré-separação.",
+                "!",
+            );
+            return false;
         }
 
-        window.AppInventory.showToast(
-            "Selecione um responsável válido antes de validar a pré-separação.",
-            "!",
-        );
-        return false;
+        if (record?.embalagemVerificada !== true) {
+            window.AppInventory.showToast(
+                "Verifique a embalagem antes de validar a pré-separação.",
+                "!",
+            );
+            return false;
+        }
+
+        return true;
     }
 
     function initialize() {
