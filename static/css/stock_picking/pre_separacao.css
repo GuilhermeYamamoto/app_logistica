@@ -26,8 +26,10 @@
    SELETOR INLINE
    ============================================ */
 
-.responsible-action {
-    width: 100%;
+   .responsible-action {
+    width: 260px;
+    min-width: 360px;
+    max-width: 360px;
     min-height: 72px;
     padding: 0 16px;
     border: none;
@@ -95,8 +97,8 @@
     flex: 0 0 auto;
     width: auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
     text-align: center;
     font-family: Arial, Helvetica, sans-serif;
@@ -104,7 +106,6 @@
     font-weight: 900;
     line-height: 1;
 }
-
 
 .responsible-action-arrow {
     width: auto;
