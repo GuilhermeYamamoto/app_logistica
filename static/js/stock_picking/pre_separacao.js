@@ -1330,7 +1330,7 @@
                 const currentPVResponsible = getPVResponsibleName(group);
 
                 responsibleAction.textContent = currentPVResponsible
-                    ? `SEPARADOR: ${currentPVResponsible}`
+                    ? `${currentPVResponsible}`
                     : 'SELECIONAR SEPARADOR';
 
                 responsibleAction.setAttribute(
