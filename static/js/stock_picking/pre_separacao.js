@@ -712,26 +712,53 @@
         // *** Botão VERIFICAR EMBALAGEM **
         // *********************************
 
-        context.addSecondaryAction(
-            context.createAction({
-                className: "main-action barcode-scanner-action",
-                label: "VERIFICAR EMBALAGEM",
-                icon: "▥",
-                ariaLabel: "Verificar embalagem do picking",
-                disabled: false,
-                onClick: () => {
-                    openVerificacaoEmbalagemScanner(record, (codigoLido) => {
-                        const validacao = validarEmbalagem(codigoLido, record);
-                        mostrarResultadoValidacao(card, validacao);
+        const verificarEmbalagemButton =
+        context.createAction({
+            className: "main-action barcode-scanner-action",
+            label: "VERIFICAR EMBALAGEM",
+            icon: "▥",
+            ariaLabel: "Verificar embalagem do picking",
+            disabled: false,
+            onClick: () => {
+                openVerificacaoEmbalagemScanner(
+                    record,
+                    (codigoLido) => {
+                        const validacao =
+                            validarEmbalagem(
+                                codigoLido,
+                                record,
+                            );
+
+                        mostrarResultadoValidacao(
+                            card,
+                            validacao,
+                        );
 
                         if (validacao) {
-                            card.classList.remove("embalagem-invalida");
-                            card.classList.add("embalagem-validada");
+                            card.classList.remove(
+                                "embalagem-invalida",
+                            );
+
+                            card.classList.add(
+                                "embalagem-validada",
+                            );
                         }
-                    });
-                },
-            }),
+                    },
+                );
+            },
+        });
+
+    context.addSecondaryAction(
+        verificarEmbalagemButton,
+    );
+
+    // Move o botão VALIDAR para a área secundária,
+    // ficando abaixo de VERIFICAR EMBALAGEM.
+    if (validationButton) {
+        context.secondaryActions.appendChild(
+            validationButton,
         );
+    }
 
         const secondaryInfoRow = document.createElement("div");
         secondaryInfoRow.className = "secondary-info-row";
