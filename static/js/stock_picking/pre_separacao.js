@@ -1447,6 +1447,25 @@
                         return;
                     }
 
+                    // Se o painel "SELECIONAR SEPARADOR" estiver aberto
+                    // enquanto o PV ainda estiver fechado, move o painel
+                    // para dentro da área de expansão do PV.
+                    //
+                    // Isso faz com que o cenário 3 tenha a mesma estrutura
+                    // visual do cenário 2.
+                    const responsiblePanel =
+                        pvCard.querySelector('.pv-responsible-panel');
+
+                    if (
+                        responsiblePanel &&
+                        responsiblePanel.parentElement !== pickingsList
+                    ) {
+                        pickingsList.insertBefore(
+                            responsiblePanel,
+                            pickingsList.firstChild
+                        );
+                    }
+
                     // Abre o PV
                     activePVCard = pvCard;
 
