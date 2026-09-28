@@ -127,6 +127,7 @@ class InventoryService:
 
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
+            partnerId = picking["partner_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
             photo_relation = picking.get("fotos_count") or []
@@ -140,6 +141,7 @@ class InventoryService:
                 "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
                 "reference": picking["name"],
                 "client": (partner[1] if partner else "Sem fornecedor"),
+                "partner": (partnerId[1]) if partnerId else "Sem cliente",
                 "product": (", ".join(product_names) or "Sem produtos"),
                 "expectedQuantity": expected_quantity,
                 "receivedQuantity": received_quantity,

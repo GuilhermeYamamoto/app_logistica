@@ -805,6 +805,35 @@
 
         // Adiciona a segunda linha ao card
         context.main.appendChild(secondaryInfoRow);
+
+        // Adicionado a terceira linha de informações
+
+        const thirdInfoRow = document.createElement("div");
+        thirdInfoRow.className = "third-info-row";
+
+        // CLIENTE
+        const clientBox = document.createElement("div");
+        clientBox.className = "client-box";
+
+        const clientLabel = document.createElement("div");
+        clientLabel.className = "client-label";
+        clientLabel.textContent = "Cliente";
+
+        const clientValue = document.createElement("div");
+        clientValue.className = "client-value";
+        clientValue.textContent =
+            record.partner ? record.partner : "Não definido";
+
+        clientBox.appendChild(clientLabel);
+        clientBox.appendChild(clientValue);
+
+        console.log(record.client);
+
+        // Adiciona os dois na mesma linha
+        thirdInfoRow.appendChild(clientBox);
+
+        // Adiciona a segunda linha ao card
+        context.main.appendChild(thirdInfoRow);
     }
 
     // *********************************
