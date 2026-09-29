@@ -771,13 +771,12 @@
 .third-info-row {
     grid-column: 1 / -1;
     grid-row: 3;
-    
+
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    
+    grid-template-columns: 1fr;
+
     width: 100%;
     box-sizing: border-box;
-    
     gap: 0;
 }
 
