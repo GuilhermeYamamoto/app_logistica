@@ -73,6 +73,20 @@ class InventoryService:
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
             pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            
+            # Busca os pickings que estão aguardando para entrar na etapa
+            waiting_pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "=", "waiting"),],fields=["id", "pedido_venda_id"],)
+
+            # Conta quantos pickings waiting existem por Pedido de Venda
+            waiting_counts_by_pv = defaultdict(int)
+
+            for waiting_picking in waiting_pickings:
+                pedido_venda = waiting_picking.get("pedido_venda_id")
+
+                if pedido_venda:
+                    pedido_venda_id = pedido_venda[0]
+                    waiting_counts_by_pv[pedido_venda_id] += 1
+                    
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
@@ -174,6 +188,12 @@ class InventoryService:
                     picking["pedido_venda_id"][1]
                     if picking.get("pedido_venda_id")
                     else None
+                ),
+
+                "waitingCount": (
+                    waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
                 ),
             }
 

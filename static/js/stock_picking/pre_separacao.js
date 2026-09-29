@@ -1,3 +1,5 @@
+//o contador está na linha 1439
+
 (function () {
     "use strict";
 
@@ -49,6 +51,17 @@
             .forEach((selector) => {
                 if (selector !== except) {
                     selector.classList.remove("is-open");
+
+                    const button = selector.querySelector(
+                        ".responsible-action",
+                    );
+
+                    if (button) {
+                        button.setAttribute(
+                            "aria-expanded",
+                            "false",
+                        );
+                    }
                 }
             });
 
@@ -479,6 +492,18 @@
         return selector;
     }
 
+    function createPickingResponsibleSelector(record, card) {
+        const selector = createResponsibleSelector(record);
+
+        selector.classList.add("picking-responsible-selector");
+
+        selector.dataset.recordId = String(record?.id || "");
+
+        card.appendChild(selector);
+
+        return selector;
+    }
+
     function closeSelector(selector) {
         if (!selector) {
             return;
@@ -765,6 +790,95 @@
                 record,
                 validationButton
             );
+        }
+
+        // Aba do picking — responsável individual
+        if (!card.querySelector(".picking-tab")) {
+            const pickingTab = document.createElement("button");
+
+            pickingTab.type = "button";
+            pickingTab.className = "chat-tab picking-tab";
+            pickingTab.setAttribute(
+                "aria-label",
+                record?.userName && !isDefaultResponsible(record.userName)
+                    ? `Alterar responsável do picking. Responsável atual: ${record.userName}`
+                    : "Selecionar responsável deste picking",
+            );
+
+            // Ícone simples de pessoa
+            pickingTab.innerHTML = `
+                <svg
+                    class="picking-tab-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <circle cx="12" cy="8" r="3.5"></circle>
+                    <path d="M5.5 20c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"></path>
+                </svg>
+            `;
+
+            pickingTab.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                let selector = card.querySelector(
+                    ".picking-responsible-selector",
+                );
+
+                if (!selector) {
+                    selector = createPickingResponsibleSelector(
+                        record,
+                        card,
+                    );
+                }
+
+                const isOpen = selector.classList.contains("is-open");
+
+                // Se já estiver aberto, fecha e encerra o clique.
+                if (isOpen) {
+                    closeSelector(selector);
+                    return;
+                }
+
+                // Fecha qualquer outro seletor aberto.
+                closeAllSelectors();
+
+                // Abre este seletor diretamente.
+                selector.classList.add("is-open");
+                openSelector = selector;
+
+                const responsibleButton =
+                    selector.querySelector(".responsible-action");
+
+                if (responsibleButton) {
+                    responsibleButton.setAttribute(
+                        "aria-expanded",
+                        "true",
+                    );
+                }
+
+                const searchInput =
+                    selector.querySelector(
+                        ".responsible-search-input",
+                    );
+
+                renderUserList(
+                    selector,
+                    record,
+                    searchInput?.value || "",
+                );
+
+                if (!users.length) {
+                    loadUsers();
+                }
+
+                setTimeout(() => {
+                    searchInput?.focus();
+                }, 0);
+            });
+
+            card.appendChild(pickingTab);
         }
 
         // *********************************
@@ -1293,6 +1407,32 @@
             });
         }
 
+        function getPVCounts(group) {
+            const pickings = group.pickings || [];
+
+            const validatedCount = pickings.filter(
+                record => Boolean(record.validated)
+            ).length;
+
+            const pendingInStageCount = pickings.filter(
+                record => !Boolean(record.validated)
+            ).length;
+
+            const waitingCount = Number(
+                pickings[0]?.waitingCount || 0
+            );
+
+            const pendingPlusWaitingCount =
+                pendingInStageCount + waitingCount;
+
+            return {
+                validatedCount,
+                pendingInStageCount,
+                waitingCount,
+                pendingPlusWaitingCount,
+            };
+        }
+
         function buildPVGroups(records) {
             const groupsById = new Map();
 
@@ -1374,6 +1514,16 @@
             const container = document.getElementById('pickingsContainer');
             if (!container) return;
 
+            // Guarda qual PV estava aberto antes do render.
+            // Isso é necessário porque os elementos .pv-card
+            // serão recriados abaixo.
+            const activePVKey =
+                activePVCard?.dataset?.pvId || null;
+
+            // O card antigo deixará de existir após replaceChildren().
+            // Portanto, limpa a referência antes de reconstruir o DOM.
+            activePVCard = null;
+
             // Coleta os cards gerados pelo AppInventory (antes de esvaziar o container)
             const existingCards = Array.from(container.querySelectorAll('.picking-card'));
 
@@ -1386,7 +1536,7 @@
                 // identificar PV no DOM para atualizações dinâmicas
                 const pvKey = group.pedido_venda_id === null ? '__NO_PV__' : String(group.pedido_venda_id);
                 try { pvCard.dataset.pvId = pvKey; } catch (e) { /* non critical */ }
-
+                const shouldRestoreOpen = activePVKey !== null && activePVKey === pvKey;
 
                 // Header
                 const header = document.createElement('div');
@@ -1430,13 +1580,18 @@
                 );
 
                 // Aba semelhante ao chat (usar mesmo estilo .chat-tab), contendo o contador
-                const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
-                const totalCount = (group.pickings || []).length;
+                const {validatedCount, pendingInStageCount, pendingPlusWaitingCount} = getPVCounts(group);
                 const pvChatTab = document.createElement('button');
                 pvChatTab.type = 'button';
                 pvChatTab.className = 'chat-tab pv-counter-tab';
-                pvChatTab.setAttribute('aria-label', `Contador: ${validatedCount} de ${totalCount}`);
-                pvChatTab.textContent = `${validatedCount}/${totalCount}`;
+
+                pvChatTab.setAttribute(
+                    'aria-label',
+                    `Contador: ${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`
+                );
+
+                pvChatTab.textContent =
+                    `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
                 // Não deve abrir chat — comportamento apenas visual aqui
                 pvChatTab.addEventListener('click', (e) => { e.stopPropagation(); });
 
@@ -1452,7 +1607,12 @@
 
                 // Container onde os pickings serão colocados (inicialmente oculto)
                 const pickingsList = document.createElement('div');
-                pickingsList.className = 'pv-pickings hidden';
+
+                if (shouldRestoreOpen) {
+                    pickingsList.className = 'pv-pickings';
+                } else {
+                    pickingsList.className = 'pv-pickings hidden';
+                }
 
                 // Mover os cards correspondentes a este grupo
                 for (const picking of group.pickings) {
@@ -1476,10 +1636,12 @@
                     }
 
                     if (match) {
-                        // Remover aba de chat do card movido (na pré-separação o chat por picking não é exibido)
+                        // Remove apenas a aba de chat original do picking.
+                        // A aba visual .picking-tab deve permanecer.
                         try {
-                            const chatTab = match.querySelector('.chat-tab');
-                            if (chatTab) chatTab.remove();
+                            match
+                                .querySelectorAll('.chat-tab:not(.picking-tab)')
+                                .forEach((tab) => tab.remove());
                         } catch (e) {
                             // ignore
                         }
@@ -1506,6 +1668,24 @@
 
                 toggleButton.appendChild(toggleIcon);
                 pvCard.appendChild(toggleButton);
+
+                if (shouldRestoreOpen) {
+                    toggleIcon.textContent = '▴';
+
+                    toggleButton.setAttribute(
+                        'aria-expanded',
+                        'true',
+                    );
+
+                    toggleButton.setAttribute(
+                        'aria-label',
+                        'Recolher PV',
+                    );
+
+                    pvCard.classList.add('pv-focus-open');
+
+                    activePVCard = pvCard;
+                }
 
                 // Função centralizada para abrir/fechar o PV
                 function togglePV() {
@@ -1760,20 +1940,25 @@
                 for (const [key, group] of groupsById.entries()) {
                     const pvCard = container.querySelector(`.pv-card[data-pv-id="${key}"]`);
                     if (!pvCard) continue;
-                    const validatedCount = (group.pickings || []).filter(r => Boolean(r.validated)).length;
-                    const totalCount = (group.pickings || []).length;
+                    const {validatedCount, pendingInStageCount, pendingPlusWaitingCount} = getPVCounts(group);
 
                     // atualizar contador estrutural (caso exista)
                     const counterEl = pvCard.querySelector('.pv-counter');
                     if (counterEl) {
-                        counterEl.textContent = `${validatedCount}/${totalCount}`;
+                        counterEl.textContent =
+                            `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
                     }
 
                     // atualizar aba estilo chat que agora mostra o contador
                     const chatCounter = pvCard.querySelector('.chat-tab.pv-counter-tab');
                     if (chatCounter) {
-                        chatCounter.textContent = `${validatedCount}/${totalCount}`;
-                        chatCounter.setAttribute('aria-label', `Contador: ${validatedCount} de ${totalCount}`);
+                        chatCounter.textContent =
+                            `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
+
+                        chatCounter.setAttribute(
+                            'aria-label',
+                            `Contador: ${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`
+                        );
                     }
                 }
             } catch (e) {

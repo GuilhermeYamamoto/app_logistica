@@ -589,17 +589,90 @@
     transform: translateY(-10px);
 }
 
-/* Garantir que o hover mantenha aparência consistente */
-.pv-card .chat-tab.pv-counter-tab:hover {
+/* =========================================
+   ABA VISUAL DOS PICKINGS
+   ========================================= */
+
+.picking-card {
+    position: relative;
+}
+
+.picking-card .chat-tab.picking-tab {
+    position: absolute;
+    top: 0;
+    right: 24px;
+    width: 52px;
+    min-width: 52px;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 60;
+    box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.14);
+    transform: translateY(-10px);
+    pointer-events: auto;
+}
+
+.picking-card .chat-tab.picking-tab:hover {
     filter: brightness(.96);
 }
 
-/* Não interativo visualmente (apenas estrutural) */
-.pv-card .chat-tab.pv-counter-tab:active,
-.pv-card .chat-tab.pv-counter-tab:focus {
-    outline: none;
+.picking-card .chat-tab.picking-tab:active {
+    transform: translateY(-10px) scale(.96);
 }
 
+.picking-card .chat-tab.picking-tab:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.picking-tab-icon {
+    width: 19px;
+    height: 19px;
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.picking-responsible-selector {
+    position: absolute;
+    top: 34px;
+    right: 24px;
+    width: 320px;
+    z-index: 100;
+}
+
+.picking-responsible-selector > .responsible-action {
+    display: none;
+}
+
+.picking-responsible-selector .responsible-selector-panel {
+    display: none;
+    width: 100%;
+    max-width: 320px;
+    padding: 0;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+}
+
+.picking-responsible-selector.is-open .responsible-selector-panel {
+    display: block;
+}
 
 @media (max-width: 480px) {
     .responsible-action {
