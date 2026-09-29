@@ -590,6 +590,41 @@
         return hasSelectedResponsible(record);
     }
 
+    function isPVInProgress(record) {
+        if (!record) {
+            return false;
+        }
+
+        const pedidoVendaId = record.pedido_venda_id;
+
+        // Se o registro não pertence a um PV,
+        // considera apenas o próprio picking.
+        if (
+            pedidoVendaId === null ||
+            pedidoVendaId === undefined ||
+            pedidoVendaId === ""
+        ) {
+            return hasSelectedResponsible(record);
+        }
+
+        const allRecords = window.AppInventory?.getRecords?.() || [];
+
+        return allRecords.some((item) => {
+            if (
+                item.pedido_venda_id === null ||
+                item.pedido_venda_id === undefined ||
+                item.pedido_venda_id === ""
+            ) {
+                return false;
+            }
+
+            return (
+                String(item.pedido_venda_id) === String(pedidoVendaId) &&
+                hasSelectedResponsible(item)
+            );
+        });
+    }
+
     function canValidate(record) {
         const responsavelValido = canValidateResponsible(record);
         const embalagemValida = record?.embalagemVerificada === true;
@@ -1762,6 +1797,32 @@
         window.AppInventory.configure({
             enhanceCard,
             beforeValidate,
+
+            isInProgress: (record) => {
+                return isPVInProgress(record);
+            },
+
+            getStatus: (record) => {
+                if (record.validated) {
+                    return {
+                        label: "CONCLUÍDO",
+                        className: "status-completed",
+                    };
+                }
+
+                if (isPVInProgress(record)) {
+                    return {
+                        label: "EM ANDAMENTO",
+                        className: "status-progress",
+                    };
+                }
+
+                return {
+                    label: "PENDENTE",
+                    className: "status-waiting",
+                };
+            },
+
             onRecordsReplaced,
             onAfterRender: handleAfterRender,
         });
