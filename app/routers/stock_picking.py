@@ -109,7 +109,7 @@ async def stage_page(
 
 @router.post("/api/inventario/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
-    return await InventoryService.print_report_qualidade(client, picking_id)
+    return await InventoryService.print_report(client, picking_id)
 
 
 
@@ -269,6 +269,25 @@ def received_quantity(data: ReceivedQuantity = Body(...), client=Depends(get_odo
         "message": "Quantidade recebida atualizada com sucesso."
     }
 
+####################################
+#  ATUALIZAÇÃO o Peso do picking
+####################################
+#
+#  Atualiza o peso do picking (separacao).
+#
+####################################
+
+@router.post("/api/peso-value")
+def update_peso(data = Body(...), client=Depends(get_odoo_client)):
+    """
+    Atualiza peso do picking no Odoo.
+    """
+    InventoryService.update_peso_picking(client,data)
+
+    return {
+        "success": True,
+        "message": "Peso atualizado com sucesso."
+    }
 
 
 ####################################
@@ -358,3 +377,20 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client,stage["picking_type_id"],)
     return records
+
+####################################
+#  Ação para replicar peso nos pickings da Separação
+####################################
+
+@router.post("/api/replicar-peso")
+def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)):
+    """
+    Chama a ação no Odoo que replica determinado peso para todos as linhas do picking na separação.
+    """
+    print("#############")
+    print(picking_data)
+    replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
+    return {"success": True, "message": "Peso atualizado com sucesso."}
+
+
+
