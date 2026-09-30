@@ -353,7 +353,8 @@
         return card;
     }
 
-    async function updateReceivedQuantity(record, input) {
+    async function updateReceivedQuantity(record, input, moveLineId = null) {
+        /* O moveLineId está como opcional pois, até a etapa da Pré-Separação, não tem split de pacotes, ou seja, só tem uma linha de movimento de estoque, e após a Separacao ocorre o split, sendo assim pode haver mais de uma linha, que quando alterada, deve alterar a respectiva move_line_id no Odoo. Basicamente a regra vai ser, se não passar o moveLineId, realiza a movimentacao na primeira move_line (só vai ter uma), se passar o moveLineId, altera a respectiva move_line_id no Odoo*/
         const value = Number(input.value);
         if (AppInventory.isActionInProgress()) {
             input.value = record.receivedQuantity;
@@ -364,6 +365,7 @@
             return;
         }
 
+        console.log(moveLineId);
         const previousValue = record.receivedQuantity;
         record.receivedQuantity = value;
         try {
@@ -373,6 +375,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         picking_id: record.id,
+                        move_line_id: moveLineId,
                         received_quantity: value,
                     }),
                 });
@@ -1425,6 +1428,7 @@
         runAction,
         showLoading,
         showToast,
+        updateReceivedQuantity,
     });
 
     if (

@@ -1,7 +1,25 @@
-.ler-embalagem-action {
-    background: var(--yellow);
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.picking-card {
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* =========================================================
+   CONTEÚDO DO CARD
+   ========================================================= */
+
+.picking-main,
+.picking-actions {
     width: 100%;
 }
+
+/* =========================================================
+   SEGUNDA LINHA DO CARD
+   ========================================================= */
 
 .secondary-info-row {
     grid-column: 1 / -1;
@@ -12,21 +30,22 @@
     gap: 0;
    }
 
-.local-box {
+.secondary-info-box-1 {
     display: flex;
     flex-direction: column;
     gap: 0;
     min-width: 0;
+    grid-column: 1; /* Coluna 1 */
 }
 
-.local-label {
+.secondary-info-label {
     display: block;
     margin-bottom: 0;
     color: var(--muted);
     text-transform: none;
 }
 
-.local-value {
+.secondary-info-value {
     margin-top: -7px;
     width: 100%;
     height: 48px;
@@ -40,142 +59,211 @@
     line-height: 1.3;
 }
 
-.result-package-box {
+.secondary-info-box-3 { /* Coluna 3 */
     width: 100%;
     min-width: 0;
     grid-column: 3;
 }
 
-.result-package-label {
-    display: block;
-    margin-bottom: 0;
-    color: var(--muted);
-    text-transform: none;
-}
-
-.result-package-value {
-    margin-top: -7px;
-    width: 100%;
-    height: 48px;
-    min-height: 48px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    padding: 0;
-    font-size: 18px;
-    font-weight: 680;
-    line-height: 1.3;
-}
-
 /* =========================================================
-   SCANNER DE CÓDIGO DE BARRAS
+   PICKING LINES
    ========================================================= */
 
-.barcode-scanner-container {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
+.picking-lines {
+    display: block;
+
+    width: 100%;
+    margin-top: 40px;
+
+    border-top: 2px solid var(--blue);
+
+    position: static;
+    order: 999;
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   BOTÃO DE EXPANSÃO
+   ========================================================= */
+
+.picking-lines-toggle {
+    position: static;
 
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
 
-    gap: 20px;
+    width: 28px;
+    height: 28px;
 
-    padding: 20px;
+    padding: 0;
+    margin: -15px auto 0;
 
-    background: rgba(0, 0, 0, 0.85);
-}
+    border: 2px solid var(--blue);
+    border-radius: 50%;
 
-.barcode-scanner-video {
-    width: min(90vw, 800px);
-    max-height: 70vh;
-
-    border-radius: 12px;
-
-    background: #000;
-
-    object-fit: cover;
-}
-
-.barcode-scanner-close {
-    padding: 12px 30px;
-
-    border: none;
-    border-radius: 8px;
-
-    font-size: 16px;
-    font-weight: bold;
+    background: var(--app-surface);
+    color: var(--text);
 
     cursor: pointer;
 }
 
+.picking-lines-toggle:hover {
+    filter: brightness(.96);
+}
+
+.picking-lines-toggle:active {
+    transform: scale(.94);
+}
+
+.picking-lines-toggle:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.picking-lines-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+
 /* =========================================================
-   VALIDAÇÃO DA EMBALAGEM
+   ÁREA DAS LINHAS
    ========================================================= */
 
-.embalagem-validada {
-    animation: embalagemValidada 5s ease-in-out;
+.picking-lines-content {
+    width: 100%;
+
+    max-height: 300px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding: 0 16px;
+
+    box-sizing: border-box;
 }
 
-@keyframes embalagemValidada {
-
-    0% {
-        border-color: transparent;
-        background-color: rgba(25, 135, 84, 0);
-    }
-
-    25% {
-        border-color: rgba(25, 135, 84, 0.45);
-        background-color: rgba(25, 135, 84, 0.08);
-    }
-
-    50% {
-        border-color: rgba(25, 135, 84, 1);
-        background-color: rgba(25, 135, 84, 0.25);
-    }
-
-    75% {
-        border-color: rgba(25, 135, 84, 0.65);
-        background-color: rgba(25, 135, 84, 0.12);
-    }
-
-    100% {
-        border-color: transparent;
-        background-color: rgba(25, 135, 84, 0);
-    }
-}
-
-.embalagem-invalida {
-    animation: embalagemInvalida 5s ease-in-out;
+.picking-lines-content[hidden] {
+    display: none;
 }
 
 
-@keyframes embalagemInvalida {
+/* =========================================================
+   CABEÇALHO DAS COLUNAS
+   ========================================================= */
 
-    0% {
-        border-color: transparent;
-        background-color: rgba(220, 53, 69, 0);
-    }
+.picking-lines-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
 
-    25% {
-        border-color: rgba(220, 53, 69, 0.45);
-        background-color: rgba(220, 53, 69, 0.08);
-    }
+    display: grid;
 
-    50% {
-        border-color: rgba(220, 53, 69, 1);
-        background-color: rgba(220, 53, 69, 0.25);
-    }
+    grid-template-columns:
+        minmax(140px, 1fr)
+        minmax(140px, 1fr)
+        minmax(140px, 1fr);
 
-    75% {
-        border-color: rgba(220, 53, 69, 0.65);
-        background-color: rgba(220, 53, 69, 0.12);
-    }
+    align-items: center;
 
-    100% {
-        border-color: transparent;
-        background-color: rgba(220, 53, 69, 0);
-    }
+    gap: 16px;
+
+    padding: 10px 14px;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    color: var(--text-muted);
+
+    background: var(--app-surface);
+
+    border-bottom: 1px solid var(--border-color);
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   CADA LINHA
+   ========================================================= */
+
+.picking-line-item {
+    display: grid;
+
+    grid-template-columns:
+        minmax(140px, 1fr)
+        minmax(140px, 1fr)
+        minmax(140px, 1fr);
+
+    align-items: center;
+
+    gap: 16px;
+
+    padding: 12px 14px;
+
+    border-bottom: 1px solid var(--border-color);
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   COLUNA QUANTIDADE
+   ========================================================= */
+
+.picking-line-quantity {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   COLUNA PESO
+   ========================================================= */
+
+.picking-line-weight {
+    white-space: nowrap;
+}
+
+/* =========================================================
+   COLUNA LOTE
+   ========================================================= */
+
+.picking-line-lot {
+    min-width: 0;
+
+    font-family: monospace;
+}
+
+
+/* =========================================================
+   ÚLTIMA LINHA
+   ========================================================= */
+
+.picking-line-item:last-child {
+    border-bottom: none;
+}
+
+
+/* =========================================================
+   NENHUMA LINHA
+   ========================================================= */
+
+.picking-line-empty {
+    padding: 16px;
+
+    text-align: center;
+
+    color: var(--text-muted);
 }

@@ -42,6 +42,7 @@ class ReceivedQuantity(BaseModel):
     """Modelo para atualizar a quantidade recebida."""
 
     picking_id: int
+    move_line_id: int | None = None
     received_quantity: float
 
 class SavePickingPhotos(BaseModel):

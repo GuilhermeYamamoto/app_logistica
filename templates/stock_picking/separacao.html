@@ -6,6 +6,32 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/separacao.css') }}?v={{ static_asset_version('css/stock_picking/separacao.css') }}">
 {% endblock %}
 
+{% block inventory_modals %}
+    <div id="replicarPesoModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-kicker">Replicar Peso para Embalagens</span>
+                <button class="close-modal" data-close="replicarPesoModal">×</button>
+            </div>
+            <form id="inputPesoForm">
+                <div class="form-section">
+                    <div class="form-group">
+                        <h3>Digite o peso que deseja repetir para os pacotes</h3><br/>
+                        <input id="pesoPacotes" type="number" min="0.00" step="0.01" placeholder="Digite o peso para os pacotes">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="secondary-button" data-close="replicarPesoModal">
+                        CANCELAR
+                    </button>
+                    <button type="submit" class="quality-button">
+                        REPLICAR PESO
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
 
 {% block inventory_scripts %}
     <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"></script>

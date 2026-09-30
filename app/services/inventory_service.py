@@ -72,9 +72,17 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
+            
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
+            
+            move_lines_by_id = {}
+            if move_line_ids:
+                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id"]
+                move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
+                move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
+            
             moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
             received_quantity_field = None
             if move_ids:
@@ -124,6 +132,7 @@ class InventoryService:
 
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
+            cliente = picking["partner_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
             photo_relation = picking.get("fotos_count") or []
@@ -131,6 +140,7 @@ class InventoryService:
                 photo_count = len(photo_relation)
             else:
                 photo_count = int(photo_relation or 0)
+            
             record = {
                 "nf_number": nf_number,
                 "id": picking["id"],
@@ -147,14 +157,32 @@ class InventoryService:
                 "photosRegistered": photo_count >= 3,
                 "barcodeRegistered": bool(barcode_registered),
                 "local": local,
-                "responsible": (
-                    {
-                        "id": picking["user_id"][0],
-                        "name": picking["user_id"][1],
-                    }
+                "cliente": (cliente[1] if cliente else "Cliente não definido"),
+                "userId": (
+                    picking["user_id"][0]
                     if picking.get("user_id")
                     else None
                 ),
+
+                "userName": (
+                    picking["user_id"][1]
+                    if picking.get("user_id")
+                    else None
+                ),
+
+                "pedido_venda_id": (
+                    picking["pedido_venda_id"][0]
+                    if picking.get("pedido_venda_id")
+                    else None
+                ),
+
+                "pedido_venda_name": (
+                    picking["pedido_venda_id"][1]
+                    if picking.get("pedido_venda_id")
+                    else None
+                ),
+                "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
+                "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
             }
 
             result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
@@ -171,17 +199,17 @@ class InventoryService:
         return {"picking_type_id": picking_type_id, "records": records}
 
     ####################################
-    #  IMPRESSÃO DA ETIQUETA DE QUALIDADE
+    #  IMPRESSÃO DA ETIQUETA DE QUALIDADE ou SEPARAÇÃO
     ####################################
     #
-    #  Solicita ao Odoo a geração do documento da etiqueta de qualidade
+    #  Solicita ao Odoo a geração do documento da etiqueta de qualidade/separacao
     #  para o picking informado.
     #
     # Após receber os dados do documento e da impressora, retorna os
     # dados para que o navegador envie o arquivo ao dispositivo IoT.
     #
     ####################################
-    async def print_report_qualidade(client, picking_id):
+    async def print_report(client, picking_id):
         try:
             print("==========================================")
             print("INÍCIO DA IMPRESSÃO")
@@ -191,7 +219,14 @@ class InventoryService:
             # CHAMA O IOT_RENDER DO ODOO
             # ========================================================
             print("Chamando ir.actions.report.iot_render...")
-            resultado = client.execute("ir.actions.report", "iot_render", 1202, [picking_id], {"device_id": "Qualidade - Argox OS-214EX PPLA"})
+            picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
+            id_etiqueta = None
+            if picking_type_id[0].get("picking_type_id")[0] == 137:
+                id_etiqueta = 1202 # Etiqueta de Qualidade/Recebimento
+            elif picking_type_id[0].get("picking_type_id")[0] == 120:
+                id_etiqueta = 1367 # Etiqueta de Separação
+            print("Etiqueta ID:", id_etiqueta)
+            resultado = client.execute("ir.actions.report", "iot_render", id_etiqueta, [picking_id], {"device_id": "Qualidade - Argox OS-214EX PPLA"})
             print("Resultado recebido do Odoo:")
             print(resultado)
             # ========================================================
@@ -272,7 +307,7 @@ class InventoryService:
             print(repr(e))
             print("==========================================")
             raise HTTPException(status_code=500, detail=f"Erro ao imprimir etiqueta: {str(e)}")
-
+   
     ####################################
     #  MÉTODO PARA VALIDAR PICKING
     ####################################
@@ -388,17 +423,51 @@ class InventoryService:
     #
     ####################################
     def update_received_quantity(client, data):
-        print("Picking:", data.picking_id)
-        print("Quantidade:", data.received_quantity)
         try:
             move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.picking_id)])
-            print("Move lines:", move_lines)
             if not move_lines:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
-            client.execute("stock.move.line", "write", move_lines, {"qty_done": data.received_quantity})
+            if len(move_lines) > 1:
+                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
+                move_line = [move_line for move_line in move_lines if data.move_line_id == move_line]
+                client.execute("stock.move.line", "write", move_line, {"qty_done": data.received_quantity})
+            else:
+                # Se tiver apenas uma move_line, atualiza diretamente.
+                client.execute("stock.move.line", "write", move_lines, {"qty_done": data.received_quantity})
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error
+
+    ####################################
+    #  MÉTODO PARA ATUALIZAR Peso do Picking
+    ####################################
+    #
+    #  Atualiza no Odoo o peso do picking.
+    #
+    #  Primeiro localiza as linhas de movimentação relacionadas ao picking.
+    #  Em seguida, atualiza o campo peso dessas linhas com o peso
+    #  informado.
+    #
+    #  Caso nenhuma linha de movimentação seja encontrada, a operação
+    #  é interrompida e retorna um erro.
+    #
+    ####################################
+    def update_peso_picking(client, data):
+        try:
+            move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.get("picking_id"))])
+            if not move_lines:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
+            if len(move_lines) > 1:
+                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
+                move_line = [move_line for move_line in move_lines if data.get("move_line_id") == move_line]
+                client.execute("stock.move.line", "write", move_line, {"peso": data.get("peso_value")})
+            else:
+                # Se tiver apenas uma move_line, atualiza diretamente.
+                client.execute("stock.move.line", "write", move_lines, {"peso": data.get("peso_value")})
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error
+
 
     ####################################
     #  MÉTODO PARA SALVAR FOTOS DO PICKING
@@ -804,3 +873,16 @@ class InventoryService:
             "user_id": user_id,
             "user_name": users[0]["name"],
         }
+
+    def action_replicar_peso(client, data):
+        try:
+            wizard_replicar_peso_id = client.execute("stock.picking.peso.wizard", "create", [{
+                'picking_id': data.get("picking_id"),
+                'peso': data.get("peso"),
+                }])
+            print("Wizard ID:", wizard_replicar_peso_id)
+            print("TIPO: ", type(wizard_replicar_peso_id))
+            result = client.execute("stock.picking.peso.wizard", "update_items", wizard_replicar_peso_id)
+        except Exception as error:
+            print(error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível replicar o peso no Odoo")) from error
