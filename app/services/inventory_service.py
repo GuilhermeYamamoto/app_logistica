@@ -54,6 +54,12 @@ class InventoryService:
                 "picking_type_id": 139,
                 "template": "stock_picking/conferencia_expedicao.html",
             },
+            {
+                "key": "faturamento",
+                "name": "Faturamento",
+                "picking_type_id": 134,
+                "template": "stock_picking/faturamento.html"
+            }
         ]
 
     ####################################
