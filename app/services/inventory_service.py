@@ -164,7 +164,7 @@ class InventoryService:
                 "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
                 "reference": picking["name"],
                 "client": (partner[1] if partner else "Sem fornecedor"),
-                "partner": (partnerId[1]) if partnerId else "Sem cliente",
+                "partner": (cliente[1]) if cliente else "Sem cliente",
                 "product": (", ".join(product_names) or "Sem produtos"),
                 "expectedQuantity": expected_quantity,
                 "receivedQuantity": received_quantity,
