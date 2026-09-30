@@ -426,13 +426,13 @@
     grid-auto-flow: row;
 }
 
-.secondary-actions > :nth-child(1),
-.secondary-actions > :nth-child(2) {
+.secondary-actions .quality-action,
+.secondary-actions .print-action {
     grid-column: auto;
 }
 
-.secondary-actions > :nth-child(3),
-.secondary-actions > :nth-child(4) {
+.secondary-actions .barcode-scanner-action,
+.secondary-actions .validation-action {
     grid-column: 1 / -1;
 }
 

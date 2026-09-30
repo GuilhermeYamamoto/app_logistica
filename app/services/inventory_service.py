@@ -72,7 +72,21 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf"], order="scheduled_date asc, id asc")
+            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            
+            # Busca os pickings que estão aguardando para entrar na etapa
+            waiting_pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "=", "waiting"),],fields=["id", "pedido_venda_id"],)
+
+            # Conta quantos pickings waiting existem por Pedido de Venda
+            waiting_counts_by_pv = defaultdict(int)
+
+            for waiting_picking in waiting_pickings:
+                pedido_venda = waiting_picking.get("pedido_venda_id")
+
+                if pedido_venda:
+                    pedido_venda_id = pedido_venda[0]
+                    waiting_counts_by_pv[pedido_venda_id] += 1
+                    
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
@@ -117,18 +131,21 @@ class InventoryService:
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
             local = None
-            for move in moves:
-                for move_dest_id in move.get("move_dest_ids", []):
-                    destination_move = destination_moves_by_id.get(move_dest_id, {})
-                    location_dest = destination_move.get("location_dest_id")
-                    if location_dest:
-                        if isinstance(location_dest, (list, tuple)):
-                            local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
-                        else:
-                            local = str(location_dest)
+            if picking_type_id == 137:
+                for move in moves:
+                    for move_dest_id in move.get("move_dest_ids", []):
+                        destination_move = destination_moves_by_id.get(move_dest_id, {})
+                        location_dest = destination_move.get("location_dest_id")
+                        if location_dest:
+                            if isinstance(location_dest, (list, tuple)):
+                                local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
+                            else:
+                                local = str(location_dest)
+                            break
+                    if local:
                         break
-                if local:
-                    break
+            else:
+                local = picking["x_studio_local_do_material"]    
 
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
@@ -147,6 +164,7 @@ class InventoryService:
                 "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
                 "reference": picking["name"],
                 "client": (partner[1] if partner else "Sem fornecedor"),
+                "partner": (partnerId[1]) if partnerId else "Sem cliente",
                 "product": (", ".join(product_names) or "Sem produtos"),
                 "expectedQuantity": expected_quantity,
                 "receivedQuantity": received_quantity,
@@ -183,6 +201,12 @@ class InventoryService:
                 ),
                 "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
                 "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
+
+                "waitingCount": (
+                    waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
             }
 
             result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
@@ -532,7 +556,7 @@ class InventoryService:
         """
 
         picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
-        centro_distruibuicao = 11 if picking_type_id == 137 else 5963
+        centro_distruibuicao = 11 if picking_type_id in [137, 138] else 5963
 
         try:
             locations = client.execute("stock.location","search_read", [

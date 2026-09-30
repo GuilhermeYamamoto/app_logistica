@@ -1,3 +1,5 @@
+//o contador está na linha 1439
+
 (function () {
     "use strict";
 
@@ -6,6 +8,13 @@
     let loadingUsers = false;
     let initialized = false;
     let openSelector = null;
+    let barcodeScanner = null;
+    let barcodeScannerActive = false;
+    let barcodeScannerPickingId = null;
+    const DEFAULT_RESPONSIBLES = new Set([
+        "silvando ferrei",
+        "jose santos",
+    ]);
 
     function createElement(tagName, className, text) {
         const element = document.createElement(tagName);
@@ -21,20 +30,27 @@
         return element;
     }
 
+    function normalizeResponsibleName(userName) {
+        return String(userName || "")
+            .trim()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLocaleLowerCase("pt-BR")
+            .replace(/\s+/g, " ");
+    }
+
+    function isDefaultResponsible(userName) {
+        const normalizedName = normalizeResponsibleName(userName);
+
+        return DEFAULT_RESPONSIBLES.has(normalizedName);
+    }
+
     function closeAllSelectors(except = null) {
         document
             .querySelectorAll(".responsible-selector.is-open")
             .forEach((selector) => {
                 if (selector !== except) {
                     selector.classList.remove("is-open");
-
-                    const arrow = selector.querySelector(
-                        ".responsible-action-arrow",
-                    );
-
-                    if (arrow) {
-                        arrow.textContent = "▼";
-                    }
 
                     const button = selector.querySelector(
                         ".responsible-action",
@@ -292,6 +308,10 @@
 
         selector._responsibleRecord = record;
 
+        const hasSelectedResponsible =
+            record.userName &&
+            !isDefaultResponsible(record.userName);
+
         const button = document.createElement("button");
 
         button.type = "button";
@@ -312,7 +332,7 @@
         const label = createElement(
             "span",
             "responsible-action-label",
-            record.userName
+            hasSelectedResponsible
                 ? `RESPONSÁVEL: ${record.userName}`
                 : "RESPONSÁVEL PELA SEPARAÇÃO",
         );
@@ -338,7 +358,7 @@
 
         button.setAttribute(
             "aria-label",
-            record.userName
+            hasSelectedResponsible
                 ? `Responsável escolhido: ${record.userName}. Clique para alterar.`
                 : "Selecionar responsável pela separação",
         );
@@ -405,11 +425,6 @@
                 closeAllSelectors();
 
                 if (isOpen) {
-                    arrow.textContent = "▼";
-                    button.setAttribute(
-                        "aria-expanded",
-                        "false",
-                    );
                     return;
                 }
 
@@ -418,8 +433,6 @@
                 );
 
                 openSelector = selector;
-
-                arrow.textContent = "▲";
 
                 button.setAttribute(
                     "aria-expanded",
@@ -479,6 +492,18 @@
         return selector;
     }
 
+    function createPickingResponsibleSelector(record, card) {
+        const selector = createResponsibleSelector(record);
+
+        selector.classList.add("picking-responsible-selector");
+
+        selector.dataset.recordId = String(record?.id || "");
+
+        card.appendChild(selector);
+
+        return selector;
+    }
+
     function closeSelector(selector) {
         if (!selector) {
             return;
@@ -505,7 +530,7 @@
         }
     }
 
-    async function assignResponsible(user, record) {
+    async function assignResponsible(user, record, options = {},) {    
         if (
             !record ||
             !user ||
@@ -550,11 +575,15 @@
 
                     closeAllSelectors();
 
-                    window.AppInventory.render();
+                    if (options.render !== false) {
+                        window.AppInventory.render();
+                    }
 
-                    window.AppInventory.showToast(
-                        `RESPONSÁVEL DEFINIDO: ${user.name}`,
-                    );
+                    if (options.showToast !== false) {
+                        window.AppInventory.showToast(
+                            `RESPONSÁVEL DEFINIDO: ${user.name}`,
+                        );
+                    }
                 },
             );
         } catch (error) {
@@ -571,22 +600,758 @@
         }
     }
 
+    function hasSelectedResponsible(record) {
+        if (!record) {
+            return false;
+        }
+
+        const hasUserId = Number(record.userId) > 0;
+        const userIsDefaultResponsible = isDefaultResponsible(record.userName);
+
+        return hasUserId && !userIsDefaultResponsible;
+    }
+
+    function canValidateResponsible(record) {
+        return hasSelectedResponsible(record);
+    }
+
+    function isPVInProgress(record) {
+        if (!record) {
+            return false;
+        }
+
+        const pedidoVendaId = record.pedido_venda_id;
+
+        // Se o registro não pertence a um PV,
+        // considera apenas o próprio picking.
+        if (
+            pedidoVendaId === null ||
+            pedidoVendaId === undefined ||
+            pedidoVendaId === ""
+        ) {
+            return hasSelectedResponsible(record);
+        }
+
+        const allRecords = window.AppInventory?.getRecords?.() || [];
+
+        return allRecords.some((item) => {
+            if (
+                item.pedido_venda_id === null ||
+                item.pedido_venda_id === undefined ||
+                item.pedido_venda_id === ""
+            ) {
+                return false;
+            }
+
+            return (
+                String(item.pedido_venda_id) === String(pedidoVendaId) &&
+                hasSelectedResponsible(item)
+            );
+        });
+    }
+
+    function canValidate(record) {
+        const responsavelValido = canValidateResponsible(record);
+        const embalagemValida = record?.embalagemVerificada === true;
+
+        return responsavelValido && embalagemValida;
+    }
+
+    function updateValidationButton(record, validationButton) {
+        if (!validationButton) {
+            return;
+        }
+
+        const canValidateNow = canValidate(record);
+
+        validationButton.disabled = !canValidateNow;
+
+        if (canValidateNow) {
+            validationButton.title = "Validar separação";
+        } else if (!canValidateResponsible(record)) {
+            validationButton.title =
+                "Selecione um separador antes de validar.";
+        } else {
+            validationButton.title =
+                "Verifique se a embalagem está correta antes de validar.";
+        }
+    }
+
+    function validarEmbalagem(codigoLido, picking) {
+        const codigo = String(codigoLido ?? "").trim();
+        const embalagemEsperada = String(picking?.resultPackageName ?? "").trim();
+
+        if (!embalagemEsperada) {
+            console.warn("O picking não possui embalagem definida.");
+            return false;
+        }
+
+        return codigo === embalagemEsperada;
+    }
+
+    function mostrarResultadoValidacao(card, valido) {
+        if (valido) {
+            console.log("Embalagem correta.");
+
+            void card.offsetWidth;
+            card.classList.remove("embalagem-invalida");
+            card.classList.add("embalagem-validada");
+            window.AppInventory.showToast("Embalagem correta.", "✓");
+
+            return;
+        }
+
+        console.warn("Embalagem incorreta.");
+
+        void card.offsetWidth;
+        card.classList.remove("embalagem-validada");
+        card.classList.add("embalagem-invalida");
+        window.AppInventory.showToast("Embalagem incorreta.", "!");
+
+        setTimeout(() => {
+            card.classList.remove("embalagem-invalida");
+        }, 5000);
+    }
+
+    async function openVerificacaoEmbalagemScanner(picking, onSuccess) {
+        const video = document.getElementById("barcodeScannerVideo");
+        const status = document.getElementById("barcodeScannerStatus");
+
+        if (!video || !status) {
+            console.error("Elementos do modal do scanner de embalagem não foram encontrados.");
+            window.AppInventory.showToast("Leitor de código de barras não disponível.", "!");
+            return;
+        }
+
+        if (!window.AppUI || typeof window.AppUI.createBarcodeScanner !== "function") {
+            console.error("window.AppUI.createBarcodeScanner não está disponível.");
+            window.AppInventory.showToast("O leitor de código de barras não foi carregado.", "!");
+            return;
+        }
+
+        window.AppUI.openModal("barcodeScannerModal");
+        status.textContent = "Solicitando acesso à câmera...";
+
+        const scanner = window.AppUI.createBarcodeScanner({
+            video,
+            onResult(result) {
+                if (!result) {
+                    return;
+                }
+
+                const codigoLido = String(result.text ?? "").trim();
+                console.log("Código de barras lido para embalagem: ", codigoLido);
+
+                scanner.stop();
+                window.AppUI.closeModal("barcodeScannerModal");
+
+                if (onSuccess) {
+                    onSuccess(codigoLido, picking);
+                }
+            },
+            onError(error) {
+                console.error("Erro ao ler código de barras da embalagem: ", error);
+                status.textContent = "Não foi possível iniciar a câmera. Tente novamente.";
+            },
+        });
+
+        try {
+            await scanner.start();
+            status.textContent = "Aponte a câmera para o código da embalagem.";
+        } catch (error) {
+            console.error("Não foi possível iniciar o scanner de embalagem: ", error);
+            status.textContent = "Não foi possível iniciar a câmera. Tente novamente.";
+            scanner.stop();
+        }
+    }
+
     function enhanceCard(
         card,
         record,
         context,
     ) {
-        const selector =
-            createResponsibleSelector(record);
+        const validationButton =
+            context.primaryActions.querySelector(
+                ".validation-action",
+            );
 
-        /*
-         * O campo RESPONSÁVEL continua sendo
-         * a primeira ação do card.
-         */
-        context.primaryActions.insertBefore(
-            selector,
-            context.primaryActions.firstChild,
+        const qualityButton =
+            context.primaryActions.querySelector(
+                ".quality-action",
+            );
+
+        // Na PRÉ SEPARAÇÃO, o ALERTA DE QUALIDADE não deve ser exibido.
+        if (qualityButton) {
+            qualityButton.remove();
+        }
+
+        if (validationButton) {
+            updateValidationButton(
+                record,
+                validationButton
+            );
+        }
+
+        // Aba do picking — responsável individual
+        if (!card.querySelector(".picking-tab")) {
+            const pickingTab = document.createElement("button");
+
+            pickingTab.type = "button";
+            pickingTab.className = "chat-tab picking-tab";
+            pickingTab.setAttribute(
+                "aria-label",
+                record?.userName && !isDefaultResponsible(record.userName)
+                    ? `Alterar responsável do picking. Responsável atual: ${record.userName}`
+                    : "Selecionar responsável deste picking",
+            );
+
+            // Ícone simples de pessoa
+            pickingTab.innerHTML = `
+                <svg
+                    class="picking-tab-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <circle cx="12" cy="8" r="3.5"></circle>
+                    <path d="M5.5 20c.7-4 2.9-6 6.5-6s5.8 2 6.5 6"></path>
+                </svg>
+            `;
+
+            pickingTab.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                let selector = card.querySelector(
+                    ".picking-responsible-selector",
+                );
+
+                if (!selector) {
+                    selector = createPickingResponsibleSelector(
+                        record,
+                        card,
+                    );
+                }
+
+                const isOpen = selector.classList.contains("is-open");
+
+                // Se já estiver aberto, fecha e encerra o clique.
+                if (isOpen) {
+                    closeSelector(selector);
+                    return;
+                }
+
+                // Fecha qualquer outro seletor aberto.
+                closeAllSelectors();
+
+                // Abre este seletor diretamente.
+                selector.classList.add("is-open");
+                openSelector = selector;
+
+                const responsibleButton =
+                    selector.querySelector(".responsible-action");
+
+                if (responsibleButton) {
+                    responsibleButton.setAttribute(
+                        "aria-expanded",
+                        "true",
+                    );
+                }
+
+                const searchInput =
+                    selector.querySelector(
+                        ".responsible-search-input",
+                    );
+
+                renderUserList(
+                    selector,
+                    record,
+                    searchInput?.value || "",
+                );
+
+                if (!users.length) {
+                    loadUsers();
+                }
+
+                setTimeout(() => {
+                    searchInput?.focus();
+                }, 0);
+            });
+
+            card.appendChild(pickingTab);
+        }
+
+        // *********************************
+        // *** Botão VERIFICAR EMBALAGEM **
+        // *********************************
+
+        const verificarEmbalagemButton =
+        context.createAction({
+            className: "main-action barcode-scanner-action",
+            label: "VERIFICAR EMBALAGEM",
+            icon: "▥",
+            ariaLabel: "Verificar embalagem do picking",
+            disabled: false,
+            onClick: () => {
+                openVerificacaoEmbalagemScanner(
+                    record,
+                    (codigoLido) => {
+                        const validacao =
+                            validarEmbalagem(
+                                codigoLido,
+                                record,
+                            );
+
+                        mostrarResultadoValidacao(
+                            card,
+                            validacao,
+                        );
+
+                        if (validacao) {
+                            record.embalagemVerificada = true;
+
+                            card.classList.remove(
+                                "embalagem-invalida",
+                            );
+
+                            card.classList.add(
+                                "embalagem-validada",
+                            );
+                        } else {
+                            record.embalagemVerificada = false;
+
+                            card.classList.remove(
+                                "embalagem-validada",
+                            );
+
+                            card.classList.add(
+                                "embalagem-invalida",
+                            );
+                        }
+
+                        const validationButton =
+                            context.secondaryActions.querySelector(
+                                ".validation-action",
+                            );
+
+                        updateValidationButton(
+                            record,
+                            validationButton,
+                        );
+                    },
+                );
+            },
+        });
+
+    context.addSecondaryAction(
+        verificarEmbalagemButton,
+    );
+
+    // Move o botão VALIDAR para a área secundária,
+    // ficando abaixo de VERIFICAR EMBALAGEM.
+    if (validationButton) {
+        context.secondaryActions.appendChild(
+            validationButton,
         );
+    }
+
+        const secondaryInfoRow = document.createElement("div");
+        secondaryInfoRow.className = "secondary-info-row";
+
+        // LOCAL
+        const localBox = document.createElement("div");
+        localBox.className = "local-box";
+
+        const localLabel = document.createElement("div");
+        localLabel.className = "local-label";
+        localLabel.textContent = "Local";
+
+        const localValue = document.createElement("div");
+        localValue.className = "local-value";
+        localValue.textContent =
+            record.local ? record.local : "Não definido";
+
+        localBox.appendChild(localLabel);
+        localBox.appendChild(localValue);
+
+        console.log(record.local);
+
+        // RESULT PACKAGE
+        const resultPackageBox = document.createElement("div");
+        resultPackageBox.className = "result-package-box";
+
+        const resultPackageLabel = document.createElement("div");
+        resultPackageLabel.className = "result-package-label";
+        resultPackageLabel.textContent = "Embalagem";
+
+        const resultPackageValue = document.createElement("div");
+        resultPackageValue.className = "result-package-value";
+
+        resultPackageValue.textContent =
+            record.resultPackageName ||
+            "Não definido";
+
+        resultPackageBox.appendChild(resultPackageLabel);
+        resultPackageBox.appendChild(resultPackageValue);
+
+        // Adiciona os dois na mesma linha
+        secondaryInfoRow.appendChild(localBox);
+        secondaryInfoRow.appendChild(resultPackageBox);
+
+        // Adiciona a segunda linha ao card
+        context.main.appendChild(secondaryInfoRow);
+
+        // Adicionado a terceira linha de informações
+
+        const thirdInfoRow = document.createElement("div");
+        thirdInfoRow.className = "third-info-row";
+
+        // CLIENTE
+        const clientBox = document.createElement("div");
+        clientBox.className = "client-box";
+
+        const clientLabel = document.createElement("div");
+        clientLabel.className = "client-label";
+        clientLabel.textContent = "Cliente";
+
+        const clientValue = document.createElement("div");
+        clientValue.className = "client-value";
+        clientValue.textContent =
+            record.partner ? record.partner : "Não definido";
+
+        clientBox.appendChild(clientLabel);
+        clientBox.appendChild(clientValue);
+
+        console.log(record.client);
+
+        // Adiciona os dois na mesma linha
+        thirdInfoRow.appendChild(clientBox);
+
+        // Adiciona a segunda linha ao card
+        context.main.appendChild(thirdInfoRow);
+    }
+
+    // *********************************
+    // *** SCANNER DE CÓDIGO DE BARRAS *
+    // *********************************
+
+    async function openBarcodeScanner(pickingId) {
+        if (
+            barcodeScannerActive ||
+            !window.AppInventory.getRecord(pickingId)
+        ) {
+            return;
+        }
+
+        barcodeScannerPickingId = pickingId;
+
+        const video = document.getElementById(
+            "barcodeScannerVideo",
+        );
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!video || !status) {
+            console.error(
+                "Elementos do modal do scanner não foram encontrados.",
+            );
+
+            window.AppInventory.showToast(
+                "Leitor de código de barras não disponível.",
+                "!",
+            );
+
+            return;
+        }
+
+        if (
+            !window.AppUI ||
+            typeof window.AppUI.createBarcodeScanner !==
+                "function"
+        ) {
+            console.error(
+                "window.AppUI.createBarcodeScanner não está disponível.",
+            );
+
+            window.AppInventory.showToast(
+                "O leitor de código de barras não foi carregado.",
+                "!",
+            );
+
+            return;
+        }
+
+        window.AppUI.openModal(
+            "barcodeScannerModal",
+        );
+
+        status.textContent =
+            "Solicitando acesso à câmera...";
+
+        barcodeScannerActive = true;
+
+        const scanner =
+            window.AppUI.createBarcodeScanner({
+                video,
+
+                onResult: handleBarcodeScanResult,
+
+                onError: (error) => {
+                    status.textContent =
+                        getBarcodeScannerErrorMessage(
+                            error,
+                        );
+                },
+            });
+
+        barcodeScanner = scanner;
+
+        try {
+            await scanner.start();
+
+            if (
+                !barcodeScannerActive ||
+                barcodeScanner !== scanner
+            ) {
+                scanner.stop();
+            }
+        } catch (error) {
+            if (barcodeScanner === scanner) {
+                barcodeScannerActive = false;
+                barcodeScanner = null;
+
+                status.textContent =
+                    getBarcodeScannerErrorMessage(
+                        error,
+                    );
+
+                console.error(
+                    "Erro ao iniciar o leitor de código de barras:",
+                    error,
+                );
+            }
+        }
+    }
+
+    async function handleBarcodeScanResult(result) {
+        if (
+            !barcodeScannerActive ||
+            !result
+        ) {
+            return;
+        }
+
+        const barcode =
+            result.getText?.().trim();
+
+        if (!barcode) {
+            return;
+        }
+
+        const pickingId =
+            barcodeScannerPickingId;
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!pickingId || !status) {
+            return;
+        }
+
+        barcodeScannerActive = false;
+
+        status.textContent =
+            "Enviando código lido...";
+
+        try {
+            const response = await fetch(
+                `/api/inventario/pickings/${pickingId}/barcode`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify({
+                        barcode,
+                    }),
+                },
+            );
+
+            const data =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                        "Não foi possível enviar o código lido.",
+                );
+            }
+
+            const picking =
+                window.AppInventory.getRecord(
+                    pickingId,
+                );
+
+            if (picking) {
+                picking.local =
+                    data.local || null;
+
+                picking.barcodeRegistered =
+                    Boolean(data.local);
+            }
+
+            window.AppUI.closeModal(
+                "barcodeScannerModal",
+            );
+
+            window.AppInventory.render();
+
+            window.AppInventory.showToast(
+                `LOCAL DEFINIDO: ${
+                    data.local || "Não definido"
+                }`,
+            );
+
+        } catch (error) {
+            console.error(
+                "Erro ao enviar código de barras:",
+                error,
+            );
+
+            status.textContent =
+                error.message ||
+                "Não foi possível enviar o código. Tente novamente.";
+
+            barcodeScannerActive = true;
+        }
+    }
+
+    function stopBarcodeScanner(
+        clearPicking = false,
+    ) {
+        barcodeScannerActive = false;
+
+        barcodeScanner?.stop();
+
+        barcodeScanner = null;
+
+        if (clearPicking) {
+            barcodeScannerPickingId = null;
+        }
+    }
+
+    function getBarcodeScannerErrorMessage(error) {
+        if (
+            error?.name === "NotAllowedError" ||
+            error?.name === "SecurityError"
+        ) {
+            return "Permita o acesso à câmera para realizar a leitura.";
+        }
+
+        if (
+            error?.name === "NotFoundError" ||
+            error?.name === "OverconstrainedError"
+        ) {
+            return "Nenhuma câmera compatível foi encontrada.";
+        }
+
+        return "Não foi possível iniciar a câmera. Tente novamente.";
+    }
+
+    function setupBarcodeScanner() {
+        const video = document.getElementById(
+            "barcodeScannerVideo",
+        );
+
+        const status = document.getElementById(
+            "barcodeScannerStatus",
+        );
+
+        if (!video || !status) {
+            return;
+        }
+
+        // Botão de escolha manual de localização.
+        // Mantido porque pertence ao fluxo existente.
+        document
+            .getElementById("chooseLocationButton")
+            ?.addEventListener(
+                "click",
+                openLocationSelection,
+            );
+
+        document
+            .getElementById("backToBarcodeButton")
+            ?.addEventListener(
+                "click",
+                backToBarcodeScanner,
+            );
+
+        document
+            .getElementById("confirmLocationButton")
+            ?.addEventListener(
+                "click",
+                confirmLocationSelection,
+            );
+
+        document
+            .getElementById("locationSearchInput")
+            ?.addEventListener(
+                "input",
+                filterLocationList,
+            );
+    }
+
+    // Fecha/paralisa a câmera quando a página é abandonada.
+    window.addEventListener(
+        "pagehide",
+        () => {
+            stopBarcodeScanner(true);
+        },
+    );
+
+    // Fecha o scanner quando o modal é fechado.
+    document.addEventListener(
+        "app:modal-close",
+        (event) => {
+            if (
+                event.detail?.id ===
+                "barcodeScannerModal"
+            ) {
+                stopBarcodeScanner(true);
+
+                // Essas funções pertencem ao fluxo
+                // de seleção manual de localização.
+                resetLocationSelection();
+                showBarcodeScannerView();
+            }
+        },
+    );
+
+    function beforeValidate(record) {
+        if (!canValidateResponsible(record)) {
+            window.AppInventory.showToast(
+                "Selecione um responsável válido antes de validar a pré-separação.",
+                "!",
+            );
+            return false;
+        }
+
+        if (record?.embalagemVerificada !== true) {
+            window.AppInventory.showToast(
+                "Verifique a embalagem antes de validar a pré-separação.",
+                "!",
+            );
+            return false;
+        }
+
+        return true;
     }
 
     function initialize() {
@@ -604,8 +1369,692 @@
             return;
         }
 
+        setupBarcodeScanner();
+
+        // Estrutura para agrupar pickings por pedido_venda_id
+        let pvGroups = [];
+        let activePVCard = null;
+
+        function scrollToExpandedPV(pvCard) {
+            if (!pvCard) {
+                return;
+            }
+
+            requestAnimationFrame(() => {
+                const topbar = document.querySelector(".topbar");
+
+                const topbarHeight =
+                    topbar?.getBoundingClientRect().height ||
+                    parseFloat(
+                        getComputedStyle(document.documentElement)
+                            .getPropertyValue("--topbar-height"),
+                    ) ||
+                    0;
+
+                const currentTop =
+                    pvCard.getBoundingClientRect().top +
+                    window.scrollY;
+
+                const targetTop =
+                    currentTop -
+                    topbarHeight -
+                    12;
+
+                window.scrollTo({
+                    top: Math.max(0, targetTop),
+                    behavior: "smooth",
+                });
+            });
+        }
+
+        function getPVCounts(group) {
+            const pickings = group.pickings || [];
+
+            const validatedCount = pickings.filter(
+                record => Boolean(record.validated)
+            ).length;
+
+            const pendingInStageCount = pickings.filter(
+                record => !Boolean(record.validated)
+            ).length;
+
+            const waitingCount = Number(
+                pickings[0]?.waitingCount || 0
+            );
+
+            const pendingPlusWaitingCount =
+                pendingInStageCount + waitingCount;
+
+            return {
+                validatedCount,
+                pendingInStageCount,
+                waitingCount,
+                pendingPlusWaitingCount,
+            };
+        }
+
+        function buildPVGroups(records) {
+            const groupsById = new Map();
+
+            for (const record of records || []) {
+                // Usa estritamente pedido_venda_id como chave
+                const pvId = record?.pedido_venda_id ?? null;
+                const key = pvId === null ? "__NO_PV__" : String(pvId);
+
+                if (!groupsById.has(key)) {
+                    groupsById.set(key, {
+                        pedido_venda_id: pvId,
+                        pedido_venda_name: record?.pedido_venda_name || null,
+                        pickings: [],
+                    });
+                }
+
+                groupsById.get(key).pickings.push(record);
+            }
+
+            // Converter para array para uso simples
+            pvGroups = Array.from(groupsById.values());
+
+            // Expor globalmente para inspeção/uso por outras partes da UI (apenas leitura)
+            try {
+                window.PreSeparacaoPVGroups = pvGroups;
+            } catch (e) {
+                // Não crítico se não puder expor
+                console.warn("Não foi possível expor PreSeparacaoPVGroups:", e);
+            }
+        }
+
+        // Callback mínima para ser executada quando os registros forem substituídos
+        function onRecordsReplaced(records) {
+            buildPVGroups(records);
+
+            // Depois que o render padrão criar os cards (síncrono),
+            // moveremos os cards para dentro das caixas de PV.
+            // Usar setTimeout 0 para executar depois do render() ocurrido.
+            setTimeout(() => {
+                try {
+                    renderPVGroupsDOM();
+                } catch (e) {
+                    console.error('Erro ao renderizar grupos de PV:', e);
+                }
+            }, 0);
+        }
+
+        function getPVResponsibleName(group) {
+            const pickings = group?.pickings || [];
+
+            if (!pickings.length) {
+                return null;
+            }
+
+            const responsibleNames = [];
+            const responsibleKeys = new Set();
+
+            for (const record of pickings) {
+                if (
+                    Number(record?.userId) <= 0 ||
+                    !record?.userName ||
+                    isDefaultResponsible(record.userName)
+                ) {
+                    continue;
+                }
+
+                const fullName = String(record.userName).trim();
+
+                if (!fullName) {
+                    continue;
+                }
+
+                const key = normalizeResponsibleName(fullName);
+
+                // Evita repetir o mesmo responsável
+                if (responsibleKeys.has(key)) {
+                    continue;
+                }
+
+                responsibleKeys.add(key);
+
+                responsibleNames.push({
+                    fullName,
+                    firstName: fullName.split(/\s+/)[0],
+                });
+            }
+
+            if (!responsibleNames.length) {
+                return null;
+            }
+
+            // Apenas um separador:
+            // mostra o nome completo.
+            if (responsibleNames.length === 1) {
+                return responsibleNames[0].fullName;
+            }
+
+            // Mais de um separador:
+            // usa somente o primeiro nome.
+            const firstNames = responsibleNames.map(
+                (responsible) => responsible.firstName,
+            );
+
+            if (firstNames.length === 2) {
+                return `${firstNames[0]} e ${firstNames[1]}`;
+            }
+
+            return `${firstNames
+                .slice(0, -1)
+                .join(", ")} e ${firstNames[firstNames.length - 1]}`;
+        }
+
+        // Renderiza a estrutura visual dos grupos de PV e move os cards existentes
+        function renderPVGroupsDOM() {
+            const container = document.getElementById('pickingsContainer');
+            if (!container) return;
+
+            // Guarda qual PV estava aberto antes do render.
+            // Isso é necessário porque os elementos .pv-card
+            // serão recriados abaixo.
+            const activePVKey =
+                activePVCard?.dataset?.pvId || null;
+
+            // O card antigo deixará de existir após replaceChildren().
+            // Portanto, limpa a referência antes de reconstruir o DOM.
+            activePVCard = null;
+
+            // Coleta os cards gerados pelo AppInventory (antes de esvaziar o container)
+            const existingCards = Array.from(container.querySelectorAll('.picking-card'));
+
+            // Limpa o container para inserir grupos (será re-populado com PV containers)
+            container.replaceChildren();
+
+            for (const group of pvGroups) {
+                const pvCard = document.createElement('section');
+                pvCard.className = 'pv-card';
+                // identificar PV no DOM para atualizações dinâmicas
+                const pvKey = group.pedido_venda_id === null ? '__NO_PV__' : String(group.pedido_venda_id);
+                try { pvCard.dataset.pvId = pvKey; } catch (e) { /* non critical */ }
+                const shouldRestoreOpen = activePVKey !== null && activePVKey === pvKey;
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'pv-header';
+
+                const left = document.createElement('div');
+                left.className = 'pv-header-left';
+
+                const pvTitle = document.createElement('strong');
+                pvTitle.className = 'pv-title';
+                pvTitle.textContent = group.pedido_venda_name || (
+                    group.pedido_venda_id
+                        ? `PV ${group.pedido_venda_id}`
+                        : 'SEM PV'
+                );
+
+                left.appendChild(pvTitle);
+
+                const right = document.createElement('div');
+                right.className = 'pv-header-right';
+
+                // Responsible button (reaproveita aparência)
+                const responsibleButton = document.createElement('div');
+                responsibleButton.className = 'pv-responsible-container';
+
+                const responsibleAction = document.createElement('button');
+                responsibleAction.type = 'button';
+                responsibleAction.className = 'responsible-action';
+
+                const currentPVResponsible = getPVResponsibleName(group);
+
+                responsibleAction.textContent = currentPVResponsible
+                    ? `${currentPVResponsible}`
+                    : 'SELECIONAR SEPARADOR';
+
+                responsibleAction.setAttribute(
+                    'aria-label',
+                    currentPVResponsible
+                        ? `Separador atual: ${currentPVResponsible}. Clique para alterar.`
+                        : 'Selecionar separador',
+                );
+
+                // Aba semelhante ao chat (usar mesmo estilo .chat-tab), contendo o contador
+                const {validatedCount, pendingInStageCount, pendingPlusWaitingCount} = getPVCounts(group);
+                const pvChatTab = document.createElement('button');
+                pvChatTab.type = 'button';
+                pvChatTab.className = 'chat-tab pv-counter-tab';
+
+                pvChatTab.setAttribute(
+                    'aria-label',
+                    `Contador: ${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`
+                );
+
+                pvChatTab.textContent =
+                    `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
+                // Não deve abrir chat — comportamento apenas visual aqui
+                pvChatTab.addEventListener('click', (e) => { e.stopPropagation(); });
+
+                responsibleButton.appendChild(responsibleAction);
+                right.appendChild(responsibleButton);
+                // pvChatTab appended last for alignment
+                right.appendChild(pvChatTab);
+
+                header.appendChild(left);
+                header.appendChild(right);
+
+                pvCard.appendChild(header);
+
+                // Container onde os pickings serão colocados (inicialmente oculto)
+                const pickingsList = document.createElement('div');
+
+                if (shouldRestoreOpen) {
+                    pickingsList.className = 'pv-pickings';
+                } else {
+                    pickingsList.className = 'pv-pickings hidden';
+                }
+
+                // Mover os cards correspondentes a este grupo
+                for (const picking of group.pickings) {
+                    // Preferir localizar o card pelo dataset.recordId (adicionado em base.createCard)
+                    const recordId = String(picking.id || picking.id === 0 ? picking.id : '');
+                    let match = null;
+
+                    if (recordId) {
+                        match = existingCards.find((card) => String(card.dataset.recordId || '') === recordId);
+                    }
+
+                    // Fallback: ainda tentar por referência de texto (compatibilidade)
+                    if (!match) {
+                        match = existingCards.find((card) => {
+                            const refEl = card.querySelector('.picking-identification strong');
+                            if (!refEl) return false;
+                            const text = (refEl.textContent || '').trim();
+                            const candidate = String(picking.pv || picking.reference || '').trim();
+                            return text === candidate;
+                        });
+                    }
+
+                    if (match) {
+                        // Remove apenas a aba de chat original do picking.
+                        // A aba visual .picking-tab deve permanecer.
+                        try {
+                            match
+                                .querySelectorAll('.chat-tab:not(.picking-tab)')
+                                .forEach((tab) => tab.remove());
+                        } catch (e) {
+                            // ignore
+                        }
+
+                        pickingsList.appendChild(match);
+                        // também remover do array para não reusar
+                        const idx = existingCards.indexOf(match);
+                        if (idx >= 0) existingCards.splice(idx, 1);
+                    }
+                }
+
+                pvCard.appendChild(pickingsList);
+
+                // Botão de expansão do PV
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'button';
+                toggleButton.className = 'pv-toggle';
+                toggleButton.setAttribute('aria-expanded', 'false');
+                toggleButton.setAttribute('aria-label', 'Expandir PV');
+
+                const toggleIcon = document.createElement('span');
+                toggleIcon.className = 'pv-toggle-icon';
+                toggleIcon.textContent = '▾';
+
+                toggleButton.appendChild(toggleIcon);
+                pvCard.appendChild(toggleButton);
+
+                if (shouldRestoreOpen) {
+                    toggleIcon.textContent = '▴';
+
+                    toggleButton.setAttribute(
+                        'aria-expanded',
+                        'true',
+                    );
+
+                    toggleButton.setAttribute(
+                        'aria-label',
+                        'Recolher PV',
+                    );
+
+                    pvCard.classList.add('pv-focus-open');
+
+                    activePVCard = pvCard;
+                }
+
+                // Função centralizada para abrir/fechar o PV
+                function togglePV() {
+                    const isOpen = !pickingsList.classList.contains('hidden');
+
+                    if (isOpen) {
+                        // Fecha o PV atual
+                        pickingsList.classList.add('hidden');
+
+                        toggleIcon.textContent = '▾';
+                        toggleButton.setAttribute('aria-expanded', 'false');
+                        toggleButton.setAttribute('aria-label', 'Expandir PV');
+
+                        pvCard.classList.remove('pv-focus-open');
+
+                        if (activePVCard === pvCard) {
+                            activePVCard = null;
+                        }
+
+                        return;
+                    }
+
+                    // Impede abrir outro PV enquanto já existe um PV aberto
+                    if (
+                        activePVCard &&
+                        activePVCard !== pvCard
+                    ) {
+                        return;
+                    }
+
+                    // Se o painel "SELECIONAR SEPARADOR" estiver aberto
+                    // enquanto o PV ainda estiver fechado, move o painel
+                    // para dentro da área de expansão do PV.
+                    //
+                    // Isso faz com que o cenário 3 tenha a mesma estrutura
+                    // visual do cenário 2.
+                    const responsiblePanel =
+                        pvCard.querySelector('.pv-responsible-panel');
+
+                    if (
+                        responsiblePanel &&
+                        responsiblePanel.parentElement !== pickingsList
+                    ) {
+                        pickingsList.insertBefore(
+                            responsiblePanel,
+                            pickingsList.firstChild
+                        );
+                    }
+
+                    // Abre o PV
+                    activePVCard = pvCard;
+
+                    pickingsList.classList.remove('hidden');
+
+                    toggleIcon.textContent = '▴';
+                    toggleButton.setAttribute('aria-expanded', 'true');
+                    toggleButton.setAttribute('aria-label', 'Recolher PV');
+
+                    pvCard.classList.add('pv-focus-open');
+
+                    // Depois que o PV for expandido e o layout recalculado,
+                    // posiciona o PV no topo da área útil da tela.
+                    scrollToExpandedPV(pvCard);
+                }
+
+                // Clique na bolinha/seta
+                toggleButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    togglePV();
+                });
+
+                // Clique no próprio card do PV
+                pvCard.addEventListener('click', (event) => {
+                    // Elementos que possuem comportamento próprio
+                    // e não devem abrir/fechar o PV.
+                    if (
+                        event.target.closest('.responsible-action') ||
+                        event.target.closest('.pv-counter-tab') ||
+                        event.target.closest('.pv-toggle') ||
+                        event.target.closest('.pv-pickings') ||
+                        event.target.closest('.pv-responsible-panel')
+                    ) {
+                        return;
+                    }
+
+                    togglePV();
+                });
+
+                // RESPONSÁVEL: abrir painel de seleção de usuário e atribuir a todos os pickings do grupo
+                responsibleAction.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+
+                    const existing = pvCard.querySelector('.pv-responsible-panel');
+                    if (existing) {
+                        existing.remove();
+                        return;
+                    }
+
+                    const panel = document.createElement('div');
+                    panel.className = 'pv-responsible-panel';
+
+                    const searchWrapper = document.createElement('div');
+                    searchWrapper.className = 'responsible-search';
+                    const searchIcon = document.createElement('span');
+                    searchIcon.className = 'responsible-search-icon';
+                    searchIcon.textContent = '⌕';
+                    const searchInput = document.createElement('input');
+                    searchInput.className = 'responsible-search-input';
+                    searchInput.type = 'search';
+                    searchInput.placeholder = 'Pesquisar responsável...';
+
+                    searchWrapper.appendChild(searchIcon);
+                    searchWrapper.appendChild(searchInput);
+
+                    const list = document.createElement('div');
+                    list.className = 'responsible-users-list';
+                    list.textContent = 'CARREGANDO USUÁRIOS...';
+
+                    panel.appendChild(searchWrapper);
+                    panel.appendChild(list);
+
+                    const pvExpanded = !pickingsList.classList.contains('hidden');
+
+                    if (pvExpanded) {
+                        pickingsList.insertBefore(panel, pickingsList.firstChild);
+                    } else {
+                        pvCard.appendChild(panel);
+                    }
+
+                    panel.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                    });
+
+                    // carrega usuários (reaproveita loadUsers())
+                    // loadUsers atualiza a variável users e também atualiza seletores abertos;
+                    // aqui chamamos loadUsers para popular 'users' e depois renderizamos localmente
+                    loadUsers().then(() => {
+                        // render local list
+                        if (!users || users.length === 0) {
+                            list.textContent = 'Nenhum usuário ativo encontrado.';
+                            return;
+                        }
+
+                        function renderFiltered(term) {
+                            list.replaceChildren();
+                            const filtered = users.filter(u => (u.name || '').toLowerCase().includes((term||'').toLowerCase()));
+                            if (filtered.length === 0) {
+                                const empty = document.createElement('div');
+                                empty.className = 'responsible-users-empty';
+                                empty.textContent = 'Nenhum usuário encontrado.';
+                                list.appendChild(empty);
+                                return;
+                            }
+
+                            for (const user of filtered) {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = 'responsible-user-option';
+                                const icon = document.createElement('span');
+                                icon.className = 'responsible-user-icon';
+                                icon.textContent = '◎';
+                                const name = document.createElement('span');
+                                name.className = 'responsible-user-name';
+                                name.textContent = user.name || 'Usuário sem nome';
+                                const check = document.createElement('span');
+                                check.className = 'responsible-user-check';
+                                check.textContent = '✓';
+                                btn.appendChild(icon);
+                                btn.appendChild(name);
+                                btn.appendChild(check);
+
+                                btn.addEventListener('click', async (ev) => {
+                                    ev.stopPropagation();
+
+                                    try {
+                                        for (const p of group.pickings) {
+                                            await assignResponsible(user, p, {
+                                                render: false,
+                                                showToast: false,
+                                            });
+                                        }
+
+                                        for (const p of group.pickings) {
+                                            p.userId = user.id;
+                                            p.userName = user.name;
+                                        }
+
+                                        responsibleAction.textContent =
+                                            `SEPARADOR: ${user.name}`;
+
+                                        responsibleAction.setAttribute(
+                                            'aria-label',
+                                            `Separador atual: ${user.name}. Clique para alterar.`,
+                                        );
+
+                                        panel.remove();
+
+                                        window.AppInventory.render();
+
+                                        window.AppInventory.showToast(
+                                            `SEPARADOR DEFINIDO: ${user.name}`,
+                                        );
+
+                                    } catch (err) {
+                                        console.error(
+                                            'Erro ao atribuir separador ao PV:',
+                                            err,
+                                        );
+                                    }
+                                });
+
+                                list.appendChild(btn);
+                            }
+                        }
+
+                        renderFiltered('');
+
+                        searchInput.addEventListener('input', () => renderFiltered(searchInput.value));
+                    }).catch((err) => {
+                        console.error('Erro ao carregar usuários para painel PV:', err);
+                        list.textContent = 'Erro ao carregar usuários.';
+                    });
+                });
+
+                container.appendChild(pvCard);
+            }
+
+            // Se ainda existir cards não agrupados (por segurança), anexar ao container
+            for (const leftover of existingCards) {
+                container.appendChild(leftover);
+            }
+        }
+
+        function updatePVCounters() {
+            try {
+                const records = window.AppInventory.getRecords ? window.AppInventory.getRecords() : [];
+                const groupsById = new Map();
+                for (const record of records || []) {
+                    const pvId = record?.pedido_venda_id ?? null;
+                    const key = pvId === null ? '__NO_PV__' : String(pvId);
+                    if (!groupsById.has(key)) {
+                        groupsById.set(key, { pickings: [] });
+                    }
+                    groupsById.get(key).pickings.push(record);
+                }
+
+                const container = document.getElementById('pickingsContainer');
+                if (!container) return;
+
+                container.classList.add('pre-separacao-container');
+
+                for (const [key, group] of groupsById.entries()) {
+                    const pvCard = container.querySelector(`.pv-card[data-pv-id="${key}"]`);
+                    if (!pvCard) continue;
+                    const {validatedCount, pendingInStageCount, pendingPlusWaitingCount} = getPVCounts(group);
+
+                    // atualizar contador estrutural (caso exista)
+                    const counterEl = pvCard.querySelector('.pv-counter');
+                    if (counterEl) {
+                        counterEl.textContent =
+                            `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
+                    }
+
+                    // atualizar aba estilo chat que agora mostra o contador
+                    const chatCounter = pvCard.querySelector('.chat-tab.pv-counter-tab');
+                    if (chatCounter) {
+                        chatCounter.textContent =
+                            `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
+
+                        chatCounter.setAttribute(
+                            'aria-label',
+                            `Contador: ${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao atualizar contadores de PV:', e);
+            }
+        }
+
+        function handleAfterRender(records) {
+            try {
+                // Usar os registros atuais fornecidos pelo AppInventory
+                buildPVGroups(window.AppInventory.getRecords ? window.AppInventory.getRecords() : []);
+                // Reaplicar a estrutura visual dos PVs e pickings
+                renderPVGroupsDOM();
+                // Atualizar apenas os contadores
+                updatePVCounters();
+            } catch (e) {
+                console.error('Erro ao processar onAfterRender (pre_separacao):', e);
+            }
+        }
+
         window.AppInventory.configure({
             enhanceCard,
+            beforeValidate,
+
+            isInProgress: (record) => {
+                return isPVInProgress(record);
+            },
+
+            getStatus: (record) => {
+                if (record.validated) {
+                    return {
+                        label: "CONCLUÍDO",
+                        className: "status-completed",
+                    };
+                }
+
+                if (isPVInProgress(record)) {
+                    return {
+                        label: "EM ANDAMENTO",
+                        className: "status-progress",
+                    };
+                }
+
+                return {
+                    label: "PENDENTE",
+                    className: "status-waiting",
+                };
+            },
+
+            onRecordsReplaced,
+            onAfterRender: handleAfterRender,
+        });
+
+        // Fallback: caso o evento seja disparado diretamente
+        document.addEventListener('appinventory:afterRender', (ev) => {
+            try {
+                handleAfterRender(ev?.detail?.records || []);
+            } catch (e) {
+                console.error('Erro no listener appinventory:afterRender (pre_separacao):', e);
+            }
         });
 
         document.addEventListener(
