@@ -1487,26 +1487,62 @@
                 return null;
             }
 
-            const responsiblePickings = pickings.filter(
-                (record) =>
-                    Number(record?.userId) > 0 &&
-                    record?.userName &&
-                    !isDefaultResponsible(record.userName),
-            );
+            const responsibleNames = [];
+            const responsibleKeys = new Set();
 
-            if (!responsiblePickings.length) {
+            for (const record of pickings) {
+                if (
+                    Number(record?.userId) <= 0 ||
+                    !record?.userName ||
+                    isDefaultResponsible(record.userName)
+                ) {
+                    continue;
+                }
+
+                const fullName = String(record.userName).trim();
+
+                if (!fullName) {
+                    continue;
+                }
+
+                const key = normalizeResponsibleName(fullName);
+
+                // Evita repetir o mesmo responsável
+                if (responsibleKeys.has(key)) {
+                    continue;
+                }
+
+                responsibleKeys.add(key);
+
+                responsibleNames.push({
+                    fullName,
+                    firstName: fullName.split(/\s+/)[0],
+                });
+            }
+
+            if (!responsibleNames.length) {
                 return null;
             }
 
-            const firstName = responsiblePickings[0].userName;
+            // Apenas um separador:
+            // mostra o nome completo.
+            if (responsibleNames.length === 1) {
+                return responsibleNames[0].fullName;
+            }
 
-            const allSameResponsible = responsiblePickings.every(
-                (record) =>
-                    normalizeResponsibleName(record.userName) ===
-                    normalizeResponsibleName(firstName),
+            // Mais de um separador:
+            // usa somente o primeiro nome.
+            const firstNames = responsibleNames.map(
+                (responsible) => responsible.firstName,
             );
 
-            return allSameResponsible ? firstName : null;
+            if (firstNames.length === 2) {
+                return `${firstNames[0]} e ${firstNames[1]}`;
+            }
+
+            return `${firstNames
+                .slice(0, -1)
+                .join(", ")} e ${firstNames[firstNames.length - 1]}`;
         }
 
         // Renderiza a estrutura visual dos grupos de PV e move os cards existentes
