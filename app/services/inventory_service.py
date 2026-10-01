@@ -910,8 +910,6 @@ class InventoryService:
                 'picking_id': data.get("picking_id"),
                 'peso': data.get("peso"),
                 }])
-            print("Wizard ID:", wizard_replicar_peso_id)
-            print("TIPO: ", type(wizard_replicar_peso_id))
             result = client.execute("stock.picking.peso.wizard", "update_items", wizard_replicar_peso_id)
         except Exception as error:
             print(error)
