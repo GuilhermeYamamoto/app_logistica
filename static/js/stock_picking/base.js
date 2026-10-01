@@ -376,7 +376,6 @@
             return;
         }
 
-        console.log(moveLineId);
         const previousValue = record.receivedQuantity;
         record.receivedQuantity = value;
         try {
@@ -400,8 +399,6 @@
             console.error("Erro ao atualizar quantidade:", error);
             record.receivedQuantity = previousValue;
             AppInventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
-        } finally {
-            AppInventory.render();
         }
     }
 

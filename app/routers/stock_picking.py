@@ -286,7 +286,7 @@ def update_peso(data = Body(...), client=Depends(get_odoo_client)):
 
     return {
         "success": True,
-        "message": "Peso atualizado com sucesso."
+        "message": "Peso atualizada com sucesso."
     }
 
 
@@ -387,8 +387,6 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     """
     Chama a ação no Odoo que replica determinado peso para todos as linhas do picking na separação.
     """
-    print("#############")
-    print(picking_data)
     replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
     return {"success": True, "message": "Peso atualizado com sucesso."}
 

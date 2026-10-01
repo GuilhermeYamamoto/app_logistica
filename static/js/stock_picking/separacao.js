@@ -14,8 +14,20 @@
         
         // Linhas do picking
         const moveLines = picking.move_lines || [];
-                // Quantidade total de embalagens
+        // Quantidade total de embalagens
         const qtdEmbalagens = moveLines.length;
+
+        // Altera o preenchimento da quantidade concluida que vem do base.js, para o somatorio das quantidades concluidas das lines do picking         
+        const somatorioQtyDone = moveLines.reduce((total, line) => total + (line.qty_done || 0), 0);
+        const quantityInput = context.main.querySelector(".quantity-input")
+        
+        function atualizarQuantidadeRecebida() {
+            const total = moveLines.reduce((total, line) => {
+                return total + (Number(line.qty_done) || 0);
+            }, 0);
+
+            quantityInput.value = total;
+        }
 
         // ***** Troca o campo Fornecedor por SO-Cliente *****
         const clientInfo = context.main.querySelector(".client-info");
@@ -159,14 +171,14 @@
         toggleIcon.textContent = "▾";
 
         toggleButton.appendChild(toggleIcon);
-        pickingLines.appendChild(toggleButton);
         pickingLines.appendChild(linesContent);
+        pickingLines.appendChild(toggleButton);
 
         // Coloca o botão de expansao das linhas do picking na borda inferior do picking-card
         card.appendChild(pickingLines);
 
         // Adiciona o evento de clique para expandir/colapsar as linhas do picking
-        toggleButton.addEventListener("click", () => {
+        function togglePickingLines() {
             const expanded =
                 toggleButton.getAttribute("aria-expanded") === "true";
 
@@ -178,7 +190,7 @@
             }
 
             linesContent.innerHTML = "";
-            
+
             // Cabeçalho das colunas
             if (moveLines.length > 0) {
                 const header = document.createElement("div");
@@ -200,39 +212,58 @@
                 const peso = line.peso || 0;
                 const qtyDone = line.qty_done || 0;
                 const productUom = line.product_uom_id ? line.product_uom_id[1] : "";
-                const packageType = line.package_type_id ? line.package_type_id[1] : "Não definido";
-                const lot = line.lot_id ? line.lot_id[1] : "Não definido";
+                const packageType = line.package_type_id
+                    ? line.package_type_id[1]
+                    : "Não definido";
+                const lot = line.lot_id
+                    ? line.lot_id[1]
+                    : "Não definido";
 
                 lineElement.innerHTML = `
                     <div class="picking-line-quantity">
-                        <input class="quantity-input" type="number" value="${qtyDone}" step="0.01" min="0"/>
+                        <input class="quantity-input" type="number"
+                               value="${qtyDone}" step="0.01" min="0"/>
                         <span>${productUom}</span>
                     </div>
+
                     <div class="picking-line-weight">
-                        <input class="quantity-input peso-input" type="number" value="${peso}" step="0.01" min="0"/>Kg
+                        <input class="quantity-input peso-input" type="number"
+                               value="${peso}" step="0.01" min="0"/>Kg
                     </div>
+
                     <div class="picking-line-lot">
                         <h3>${lot}</h3>
                     </div>
                 `;
 
                 linesContent.appendChild(lineElement);
-                
-                // ***** Herdado metodo que atualiza as quantidades concluidas (qty_done) na line do picking ***** //
-                const qtyDoneInput = lineElement.querySelector(".quantity-input");
+
+                const qtyDoneInput =
+                    lineElement.querySelector(".quantity-input");
+
                 qtyDoneInput.addEventListener("change", () => {
-                    inventory.updateReceivedQuantity(picking, qtyDoneInput, line.id)
+                    inventory.updateReceivedQuantity(
+                        picking,
+                        qtyDoneInput,
+                        line.id
+                    );
+
                     line.qty_done = Number(qtyDoneInput.value);
+
+                    atualizarQuantidadeRecebida();
                 });
 
-                const pesoInput = lineElement.querySelector(".peso-input");
+                const pesoInput =
+                    lineElement.querySelector(".peso-input");
 
                 pesoInput.addEventListener("input", () => {
                     line.peso = Number(pesoInput.value) || 0;
                     atualizarPesoTotal();
-                
-                pesoInput.addEventListener("change", () => updatePesoValue(picking, pesoInput, line.id));
                 });
+
+                pesoInput.addEventListener("change", () =>
+                    updatePesoValue(picking, pesoInput, line.id)
+                );
             });
 
             if (moveLines.length === 0) {
@@ -246,7 +277,27 @@
             linesContent.hidden = false;
             toggleButton.setAttribute("aria-expanded", "true");
             toggleIcon.textContent = "▴";
+        }
 
+        toggleButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            togglePickingLines();
+        });
+
+        card.addEventListener("click", (event) => {
+            // Elementos que possuem comportamento próprio
+            // não devem expandir/recolher as linhas.
+            if (
+                event.target.closest("button") ||
+                event.target.closest("input") ||
+                event.target.closest("select") ||
+                event.target.closest("textarea") ||
+                event.target.closest("a")
+            ) {
+                return;
+            }
+
+            togglePickingLines();
         });
 
         function openModalReplicarPeso(picking) {
@@ -261,6 +312,7 @@
         async function submitReplicarPeso(event) {
             event.preventDefault();
             const pesoPacotes = document.getElementById("replicarPesoModal").querySelector("#pesoPacotes").value;
+            const novoPeso = Number(pesoPacotes);
             const payload = {
                 picking_id: picking.id,
                 peso: pesoPacotes,
@@ -276,14 +328,18 @@
                     },
                 );
                 const data = await response.json().catch(() => ({}));
-
+                
                 if (response.ok) {
                     window.AppUI.closeModal("replicarPesoModal");
                     AppInventory.showToast("Peso replicado com sucesso!", "✓");
+                    // Atualiza o peso das lines no card
+                    picking.move_lines.forEach((line) => {line.peso = novoPeso});
                 } 
             } catch (error) {
                     console.error("Erro ao replicar peso:", error);
                     AppInventory.showToast("Erro ao replicar peso. Tente novamente.", "✗");
+            } finally {
+                AppInventory.render();
             };
         }
 
@@ -340,12 +396,8 @@
             } catch (error) {
                 console.error("Erro ao atualizar quantidade:", error);
                 AppInventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
-            } finally {
-                AppInventory.render();
-            }
+            };
         }
-
-
 
         atualizarPesoTotal();
    }
