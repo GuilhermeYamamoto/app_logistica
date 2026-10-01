@@ -1,0 +1,180 @@
+/* ============================================
+   EMPACOTAMENTO
+   AGRUPAMENTO DOS PICKINGS POR PV
+   ============================================ */
+
+/* PV CARD */
+
+.pv-card {
+    background: transparent;
+    border: 2px solid var(--blue);
+    border-radius: var(--radius);
+    box-shadow: none;
+    margin-bottom: 12px;
+    overflow: visible;
+    position: relative;
+    cursor: pointer;
+}
+
+
+/* ============================================
+   PV EM MODO FOCO
+   ============================================ */
+
+.pv-card.pv-focus-open {
+    display: flex;
+    flex-direction: column;
+
+    max-height: 70vh;
+
+    overflow: visible;
+
+    background: var(--app-surface);
+    border-color: var(--blue);
+
+    box-sizing: border-box;
+}
+
+
+.pv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px;
+    background: transparent;
+    color: var(--text);
+
+    flex: 0 0 auto;
+}
+
+
+.pv-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+
+.pv-toggle {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+
+    width: 22px;
+    height: 22px;
+
+    padding: 0;
+    border: 2px solid var(--blue);
+    border-radius: 50%;
+
+    background: var(--app-surface);
+    color: var(--text);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    z-index: 70;
+
+    box-sizing: border-box;
+}
+
+
+.pv-toggle:hover {
+    filter: brightness(.96);
+}
+
+
+.pv-toggle:active {
+    transform: translate(-50%, 50%) scale(.94);
+}
+
+
+.pv-toggle:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+
+.pv-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+
+.pv-title {
+    font-size: 18px;
+    font-weight: 900;
+}
+
+
+.pv-pickings {
+    padding: 10px 14px 26px 32px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    flex: 1 1 auto;
+    min-height: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    overscroll-behavior: contain;
+
+    scrollbar-width: thin;
+}
+
+
+.pv-pickings.hidden {
+    display: none;
+}
+
+
+.pv-pickings::-webkit-scrollbar {
+    width: 8px;
+}
+
+
+.pv-pickings::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+.pv-pickings::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: var(--app-border);
+}
+
+
+.pv-pickings::-webkit-scrollbar-thumb:hover {
+    background: var(--app-muted);
+}
+
+
+/* ============================================
+   MOBILE
+   ============================================ */
+
+@media (max-width: 480px) {
+
+    .pv-card.pv-focus-open {
+        max-height: 75vh;
+    }
+
+    .pv-pickings {
+        padding: 8px 10px 24px 14px;
+    }
+}
