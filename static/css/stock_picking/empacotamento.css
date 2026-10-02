@@ -55,6 +55,81 @@
     gap: 12px;
 }
 
+/* ============================================
+   AÇÕES DO PV
+   ============================================ */
+
+.pv-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    margin-left: auto;
+    padding-left: 40px;
+}
+
+.pv-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    width: 175px;
+    height: 75px;
+
+    padding: 0;
+
+    border: 1px solid var(--blue);
+    border-radius: 8px;
+
+    background: var(--app-surface);
+    color: var(--text);
+
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+
+    cursor: pointer;
+
+    box-sizing: border-box;
+
+    transition:
+        transform .15s ease,
+        filter .15s ease,
+        background-color .15s ease;
+}
+
+.pv-action-button:hover {
+    filter: brightness(.96);
+}
+
+.pv-action-button:active {
+    transform: scale(.96);
+}
+
+.pv-action-button:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+.pv-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.pv-package-button {
+    border-color: var(--blue);
+}
+
+.pv-finish-button {
+    border-color: var(--blue);
+}
+
 
 .pv-toggle {
     position: absolute;
@@ -176,5 +251,25 @@
 
     .pv-pickings {
         padding: 8px 10px 24px 14px;
+    }
+
+    .pv-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .pv-actions {
+        width: 100%;
+        margin-left: 0;
+        padding-left: 0;
+
+        gap: 10px;
+    }
+
+    .pv-action-button {
+        width: 130px;
+        height: 38px;
+        flex: 0 0 130px;
+        padding: 0;
     }
 }
