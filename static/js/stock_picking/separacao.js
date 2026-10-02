@@ -14,6 +14,7 @@
         
         // Linhas do picking
         const moveLines = picking.move_lines || [];
+       
         // Quantidade total de embalagens
         const qtdEmbalagens = moveLines.length;
 
@@ -144,6 +145,34 @@
         imprimirEtqPacotes.addEventListener("click", () => {printLabel(picking)});
 
         context.addSecondaryAction(imprimirEtqPacotes);
+
+        // *** Botão "Ler Embalagem" ao card ***
+        const conferirSeparacao = document.createElement("button");
+        
+        conferirSeparacao.classList.add("main-action", "ler-embalagem-action");
+        conferirSeparacao.innerHTML = '<span class="action-icon-small">⚖️</span>Conferir Separação';
+
+        context.addSecondaryAction(conferirSeparacao);
+        
+        conferirSeparacao.addEventListener("click", async () => {
+            try {
+                const response = await fetch(`/api/inventario/pickings/${picking.id}/conferir-separacao`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ picking_id: picking.id }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || "Não foi possível conferir a separação.");
+                }
+                inventory.showToast(`Solicitada Conferência do picking ${picking.pv} com sucesso!`);
+            } catch (error) {
+                console.error("Erro ao conferir separação:", error);
+                inventory.showToast(error.message || "Não foi possível solicitar a conferência da separação.", "!");
+            } finally {
+                window.location.reload();
+            }
+        });
 
         // ***** Adiciona o botão de expandir linhas do Picking *****
         const pickingLines = document.createElement("section");
