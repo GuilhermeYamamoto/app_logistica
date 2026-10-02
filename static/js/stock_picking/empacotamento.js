@@ -13,7 +13,6 @@
     let pvGroups = [];
     let activePVCard = null;
 
-
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
     }
@@ -160,17 +159,21 @@
             // AÇÕES DO PV
             // =========================
 
-            const pvActions =
-                document.createElement("div");
-
+            const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+
+            // =========================
+            // PV AINDA NÃO EMPACOTADO
+            // =========================
+
             // BOTÃO EMPACOTAR
-            const packageButton =
-                document.createElement("button");
+
+            const packageButton = document.createElement("button");
 
             packageButton.type = "button";
-            packageButton.className = "pv-action-button pv-package-button";
+            packageButton.className =
+                "pv-action-button pv-package-button";
 
             packageButton.setAttribute(
                 "aria-label",
@@ -186,15 +189,53 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    // Expande o PV.
+                    expandPV();
+
+                    // Remove EMPACOTAR e FINALIZAR.
+                    pvActions.replaceChildren();
+
+                    // Cria o botão GERAR PACOTE.
+                    const generatePackageButton =
+                        document.createElement("button");
+
+                    generatePackageButton.type = "button";
+                    generatePackageButton.className =
+                        "pv-action-button pv-generate-package-button";
+
+                    generatePackageButton.setAttribute(
+                        "aria-label",
+                        "Gerar pacote"
+                    );
+
+                    generatePackageButton.innerHTML = `
+                        <span class="pv-action-icon">📦</span>
+                        <span>GERAR PACOTE</span>
+                    `;
+
+                    generatePackageButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            // Sem funcionalidade por enquanto.
+                        }
+                    );
+
+                    pvActions.appendChild(
+                        generatePackageButton
+                    );
                 }
             );
 
             // BOTÃO FINALIZAR
-            const finishButton =
-                document.createElement("button");
+
+            const finishButton = document.createElement("button");
 
             finishButton.type = "button";
-            finishButton.className = "pv-action-button pv-finish-button";
+            finishButton.className =
+                "pv-action-button pv-finish-button";
 
             finishButton.setAttribute(
                 "aria-label",
@@ -319,24 +360,12 @@
             // EXPANDIR / RECOLHER PV
             // =========================
 
-            function togglePV() {
+            function expandPV() {
                 const isOpen =
-                    !pickingsList.classList.contains(
-                        "hidden"
-                    );
+                    !pickingsList.classList.contains("hidden");
 
+                // Se já estiver aberto, não faz nada.
                 if (isOpen) {
-                    // Fecha o PV.
-                    pickingsList.classList.add("hidden");
-
-                    pvCard.classList.remove(
-                        "pv-focus-open"
-                    );
-
-                    if (activePVCard === pvCard) {
-                        activePVCard = null;
-                    }
-
                     return;
                 }
 
@@ -362,22 +391,6 @@
 
                 scrollToExpandedPV(pvCard);
             }
-
-            // Clique no próprio PV.
-            pvCard.addEventListener(
-                "click",
-                (event) => {
-                    if (
-                        event.target.closest(
-                            ".pv-pickings"
-                        )
-                    ) {
-                        return;
-                    }
-
-                    togglePV();
-                }
-            );
 
             container.appendChild(pvCard);
         }

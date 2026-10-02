@@ -13,7 +13,7 @@
     margin-bottom: 12px;
     overflow: visible;
     position: relative;
-    cursor: pointer;
+    cursor: default;
 }
 
 
@@ -130,6 +130,10 @@
     border-color: var(--blue);
 }
 
+.pv-generate-package-button {
+    width: 320px;
+}
+
 .pv-title {
     font-size: 18px;
     font-weight: 900;
@@ -213,5 +217,10 @@
         height: 38px;
         flex: 0 0 130px;
         padding: 0;
+    }
+
+    .pv-generate-package-button {
+        width: 150px;
+        flex-basis: 150px;
     }
 }
