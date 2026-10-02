@@ -49,6 +49,37 @@
         });
     }
 
+    function getFakePickingData(picking, index) {
+        const fakeData = [
+            {
+                produto: "PXSO50CA",
+                peso: "5,00 Kg",
+                lote: "2926745904",
+                quantidade: "3,00",
+            },
+            {
+                produto: "PXSO60CA",
+                peso: "8,50 Kg",
+                lote: "2926745905",
+                quantidade: "5,00",
+            },
+            {
+                produto: "PXSO70CA",
+                peso: "12,00 Kg",
+                lote: "2926745906",
+                quantidade: "8,00",
+            },
+            {
+                produto: "PXSO80CA",
+                peso: "6,75 Kg",
+                lote: "2926745907",
+                quantidade: "4,00",
+            },
+        ];
+
+        return fakeData[index % fakeData.length];
+    }
+
     function buildPVGroups(records) {
         const groupsById = new Map();
 
@@ -102,11 +133,6 @@
             activePVCard?.dataset?.pvId || null;
 
         activePVCard = null;
-
-        // Pega os cards de picking que o AppInventory já criou.
-        const existingCards = Array.from(
-            container.querySelectorAll(".picking-card")
-        );
 
         // Limpa o container para reconstruir a estrutura por PV.
         container.replaceChildren();
@@ -278,75 +304,192 @@
                     ? "pv-pickings"
                     : "pv-pickings hidden";
 
-            for (const picking of group.pickings) {
-                const recordId =
-                    String(
-                        picking.id ||
-                        picking.id === 0
-                            ? picking.id
-                            : ""
-                    );
+            for (
+                const [index, picking]
+                of group.pickings.entries()
+            ) {
+                const fakeData =
+                    getFakePickingData(picking, index);
 
-                let match = null;
+                const pickingItem =
+                    document.createElement("div");
 
-                // Primeiro tenta localizar pelo recordId.
-                if (recordId) {
-                    match = existingCards.find(
-                        (card) =>
-                            String(
-                                card.dataset.recordId || ""
-                            ) === recordId
-                    );
-                }
+                pickingItem.className =
+                    "emp-picking-item";
 
-                // Fallback caso o dataset não exista.
-                if (!match) {
-                    match = existingCards.find((card) => {
-                        const refEl =
-                            card.querySelector(
-                                ".picking-identification strong"
-                            );
+                const checkbox =
+                    document.createElement("input");
 
-                        if (!refEl) {
-                            return false;
-                        }
+                checkbox.type = "checkbox";
+                checkbox.className =
+                    "emp-picking-checkbox";
 
-                        const text =
-                            (refEl.textContent || "").trim();
+                checkbox.setAttribute(
+                    "aria-label",
+                    `Selecionar picking ${index + 1}`
+                );
 
-                        const candidate =
-                            String(
-                                picking.pv ||
-                                picking.reference ||
-                                ""
-                            ).trim();
+                const info =
+                    document.createElement("div");
 
-                        return text === candidate;
-                    });
-                }
+                info.className =
+                    "emp-picking-info";
 
-                if (match) {
-                    // Remove apenas abas de chat do picking.
-                    // A aba .picking-tab permanece.
-                    try {
-                        match
-                            .querySelectorAll(
-                                ".chat-tab:not(.picking-tab)"
-                            )
-                            .forEach((tab) => tab.remove());
-                    } catch (error) {
-                        // Não crítico.
-                    }
+                // PRIMEIRA LINHA
 
-                    pickingsList.appendChild(match);
+                const firstRow =
+                    document.createElement("div");
 
-                    const index =
-                        existingCards.indexOf(match);
+                firstRow.className =
+                    "emp-picking-row";
 
-                    if (index >= 0) {
-                        existingCards.splice(index, 1);
-                    }
-                }
+                const product =
+                    document.createElement("div");
+
+                product.className =
+                    "emp-picking-field";
+
+                const productLabel =
+                    document.createElement("span");
+
+                productLabel.className =
+                    "emp-picking-label";
+
+                productLabel.textContent =
+                    "Produto";
+
+                const productValue =
+                    document.createElement("strong");
+
+                productValue.className =
+                    "emp-picking-value";
+
+                productValue.textContent =
+                    fakeData.produto;
+
+                product.append(
+                    productLabel,
+                    productValue
+                );
+
+                const weight =
+                    document.createElement("div");
+
+                weight.className =
+                    "emp-picking-field";
+
+                const weightLabel =
+                    document.createElement("span");
+
+                weightLabel.className =
+                    "emp-picking-label";
+
+                weightLabel.textContent =
+                    "Peso";
+
+                const weightValue =
+                    document.createElement("strong");
+
+                weightValue.className =
+                    "emp-picking-value";
+
+                weightValue.textContent =
+                    fakeData.peso;
+
+                weight.append(
+                    weightLabel,
+                    weightValue
+                );
+
+                firstRow.append(
+                    product,
+                    weight
+                );
+
+                // SEGUNDA LINHA
+
+                const secondRow =
+                    document.createElement("div");
+
+                secondRow.className =
+                    "emp-picking-row";
+
+                const lot =
+                    document.createElement("div");
+
+                lot.className =
+                    "emp-picking-field";
+
+                const lotLabel =
+                    document.createElement("span");
+
+                lotLabel.className =
+                    "emp-picking-label";
+
+                lotLabel.textContent =
+                    "Lote";
+
+                const lotValue =
+                    document.createElement("strong");
+
+                lotValue.className =
+                    "emp-picking-value";
+
+                lotValue.textContent =
+                    fakeData.lote;
+
+                lot.append(
+                    lotLabel,
+                    lotValue
+                );
+
+                const quantity =
+                    document.createElement("div");
+
+                quantity.className =
+                    "emp-picking-field";
+
+                const quantityLabel =
+                    document.createElement("span");
+
+                quantityLabel.className =
+                    "emp-picking-label";
+
+                quantityLabel.textContent =
+                    "Quantidade";
+
+                const quantityValue =
+                    document.createElement("strong");
+
+                quantityValue.className =
+                    "emp-picking-value";
+
+                quantityValue.textContent =
+                    fakeData.quantidade;
+
+                quantity.append(
+                    quantityLabel,
+                    quantityValue
+                );
+
+                secondRow.append(
+                    lot,
+                    quantity
+                );
+
+                info.append(
+                    firstRow,
+                    secondRow
+                );
+
+                pickingItem.append(
+                    checkbox,
+                    info
+                );
+
+                pickingsList.appendChild(
+                    pickingItem
+                );
             }
 
             pvCard.appendChild(pickingsList);
@@ -393,12 +536,6 @@
             }
 
             container.appendChild(pvCard);
-        }
-
-        // Segurança: se algum picking não foi
-        // associado a um grupo, mantém no container.
-        for (const leftover of existingCards) {
-            container.appendChild(leftover);
         }
     }
 
