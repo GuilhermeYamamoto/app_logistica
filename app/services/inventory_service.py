@@ -43,6 +43,12 @@ class InventoryService:
                 "template": "stock_picking/separacao.html",
             },
             {
+                "key": "conferencia-separacao",
+                "name": "Conferencia Separacao",
+                "picking_type_id": 1200, #Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de conferencia de separacao e separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
+                "template": "stock_picking/conferencia_separacao.html",
+            },
+            {
                 "key": "empacotamento",
                 "name": "Empacotamento",
                 "picking_type_id": 148,
@@ -78,8 +84,14 @@ class InventoryService:
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
-            pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
-            
+            pickings = None
+            if picking_type_id not in [120, 1200]: # As etapas listadas tem particularidades
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            else:
+                if picking_type_id == 120: # Separação
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             # Busca os pickings que estão aguardando para entrar na etapa
             waiting_pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "=", "waiting"),],fields=["id", "pedido_venda_id"],)
 
@@ -914,3 +926,17 @@ class InventoryService:
         except Exception as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível replicar o peso no Odoo")) from error
+
+    def action_conferir_separacao(client, data):
+        try:
+            picking_id = data.get("picking_id")
+            # Forma de executar uma ação no servidor do Odoo via XML-RPC:
+            result = client.execute("ir.actions.server", "run", [2238], context = {
+                                                                    "active_model": "stock.picking",
+                                                                    "active_ids": [picking_id],
+                                                                    "active_id": picking_id})
+            return result
+        except Exception as error:
+            print(error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error
+

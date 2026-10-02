@@ -390,5 +390,12 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
     return {"success": True, "message": "Peso atualizado com sucesso."}
 
+@router.post("/api/inventario/pickings/{picking_id}/conferir-separacao")
+def post_picking_chat(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Chama a ação no servidor que adiciona o marcador de conferir a separacao.
+    """
+    return InventoryService.action_conferir_separacao(client, picking_data)
+
 
 
