@@ -155,7 +155,73 @@
                 );
 
             left.appendChild(pvTitle);
-            header.appendChild(left);
+
+            // =========================
+            // AÇÕES DO PV
+            // =========================
+
+            const pvActions =
+                document.createElement("div");
+
+            pvActions.className = "pv-actions";
+
+            // BOTÃO EMPACOTAR
+            const packageButton =
+                document.createElement("button");
+
+            packageButton.type = "button";
+            packageButton.className = "pv-action-button pv-package-button";
+
+            packageButton.setAttribute(
+                "aria-label",
+                "Empacotar PV"
+            );
+
+            packageButton.innerHTML = `
+                <span class="pv-action-icon">📦</span>
+                <span>EMPACOTAR</span>
+            `;
+
+            packageButton.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+                }
+            );
+
+            // BOTÃO FINALIZAR
+            const finishButton =
+                document.createElement("button");
+
+            finishButton.type = "button";
+            finishButton.className = "pv-action-button pv-finish-button";
+
+            finishButton.setAttribute(
+                "aria-label",
+                "Finalizar PV"
+            );
+
+            finishButton.innerHTML = `
+                <span class="pv-action-icon">✓</span>
+                <span>FINALIZAR</span>
+            `;
+
+            finishButton.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+                }
+            );
+
+            pvActions.append(
+                packageButton,
+                finishButton,
+            );
+
+            header.append(
+                left,
+                pvActions,
+            );
 
             pvCard.appendChild(header);
 
