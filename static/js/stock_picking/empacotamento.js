@@ -310,42 +310,6 @@
 
             pvCard.appendChild(pickingsList);
 
-            // =========================
-            // BOTÃO DE EXPANDIR
-            // =========================
-
-            const toggleButton =
-                document.createElement("button");
-
-            toggleButton.type = "button";
-            toggleButton.className = "pv-toggle";
-
-            toggleButton.setAttribute(
-                "aria-expanded",
-                shouldRestoreOpen ? "true" : "false"
-            );
-
-            toggleButton.setAttribute(
-                "aria-label",
-                shouldRestoreOpen
-                    ? "Recolher PV"
-                    : "Expandir PV"
-            );
-
-            const toggleIcon =
-                document.createElement("span");
-
-            toggleIcon.className =
-                "pv-toggle-icon";
-
-            toggleIcon.textContent =
-                shouldRestoreOpen
-                    ? "▴"
-                    : "▾";
-
-            toggleButton.appendChild(toggleIcon);
-            pvCard.appendChild(toggleButton);
-
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
                 activePVCard = pvCard;
@@ -364,18 +328,6 @@
                 if (isOpen) {
                     // Fecha o PV.
                     pickingsList.classList.add("hidden");
-
-                    toggleIcon.textContent = "▾";
-
-                    toggleButton.setAttribute(
-                        "aria-expanded",
-                        "false"
-                    );
-
-                    toggleButton.setAttribute(
-                        "aria-label",
-                        "Expandir PV"
-                    );
 
                     pvCard.classList.remove(
                         "pv-focus-open"
@@ -404,18 +356,6 @@
                     "hidden"
                 );
 
-                toggleIcon.textContent = "▴";
-
-                toggleButton.setAttribute(
-                    "aria-expanded",
-                    "true"
-                );
-
-                toggleButton.setAttribute(
-                    "aria-label",
-                    "Recolher PV"
-                );
-
                 pvCard.classList.add(
                     "pv-focus-open"
                 );
@@ -423,23 +363,11 @@
                 scrollToExpandedPV(pvCard);
             }
 
-            // Clique na seta.
-            toggleButton.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-                    togglePV();
-                }
-            );
-
             // Clique no próprio PV.
             pvCard.addEventListener(
                 "click",
                 (event) => {
                     if (
-                        event.target.closest(
-                            ".pv-toggle"
-                        ) ||
                         event.target.closest(
                             ".pv-pickings"
                         )
