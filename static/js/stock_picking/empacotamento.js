@@ -379,6 +379,51 @@
         );
     }
 
+    function markPickingsAsPacked(
+        pickingsList,
+        selectedPickings
+    ) {
+        const selectedPickingIds =
+            new Set(
+                selectedPickings.map(
+                    (picking) => String(picking.id)
+                )
+            );
+
+        const pickingItems =
+            pickingsList.querySelectorAll(
+                ".emp-picking-item"
+            );
+
+        pickingItems.forEach(
+            (pickingItem) => {
+                const pickingId =
+                    pickingItem.dataset.pickingId;
+
+                if (
+                    !selectedPickingIds.has(
+                        String(pickingId)
+                    )
+                ) {
+                    return;
+                }
+
+                pickingItem.classList.add(
+                    "emp-picking-packed"
+                );
+
+                const checkbox =
+                    pickingItem.querySelector(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (checkbox) {
+                    checkbox.checked = false;
+                    checkbox.disabled = true;
+                }
+            }
+        );
+    }
 
     function openPackageModal(pvGroup, selectedPickings) {
         closePackageModal();
@@ -657,7 +702,23 @@
                     packagePayload
                 );
 
-                // Backend será implementado aqui.
+                /*
+                * Marca visualmente os pickings selecionados
+                * como empacotados.
+                */
+                const activePVPickings =
+                    activePVCard?.querySelector(
+                        ".pv-pickings"
+                    );
+
+                if (activePVPickings) {
+                    markPickingsAsPacked(
+                        activePVPickings,
+                        selectedPickings
+                    );
+                }
+
+                closePackageModal();
             }
         );
 
@@ -922,6 +983,9 @@
 
                 pickingItem.className =
                     "emp-picking-item";
+
+                pickingItem.dataset.pickingId =
+                    String(picking.id);
 
                 const checkbox =
                     document.createElement("input");

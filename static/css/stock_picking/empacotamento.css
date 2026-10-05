@@ -236,6 +236,55 @@
     background: rgba(125, 115, 210, 0.35);
 }
 
+/* ============================================
+   PICKING EMPACOTADO
+   ============================================ */
+
+.emp-picking-item.emp-picking-packed {
+    position: relative;
+    overflow: hidden;
+
+    /* Deixa toda a caixa mais apagada */
+    opacity: 0.55;
+}
+
+.emp-picking-item.emp-picking-packed::after {
+    content: "EMPACOTADO";
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    padding: 12px 28px;
+
+    background: rgba(100, 100, 100, 0.32);
+
+    color: var(--emp-packed-text);
+
+    border: 1px solid rgba(100, 100, 100, 0.45);
+    border-radius: 8px;
+
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+
+    pointer-events: none;
+    white-space: nowrap;
+
+    /*
+     * Compensa a opacidade do card,
+     * mantendo o EMPACOTADO mais visível.
+     */
+    opacity: 1.8;
+}
+
+.emp-picking-item.emp-picking-packed
+.emp-picking-checkbox {
+    cursor: not-allowed;
+}
 
 /* INFORMAÇÕES */
 
