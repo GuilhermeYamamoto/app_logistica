@@ -136,7 +136,11 @@
         let startX = 0;
         let startY = 0;
 
+        let holdTimer = null;
+        let holdActivated = false;
+
         const DRAG_THRESHOLD = 8;
+        const HOLD_DURATION = 1000;
 
         pickingsList.addEventListener(
             "pointerdown",
@@ -159,27 +163,80 @@
                     return;
                 }
 
-                isCheckboxDragSelecting = true;
-                checkboxDragPointerId = event.pointerId;
+                if (checkbox.disabled) {
+                    return;
+                }
 
                 startPicking = pickingItem;
                 startCheckbox = checkbox;
 
                 hasDragged = false;
+                holdActivated = false;
 
                 startX = event.clientX;
                 startY = event.clientY;
 
-                // O arraste vai manter o mesmo estado
-                // do primeiro picking.
+                // O estado que será aplicado
+                // durante a seleção múltipla.
                 dragTargetState = !checkbox.checked;
+
+                /*
+                * Não inicia o modo de seleção múltipla
+                * imediatamente.
+                *
+                * O usuário precisa manter o dedo/mouse
+                * pressionado por 1 segundo.
+                */
+                holdTimer = setTimeout(
+                    () => {
+                        if (
+                            !startPicking ||
+                            !startCheckbox
+                        ) {
+                            return;
+                        }
+
+                        holdActivated = true;
+
+                        isCheckboxDragSelecting = true;
+                        checkboxDragPointerId =
+                            event.pointerId;
+
+                        // Vibração ao ativar a seleção múltipla.
+                        if ("vibrate" in navigator) {
+                            navigator.vibrate(50);
+                        }
+
+                        startCheckbox.checked =
+                            dragTargetState;
+
+                        try {
+                            startPicking.setPointerCapture(
+                                event.pointerId
+                            );
+                        } catch (error) {
+                            // Alguns dispositivos podem não
+                            // permitir pointer capture.
+                        }
+                    },
+                    HOLD_DURATION
+                );
             }
         );
 
         pickingsList.addEventListener(
             "pointermove",
             (event) => {
+                /*
+                * Antes de completar 1 segundo,
+                * NÃO fazemos seleção múltipla.
+                *
+                * Isso permite que o movimento natural
+                * do dedo continue sendo interpretado
+                * como rolagem da lista.
+                */
                 if (
+                    !holdActivated ||
                     !isCheckboxDragSelecting ||
                     event.pointerId !== checkboxDragPointerId ||
                     !startPicking
@@ -193,21 +250,12 @@
                 const distanceY =
                     Math.abs(event.clientY - startY);
 
-                // Só considera como arraste depois
-                // que o ponteiro realmente se movimentou.
                 if (
                     !hasDragged &&
                     Math.max(distanceX, distanceY) >=
                         DRAG_THRESHOLD
                 ) {
                     hasDragged = true;
-
-                    startPicking.setPointerCapture(
-                        event.pointerId
-                    );
-
-                    startCheckbox.checked =
-                        dragTargetState;
                 }
 
                 if (!hasDragged) {
@@ -234,7 +282,7 @@
                         ".emp-picking-checkbox"
                     );
 
-                if (!checkbox) {
+                if (!checkbox || checkbox.disabled) {
                     return;
                 }
 
@@ -273,9 +321,14 @@
                     return;
                 }
 
-                // Se o clique foi diretamente na checkbox,
-                // deixamos o comportamento nativo do input
-                // fazer o marca/desmarca.
+                if (checkbox.disabled) {
+                    return;
+                }
+
+                /*
+                * Se o clique foi diretamente na checkbox,
+                * mantemos o comportamento nativo do input.
+                */
                 if (
                     event.target.closest(
                         ".emp-picking-checkbox"
@@ -284,8 +337,10 @@
                     return;
                 }
 
-                // Se clicou em qualquer outra parte da caixa,
-                // também seleciona/desseleciona o picking.
+                /*
+                * Clique normal na caixa:
+                * seleciona/desseleciona o picking.
+                */
                 checkbox.checked =
                     !checkbox.checked;
             },
@@ -293,15 +348,44 @@
         );
 
         const finishDragSelection = (event) => {
+            /*
+            * Cancela o timer caso o usuário solte
+            * antes de completar 1 segundo.
+            */
+            if (holdTimer) {
+                clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+
+            /*
+            * Se a seleção múltipla ainda não foi ativada,
+            * não fazemos nada relacionado ao drag.
+            */
             if (
+                !holdActivated ||
                 !isCheckboxDragSelecting ||
                 event.pointerId !== checkboxDragPointerId
             ) {
+                startPicking = null;
+                startCheckbox = null;
+
+                hasDragged = false;
+                holdActivated = false;
+                dragTargetState = null;
+
+                startX = 0;
+                startY = 0;
+
+                isCheckboxDragSelecting = false;
+                checkboxDragPointerId = null;
+
                 return;
             }
 
-            // Se houve arraste, impedimos o click nativo
-            // seguinte de alterar novamente o estado inicial.
+            /*
+            * Se houve arraste, impedimos o click seguinte
+            * de alterar novamente o estado inicial.
+            */
             if (hasDragged) {
                 suppressNextClick = true;
             }
@@ -313,6 +397,7 @@
             startCheckbox = null;
 
             hasDragged = false;
+            holdActivated = false;
             dragTargetState = null;
 
             startX = 0;
@@ -868,6 +953,38 @@
 
                     // Remove EMPACOTAR e FINALIZAR.
                     pvActions.replaceChildren();
+
+                    // =========================
+                    // BOTÃO CONCLUÍDO
+                    // =========================
+
+                    const completedButton =
+                        document.createElement("button");
+
+                    completedButton.type = "button";
+
+                    completedButton.className =
+                        "pv-completed-button";
+
+                    completedButton.innerHTML = `
+                        <span class="pv-completed-icon">✓</span>
+                        <span>CONCLUÍDO</span>
+                    `;
+
+                    completedButton.setAttribute(
+                        "aria-label",
+                        "Concluir PV"
+                    );
+
+                    // Por enquanto, sem funcionalidade.
+                    completedButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+                        }
+                    );
+
+                    pvCard.appendChild(completedButton);
 
                     // Cria o botão GERAR PACOTE.
                     const generatePackageButton =
