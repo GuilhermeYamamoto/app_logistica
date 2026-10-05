@@ -124,6 +124,9 @@
 
     function setupCheckboxDragSelection(pickingsList) {
         let startCheckbox = null;
+        let hasDragged = false;
+        let suppressNextClick = false;
+        let dragTargetState = null;
 
         pickingsList.addEventListener(
             "pointerdown",
@@ -140,6 +143,11 @@
                 isCheckboxDragSelecting = true;
                 checkboxDragPointerId = event.pointerId;
                 startCheckbox = checkbox;
+                hasDragged = false;
+
+                // O arraste vai manter o mesmo estado
+                // do primeiro checkbox.
+                dragTargetState = !checkbox.checked;
 
                 checkbox.setPointerCapture(
                     event.pointerId
@@ -181,8 +189,41 @@
                     return;
                 }
 
-                checkbox.checked = true;
+                // Verifica se realmente saiu da primeira caixa.
+                if (checkbox !== startCheckbox) {
+                    hasDragged = true;
+                }
+
+                // Quando realmente começou a arrastar,
+                // aplica o mesmo estado do primeiro checkbox
+                // em todos os checkboxes percorridos.
+                if (hasDragged) {
+                    startCheckbox.checked = dragTargetState;
+                    checkbox.checked = dragTargetState;
+                }
             }
+        );
+
+        pickingsList.addEventListener(
+            "click",
+            (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                if (suppressNextClick) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    suppressNextClick = false;
+                }
+            },
+            true
         );
 
         const finishDragSelection = (event) => {
@@ -193,9 +234,18 @@
                 return;
             }
 
+            // Se houve arraste, o próximo CLICK nativo
+            // precisa ser ignorado para não desmarcar
+            // o primeiro checkbox.
+            if (hasDragged) {
+                suppressNextClick = true;
+            }
+
             isCheckboxDragSelecting = false;
             checkboxDragPointerId = null;
             startCheckbox = null;
+            hasDragged = false;
+            dragTargetState = null;
         };
 
         pickingsList.addEventListener(

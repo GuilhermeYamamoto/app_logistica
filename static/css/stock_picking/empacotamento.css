@@ -225,6 +225,12 @@
     border-radius: 92px;
 }
 
+/* PICKING SELECIONADO */
+
+.emp-picking-item:has(.emp-picking-checkbox:checked) {
+    background: rgba(125, 115, 210, 0.35);
+}
+
 
 /* INFORMAÇÕES */
 
