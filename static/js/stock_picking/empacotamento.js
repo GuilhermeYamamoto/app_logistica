@@ -12,6 +12,8 @@
 
     let pvGroups = [];
     let activePVCard = null;
+    let isCheckboxDragSelecting = false;
+    let checkboxDragPointerId = null;
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -118,6 +120,93 @@
                 );
             }
         }, 0);
+    }
+
+    function setupCheckboxDragSelection(pickingsList) {
+        let startCheckbox = null;
+
+        pickingsList.addEventListener(
+            "pointerdown",
+            (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                isCheckboxDragSelecting = true;
+                checkboxDragPointerId = event.pointerId;
+                startCheckbox = checkbox;
+
+                checkbox.setPointerCapture(
+                    event.pointerId
+                );
+            }
+        );
+
+        pickingsList.addEventListener(
+            "pointermove",
+            (event) => {
+                if (
+                    !isCheckboxDragSelecting ||
+                    event.pointerId !== checkboxDragPointerId
+                ) {
+                    return;
+                }
+
+                const element =
+                    document.elementFromPoint(
+                        event.clientX,
+                        event.clientY
+                    );
+
+                const pickingItem =
+                    element?.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
+                    return;
+                }
+
+                const checkbox =
+                    pickingItem.querySelector(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                checkbox.checked = true;
+            }
+        );
+
+        const finishDragSelection = (event) => {
+            if (
+                !isCheckboxDragSelecting ||
+                event.pointerId !== checkboxDragPointerId
+            ) {
+                return;
+            }
+
+            isCheckboxDragSelecting = false;
+            checkboxDragPointerId = null;
+            startCheckbox = null;
+        };
+
+        pickingsList.addEventListener(
+            "pointerup",
+            finishDragSelection
+        );
+
+        pickingsList.addEventListener(
+            "pointercancel",
+            finishDragSelection
+        );
     }
 
     function renderPVGroupsDOM() {
@@ -493,6 +582,7 @@
             }
 
             pvCard.appendChild(pickingsList);
+            setupCheckboxDragSelection(pickingsList);
 
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
