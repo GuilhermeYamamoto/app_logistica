@@ -14,6 +14,8 @@
     let activePVCard = null;
     let isCheckboxDragSelecting = false;
     let checkboxDragPointerId = null;
+    let activePackageModal = null;
+    let selectedPackage = null;
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -123,16 +125,33 @@
     }
 
     function setupCheckboxDragSelection(pickingsList) {
+        let startPicking = null;
         let startCheckbox = null;
+
         let hasDragged = false;
         let suppressNextClick = false;
+
         let dragTargetState = null;
+
+        let startX = 0;
+        let startY = 0;
+
+        const DRAG_THRESHOLD = 8;
 
         pickingsList.addEventListener(
             "pointerdown",
             (event) => {
-                const checkbox =
+                const pickingItem =
                     event.target.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
+                    return;
+                }
+
+                const checkbox =
+                    pickingItem.querySelector(
                         ".emp-picking-checkbox"
                     );
 
@@ -142,16 +161,18 @@
 
                 isCheckboxDragSelecting = true;
                 checkboxDragPointerId = event.pointerId;
+
+                startPicking = pickingItem;
                 startCheckbox = checkbox;
+
                 hasDragged = false;
 
-                // O arraste vai manter o mesmo estado
-                // do primeiro checkbox.
-                dragTargetState = !checkbox.checked;
+                startX = event.clientX;
+                startY = event.clientY;
 
-                checkbox.setPointerCapture(
-                    event.pointerId
-                );
+                // O arraste vai manter o mesmo estado
+                // do primeiro picking.
+                dragTargetState = !checkbox.checked;
             }
         );
 
@@ -160,8 +181,36 @@
             (event) => {
                 if (
                     !isCheckboxDragSelecting ||
-                    event.pointerId !== checkboxDragPointerId
+                    event.pointerId !== checkboxDragPointerId ||
+                    !startPicking
                 ) {
+                    return;
+                }
+
+                const distanceX =
+                    Math.abs(event.clientX - startX);
+
+                const distanceY =
+                    Math.abs(event.clientY - startY);
+
+                // Só considera como arraste depois
+                // que o ponteiro realmente se movimentou.
+                if (
+                    !hasDragged &&
+                    Math.max(distanceX, distanceY) >=
+                        DRAG_THRESHOLD
+                ) {
+                    hasDragged = true;
+
+                    startPicking.setPointerCapture(
+                        event.pointerId
+                    );
+
+                    startCheckbox.checked =
+                        dragTargetState;
+                }
+
+                if (!hasDragged) {
                     return;
                 }
 
@@ -189,26 +238,34 @@
                     return;
                 }
 
-                // Verifica se realmente saiu da primeira caixa.
-                if (checkbox !== startCheckbox) {
-                    hasDragged = true;
-                }
-
-                // Quando realmente começou a arrastar,
-                // aplica o mesmo estado do primeiro checkbox
-                // em todos os checkboxes percorridos.
-                if (hasDragged) {
-                    startCheckbox.checked = dragTargetState;
-                    checkbox.checked = dragTargetState;
-                }
+                checkbox.checked =
+                    dragTargetState;
             }
         );
 
         pickingsList.addEventListener(
             "click",
             (event) => {
-                const checkbox =
+                if (suppressNextClick) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    suppressNextClick = false;
+
+                    return;
+                }
+
+                const pickingItem =
                     event.target.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
+                    return;
+                }
+
+                const checkbox =
+                    pickingItem.querySelector(
                         ".emp-picking-checkbox"
                     );
 
@@ -216,12 +273,21 @@
                     return;
                 }
 
-                if (suppressNextClick) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    suppressNextClick = false;
+                // Se o clique foi diretamente na checkbox,
+                // deixamos o comportamento nativo do input
+                // fazer o marca/desmarca.
+                if (
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    )
+                ) {
+                    return;
                 }
+
+                // Se clicou em qualquer outra parte da caixa,
+                // também seleciona/desseleciona o picking.
+                checkbox.checked =
+                    !checkbox.checked;
             },
             true
         );
@@ -234,18 +300,23 @@
                 return;
             }
 
-            // Se houve arraste, o próximo CLICK nativo
-            // precisa ser ignorado para não desmarcar
-            // o primeiro checkbox.
+            // Se houve arraste, impedimos o click nativo
+            // seguinte de alterar novamente o estado inicial.
             if (hasDragged) {
                 suppressNextClick = true;
             }
 
             isCheckboxDragSelecting = false;
             checkboxDragPointerId = null;
+
+            startPicking = null;
             startCheckbox = null;
+
             hasDragged = false;
             dragTargetState = null;
+
+            startX = 0;
+            startY = 0;
         };
 
         pickingsList.addEventListener(
@@ -256,6 +327,382 @@
         pickingsList.addEventListener(
             "pointercancel",
             finishDragSelection
+        );
+    }
+
+    function getAvailablePackages() {
+        /*
+        * Dados temporários para a interface.
+        *
+        * Futuramente esta função deverá consultar o backend
+        * para retornar as embalagens realmente disponíveis.
+        *
+        * Exemplo futuro:
+        *
+        * return fetch("/api/inventario/embalagens")
+        *     .then(response => response.json());
+        */
+
+        return [
+            {
+                id: 1,
+                name: "Caixa Pequena",
+            },
+            {
+                id: 2,
+                name: "Caixa Média",
+            },
+            {
+                id: 3,
+                name: "Caixa Grande",
+            },
+            {
+                id: 4,
+                name: "Embalagem Especial",
+            },
+        ];
+    }
+
+
+    function closePackageModal() {
+        if (!activePackageModal) {
+            return;
+        }
+
+        activePackageModal.remove();
+
+        activePackageModal = null;
+        selectedPackage = null;
+
+        document.body.classList.remove(
+            "emp-modal-open"
+        );
+    }
+
+
+    function openPackageModal(pvGroup, selectedPickings) {
+        closePackageModal();
+
+        selectedPackage = null;
+
+        const modalOverlay =
+            document.createElement("div");
+
+        modalOverlay.className =
+            "emp-package-modal-overlay";
+
+        const modal =
+            document.createElement("div");
+
+        modal.className =
+            "emp-package-modal";
+
+        // =========================================
+        // CABEÇALHO
+        // =========================================
+
+        const modalHeader =
+            document.createElement("div");
+
+        modalHeader.className =
+            "emp-package-modal-header";
+
+        const modalTitle =
+            document.createElement("strong");
+
+        modalTitle.className =
+            "emp-package-modal-title";
+
+        modalTitle.textContent =
+            "Gerar pacote";
+
+        const closeButton =
+            document.createElement("button");
+
+        closeButton.type = "button";
+
+        closeButton.className =
+            "emp-package-modal-close";
+
+        closeButton.setAttribute(
+            "aria-label",
+            "Fechar"
+        );
+
+        closeButton.innerHTML = "×";
+
+        closeButton.addEventListener(
+            "click",
+            closePackageModal
+        );
+
+        modalHeader.append(
+            modalTitle,
+            closeButton
+        );
+
+        // =========================================
+        // CONTEÚDO
+        // =========================================
+
+        const modalContent =
+            document.createElement("div");
+
+        modalContent.className =
+            "emp-package-modal-content";
+
+        const instruction =
+            document.createElement("p");
+
+        instruction.className =
+            "emp-package-modal-instruction";
+
+        instruction.textContent =
+            "Selecione a embalagem.";
+
+        // =========================================
+        // SELECT DE EMBALAGEM
+        // =========================================
+
+        const packageSelector =
+            document.createElement("div");
+
+        packageSelector.className =
+            "emp-package-selector";
+
+        packageSelector.setAttribute(
+            "role",
+            "button"
+        );
+
+        packageSelector.setAttribute(
+            "tabindex",
+            "0"
+        );
+
+        const packageSelectorText =
+            document.createElement("span");
+
+        packageSelectorText.className =
+            "emp-package-selector-text";
+
+        packageSelectorText.textContent =
+            "Selecione a embalagem";
+
+        const packageSelectorIcon =
+            document.createElement("span");
+
+        packageSelectorIcon.className =
+            "emp-package-selector-icon";
+
+        packageSelectorIcon.textContent =
+            "▾";
+
+        packageSelector.append(
+            packageSelectorText,
+            packageSelectorIcon
+        );
+
+        const packageOptions =
+            document.createElement("div");
+
+        packageOptions.className =
+            "emp-package-options hidden";
+
+        const availablePackages =
+            getAvailablePackages();
+
+        for (const packageData of availablePackages) {
+            const option =
+                document.createElement("button");
+
+            option.type = "button";
+
+            option.className =
+                "emp-package-option";
+
+            option.dataset.packageId =
+                String(packageData.id);
+
+            option.textContent =
+                packageData.name;
+
+            option.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+
+                    selectedPackage =
+                        packageData;
+
+                    packageSelectorText.textContent =
+                        packageData.name;
+
+                    packageSelector.classList.add(
+                        "has-selection"
+                    );
+
+                    packageOptions.classList.add(
+                        "hidden"
+                    );
+
+                    finishPackageButton.disabled =
+                        false;
+                }
+            );
+
+            packageOptions.appendChild(option);
+        }
+
+        const togglePackageOptions =
+            () => {
+                packageOptions.classList.toggle(
+                    "hidden"
+                );
+            };
+
+        packageSelector.addEventListener(
+            "click",
+            togglePackageOptions
+        );
+
+        packageSelector.addEventListener(
+            "keydown",
+            (event) => {
+                if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+                    event.preventDefault();
+
+                    togglePackageOptions();
+                }
+            }
+        );
+
+        // =========================================
+        // AÇÕES
+        // =========================================
+
+        const modalActions =
+            document.createElement("div");
+
+        modalActions.className =
+            "emp-package-modal-actions";
+
+        const cancelButton =
+            document.createElement("button");
+
+        cancelButton.type = "button";
+
+        cancelButton.className =
+            "emp-package-modal-cancel";
+
+        cancelButton.textContent =
+            "CANCELAR";
+
+        cancelButton.addEventListener(
+            "click",
+            closePackageModal
+        );
+
+        const finishPackageButton =
+            document.createElement("button");
+
+        finishPackageButton.type = "button";
+
+        finishPackageButton.className =
+            "emp-package-modal-finish";
+
+        finishPackageButton.textContent =
+            "FINALIZAR";
+
+        finishPackageButton.disabled =
+            true;
+
+        finishPackageButton.addEventListener(
+            "click",
+            (event) => {
+                event.stopPropagation();
+
+                if (!selectedPackage) {
+                    return;
+                }
+
+                /*
+                * Estrutura preparada para o backend.
+                *
+                * Futuramente este objeto será enviado
+                * para o endpoint responsável pela geração
+                * do pacote.
+                */
+                const packagePayload = {
+                    pedido_venda_id:
+                        pvGroup.pedido_venda_id,
+
+                    pedido_venda_name:
+                        pvGroup.pedido_venda_name,
+
+                    picking_ids:
+                        selectedPickings.map(
+                            (picking) => picking.id
+                        ),
+
+                    embalagem_id:
+                        selectedPackage.id,
+                };
+
+                console.log(
+                    "Payload preparado para gerar pacote:",
+                    packagePayload
+                );
+
+                // Backend será implementado aqui.
+            }
+        );
+
+        modalActions.append(
+            cancelButton,
+            finishPackageButton
+        );
+
+        // =========================================
+        // MONTAGEM
+        // =========================================
+
+        modalContent.append(
+            instruction,
+            packageSelector,
+            packageOptions
+        );
+
+        modal.append(
+            modalHeader,
+            modalContent,
+            modalActions
+        );
+
+        modalOverlay.appendChild(modal);
+
+        // Fecha clicando fora do modal.
+        modalOverlay.addEventListener(
+            "click",
+            (event) => {
+                if (event.target === modalOverlay) {
+                    closePackageModal();
+                }
+            }
+        );
+
+        document.body.appendChild(
+            modalOverlay
+        );
+
+        activePackageModal =
+            modalOverlay;
+
+        document.body.classList.add(
+            "emp-modal-open"
         );
     }
 
@@ -384,7 +831,27 @@
                         (event) => {
                             event.stopPropagation();
 
-                            // Sem funcionalidade por enquanto.
+                            const selectedPickings =
+                                group.pickings.filter(
+                                    (picking, index) => {
+                                        const pickingItems =
+                                            pickingsList.querySelectorAll(
+                                                ".emp-picking-item"
+                                            );
+
+                                        const checkbox =
+                                            pickingItems[index]?.querySelector(
+                                                ".emp-picking-checkbox"
+                                            );
+
+                                        return checkbox?.checked;
+                                    }
+                                );
+
+                            openPackageModal(
+                                group,
+                                selectedPickings
+                            );
                         }
                     );
 
