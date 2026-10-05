@@ -154,6 +154,8 @@
                     return;
                 }
 
+                window.AppUI?.setGestureCaptured(true);
+
                 const checkbox =
                     pickingItem.querySelector(
                         ".emp-picking-checkbox"
