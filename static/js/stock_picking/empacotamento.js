@@ -1146,7 +1146,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    picking.move_lines?.[0]?.peso ?? "0";
+                    (picking.move_lines?.[0]?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,
