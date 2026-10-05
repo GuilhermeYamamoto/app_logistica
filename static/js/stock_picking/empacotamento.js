@@ -53,37 +53,6 @@
         });
     }
 
-    function getFakePickingData(picking, index) {
-        const fakeData = [
-            {
-                produto: "PXSO50CA",
-                peso: "5,00 Kg",
-                lote: "2926745904",
-                quantidade: "3,00",
-            },
-            {
-                produto: "PXSO60CA",
-                peso: "8,50 Kg",
-                lote: "2926745905",
-                quantidade: "5,00",
-            },
-            {
-                produto: "PXSO70CA",
-                peso: "12,00 Kg",
-                lote: "2926745906",
-                quantidade: "8,00",
-            },
-            {
-                produto: "PXSO80CA",
-                peso: "6,75 Kg",
-                lote: "2926745907",
-                quantidade: "4,00",
-            },
-        ];
-
-        return fakeData[index % fakeData.length];
-    }
-
     function buildPVGroups(records) {
         const groupsById = new Map();
 
@@ -1100,9 +1069,6 @@
                 const [index, picking]
                 of group.pickings.entries()
             ) {
-                const fakeData =
-                    getFakePickingData(picking, index);
-
                 const pickingItem =
                     document.createElement("div");
 
@@ -1160,7 +1126,8 @@
                     "emp-picking-value";
 
                 productValue.textContent =
-                    fakeData.produto;
+                    picking.move_lines?.[0]?.referencia_interna ||
+                    "Sem produto";
 
                 product.append(
                     productLabel,
@@ -1189,7 +1156,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    fakeData.peso;
+                    picking.move_lines?.[0]?.peso ?? "0";
 
                 weight.append(
                     weightLabel,
@@ -1231,7 +1198,7 @@
                     "emp-picking-value";
 
                 lotValue.textContent =
-                    fakeData.lote;
+                    picking.move_lines?.[0]?.lot_id?.[1] ?? "Sem lote";
 
                 lot.append(
                     lotLabel,
@@ -1260,7 +1227,7 @@
                     "emp-picking-value";
 
                 quantityValue.textContent =
-                    fakeData.quantidade;
+                    picking.move_lines?.[0]?.qty_done ?? "0";
 
                 quantity.append(
                     quantityLabel,

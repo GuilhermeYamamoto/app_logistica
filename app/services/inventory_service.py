@@ -156,7 +156,7 @@ class InventoryService:
             
             move_lines_by_id = {}
             if move_line_ids:
-                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id"]
+                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna"]
                 move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
                 move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
             
