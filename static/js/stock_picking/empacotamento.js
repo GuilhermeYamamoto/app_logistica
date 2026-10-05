@@ -140,7 +140,7 @@
         let holdActivated = false;
 
         const DRAG_THRESHOLD = 8;
-        const HOLD_DURATION = 1000;
+        const HOLD_DURATION = 500;
 
         pickingsList.addEventListener(
             "pointerdown",
@@ -201,6 +201,8 @@
                         isCheckboxDragSelecting = true;
                         checkboxDragPointerId =
                             event.pointerId;
+
+                        window.AppUI?.setGestureCaptured(true);
 
                         // Vibração ao ativar a seleção múltipla.
                         if ("vibrate" in navigator) {
@@ -366,6 +368,8 @@
                 !isCheckboxDragSelecting ||
                 event.pointerId !== checkboxDragPointerId
             ) {
+                window.AppUI?.setGestureCaptured(false);
+
                 startPicking = null;
                 startCheckbox = null;
 
@@ -389,6 +393,8 @@
             if (hasDragged) {
                 suppressNextClick = true;
             }
+
+            window.AppUI?.setGestureCaptured(false);
 
             isCheckboxDragSelecting = false;
             checkboxDragPointerId = null;
