@@ -205,6 +205,20 @@ def list_responsible_users(
 
     return InventoryService.list_active_responsible_users(client)
 
+####################################
+#  EMBALAGENS DISPONÍVEIS
+####################################
+
+@router.get("/api/inventario/embalagens")
+def list_package_types(
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Retorna os tipos de embalagem disponíveis
+    a partir do stock.picking.sale.wizard.
+    """
+
+    return InventoryService.list_package_types(client)
 
 @router.post("/api/inventario/pickings/{picking_id}/responsavel")
 def set_responsible_user(

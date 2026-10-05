@@ -63,6 +63,41 @@ class InventoryService:
         ]
 
     ####################################
+    #  LISTAR EMBALAGENS DISPONÍVEIS
+    ####################################
+    #
+    #  Consulta diretamente os tipos de embalagem
+    #  cadastrados no Odoo.
+    #
+    #  Modelo:
+    #  stock.package.type
+    #
+    ####################################
+    @staticmethod
+    def list_package_types(client: OdooClient):
+        try:
+            package_types = client.execute(
+                "stock.package.type",
+                "search_read",
+                [],
+                fields=[
+                    "id",
+                    "name",
+                ],
+            )
+
+            return sorted(
+                package_types,
+                key=lambda package: (package.get("name") or "").lower(),
+            )
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível consultar as embalagens disponíveis.",
+            ) from error
+
+    ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
     ####################################
     #

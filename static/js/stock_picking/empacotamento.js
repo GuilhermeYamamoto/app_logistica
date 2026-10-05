@@ -392,39 +392,15 @@
         );
     }
 
-    function getAvailablePackages() {
-        /*
-        * Dados temporários para a interface.
-        *
-        * Futuramente esta função deverá consultar o backend
-        * para retornar as embalagens realmente disponíveis.
-        *
-        * Exemplo futuro:
-        *
-        * return fetch("/api/inventario/embalagens")
-        *     .then(response => response.json());
-        */
+    async function getAvailablePackages() {
+        const response = await fetch("/api/inventario/embalagens");
 
-        return [
-            {
-                id: 1,
-                name: "Caixa Pequena",
-            },
-            {
-                id: 2,
-                name: "Caixa Média",
-            },
-            {
-                id: 3,
-                name: "Caixa Grande",
-            },
-            {
-                id: 4,
-                name: "Embalagem Especial",
-            },
-        ];
+        if (!response.ok) {
+            throw new Error("Não foi possível carregar as embalagens disponíveis.");
+        }
+
+        return await response.json();
     }
-
 
     function closePackageModal() {
         if (!activePackageModal) {
@@ -487,7 +463,7 @@
         );
     }
 
-    function openPackageModal(pvGroup, selectedPickings) {
+    async function openPackageModal(pvGroup, selectedPickings) {
         closePackageModal();
 
         selectedPackage = null;
@@ -616,8 +592,22 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        const availablePackages =
-            getAvailablePackages();
+        let availablePackages = [];
+
+        try {
+            availablePackages =
+                await getAvailablePackages();
+        } catch (error) {
+            console.error(
+                "Erro ao carregar embalagens:",
+                error
+            );
+
+            packageSelectorText.textContent =
+                "Erro ao carregar embalagens";
+
+            return;
+        }
 
         for (const packageData of availablePackages) {
             const option =
