@@ -89,7 +89,7 @@ class InventoryService:
                 pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             # Busca os pickings que estão aguardando para entrar na etapa
@@ -284,6 +284,7 @@ class InventoryService:
                     if picking.get("pedido_venda_id")
                     else 0
                 ),
+                "divergencia_peso_picking": picking.get("divergencia_peso_picking", False),
             }
 
             result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
@@ -430,7 +431,7 @@ class InventoryService:
                 print("AVISO: O picking foi validado, mas não conseguiu serializar o retorno.")
                 result = None
             else:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível validar o recebimento no Odoo"))
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
         return {"success": True, "picking_id": picking_id, "result": result}
 
     ####################################
@@ -1011,3 +1012,20 @@ class InventoryService:
         except Exception as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error
+
+    def action_corrigir_peso_produto(client, data):
+        try:
+            picking_id = data.get("picking_id")
+            # Chama o metodo que abre o wizard para corrigir o peso do produto no helpdesk do Odoo, e pega o contexto do wizard para criar o ticket no helpdesk.
+            prepare_data = client.execute("stock.picking", "action_criar_ticket_helpdesk_peso", [picking_id])
+            context = prepare_data["context"]
+
+            ticket_id = client.execute("helpdesk.ticket", "create", [{
+                "name": "Correção de Peso Produto",
+                "team_id": context.get("default_team_id"),
+                "picking_cpp_id": context.get("default_picking_cpp_id"),
+                "peso_medido_cpp": context.get("default_peso_medido_cpp"),
+                "produto_cpp_id": context.get("default_produto_cpp_id"),
+                }])
+        except Exception as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))

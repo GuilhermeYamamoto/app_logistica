@@ -391,15 +391,22 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     return {"success": True, "message": "Peso atualizado com sucesso."}
 
 @router.post("/api/inventario/pickings/{picking_id}/conferir-separacao")
-def post_picking_chat(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+def action_conferir_separacao(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
     """
     Chama a ação no servidor que adiciona o marcador de conferir a separacao.
     """
     return InventoryService.action_conferir_separacao(client, picking_data)
 
 @router.post("/api/inventario/pickings/{picking_id}/conferido-separacao")
-def post_picking_chat(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+def action_conferido_separacao(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
     """
     Chama a ação no servidor que adiciona o marcador de conferir a separacao.
     """
     return InventoryService.action_conferido_separacao(client, picking_data)
+
+@router.post("/api/inventario/pickings/{picking_id}/corrigir-peso-divergente")
+def action_corrigir_peso_produto(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Abre e valida o wizard do helpdesk de coreção de peso do produto.
+    """
+    return InventoryService.action_corrigir_peso_produto(client, picking_data)

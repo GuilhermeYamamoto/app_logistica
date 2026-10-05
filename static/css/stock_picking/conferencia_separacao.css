@@ -1,14 +1,18 @@
 .picking-actions,
 .secondary-actions {
-   display: grid;
-   grid-template-columns: 1fr;
-   gap: 8px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
 }
 
 .main-action,
 .secondary-action,
 .responsible-action {
    width: 100%;
+}
+
+.conference-action{
+    background: var(--green);
 }
 
 /* Agrupamento da conferência: responsável, pedido de venda e pickings. */
@@ -57,15 +61,6 @@
 
 .package-info h3 {
     margin: 0;
-}
-
-/* *********************************
-   *** BOTÃO DO SCANNER ************
-   ********************************* */
-
-.barcode-scanner-action {
-    background: var(--purple);
-    color: white;
 }
 
 /* ============================================
