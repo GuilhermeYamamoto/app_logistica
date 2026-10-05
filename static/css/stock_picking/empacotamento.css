@@ -165,6 +165,63 @@
 }
 
 /* ============================================
+   BOTÃO CONCLUÍDO
+   ============================================ */
+
+.pv-completed-button {
+    min-height: 72px;
+
+    width: 50%;
+
+    margin: 0 auto 20px;
+
+    padding: 0 20px;
+
+    border-radius: 10px;
+
+    border: 1px solid var(--green);
+
+    background: var(--green);
+    color: white;
+
+    font-size: 16px;
+    font-weight: 900;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    flex: 0 0 auto;
+
+    cursor: pointer;
+
+    box-sizing: border-box;
+
+    transition: .15s ease;
+}
+
+.pv-completed-icon {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.pv-completed-button:hover {
+    filter: brightness(.94);
+}
+
+.pv-completed-button:active {
+    transform: scale(.96);
+}
+
+.pv-completed-button:focus-visible {
+    outline: 3px solid var(--odoo-focus);
+    outline-offset: 2px;
+}
+
+/* ============================================
    PICKINGS DO EMPACOTAMENTO
    ============================================ */
 
@@ -236,6 +293,55 @@
     background: rgba(125, 115, 210, 0.35);
 }
 
+/* ============================================
+   PICKING EMPACOTADO
+   ============================================ */
+
+.emp-picking-item.emp-picking-packed {
+    position: relative;
+    overflow: hidden;
+
+    /* Deixa toda a caixa mais apagada */
+    opacity: 0.55;
+}
+
+.emp-picking-item.emp-picking-packed::after {
+    content: "EMPACOTADO";
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    padding: 12px 28px;
+
+    background: rgba(100, 100, 100, 0.32);
+
+    color: var(--emp-packed-text);
+
+    border: 1px solid rgba(100, 100, 100, 0.45);
+    border-radius: 8px;
+
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+
+    pointer-events: none;
+    white-space: nowrap;
+
+    /*
+     * Compensa a opacidade do card,
+     * mantendo o EMPACOTADO mais visível.
+     */
+    opacity: 1.8;
+}
+
+.emp-picking-item.emp-picking-packed
+.emp-picking-checkbox {
+    cursor: not-allowed;
+}
 
 /* INFORMAÇÕES */
 
@@ -476,7 +582,7 @@ body.emp-modal-open {
 
     background: transparent;
 
-    color: var(--app-muted);
+    color: var(--text);
 
     font-size: 26px;
     line-height: 1;
