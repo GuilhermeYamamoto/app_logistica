@@ -66,6 +66,43 @@
 }
 
 /* =========================================================
+   AÇÕES DA SEPARAÇÃO
+   ========================================================= */
+
+.secondary-actions .package-action {
+    background: var(--purple);
+    order: 1;
+}
+
+.secondary-actions .print-action {
+    background: #424b5a;
+    order: 3;
+}
+
+.secondary-actions .conference-action {
+    background: var(--light-blue);
+    grid-column: 1 / -1;
+    order: 4;
+}
+
+.secondary-actions .quality-action {
+    order: 3;
+}
+
+.secondary-actions .correction-action {
+    background: var(--orange);
+    order: 2;
+}
+
+.secondary-actions .full-width-action {
+    grid-column: 1 / -1;
+}
+
+.picking-actions .validation-action {
+    grid-column: 1 / -1;
+}
+
+/* =========================================================
    PICKING LINES
    ========================================================= */
 
