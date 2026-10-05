@@ -142,6 +142,7 @@
     let pullReady = false;
     const pullThreshold = 70;
     const pullMaxDistance = 150;
+    let gestureCaptured = false;
 
     function resetPullToRefresh() {
         const indicator = getElement("pullToRefresh");
@@ -215,7 +216,12 @@
         }, { passive: true });
 
         document.addEventListener("touchmove", (event) => {
-            if (!pullTracking || pullRefreshing || document.documentElement.scrollTop > 1) {
+            if (
+                gestureCaptured ||
+                !pullTracking ||
+                pullRefreshing ||
+                document.documentElement.scrollTop > 1
+            ) {
                 return;
             }
 
@@ -254,6 +260,10 @@
             throw new TypeError("A atualização por gesto deve ser uma função.");
         }
         pullRefreshHandler = handler;
+    }
+
+    function setGestureCaptured(value) {
+        gestureCaptured = Boolean(value);
     }
 
     function createBarcodeScanner({ video, onResult, onError }) {
@@ -297,6 +307,7 @@
         initializePullToRefresh,
         openModal,
         closeModal,
+        setGestureCaptured,
         setPullToRefreshHandler,
         showLoading,
         showToast,
