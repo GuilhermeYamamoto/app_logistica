@@ -397,5 +397,9 @@ def post_picking_chat(picking_data = Body(...),client: OdooClient = Depends(get_
     """
     return InventoryService.action_conferir_separacao(client, picking_data)
 
-
-
+@router.post("/api/inventario/pickings/{picking_id}/conferido-separacao")
+def post_picking_chat(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Chama a ação no servidor que adiciona o marcador de conferir a separacao.
+    """
+    return InventoryService.action_conferido_separacao(client, picking_data)

@@ -89,11 +89,23 @@ class InventoryService:
                 pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             # Busca os pickings que estão aguardando para entrar na etapa
-            waiting_pickings = client.execute("stock.picking","search_read",[("picking_type_id", "=", picking_type_id),("state", "=", "waiting"),],fields=["id", "pedido_venda_id"],)
+            waiting_picking_type_id = (
+                120 if picking_type_id == 1200 else picking_type_id
+            )
+
+            waiting_pickings = client.execute(
+                "stock.picking",
+                "search_read",
+                [
+                    ("picking_type_id", "=", waiting_picking_type_id),
+                    ("state", "=", "waiting"),
+                ],
+                fields=["id", "pedido_venda_id"],
+            )
 
             # Conta quantos pickings waiting existem por Pedido de Venda
             waiting_counts_by_pv = defaultdict(int)
@@ -104,7 +116,40 @@ class InventoryService:
                 if pedido_venda:
                     pedido_venda_id = pedido_venda[0]
                     waiting_counts_by_pv[pedido_venda_id] += 1
-                    
+
+            pedido_venda_ids = {
+                picking["pedido_venda_id"][0]
+                for picking in pickings
+                if picking.get("pedido_venda_id")
+            }
+            total_counts_by_pv = defaultdict(int)
+            conferido_counts_by_pv = defaultdict(int)
+
+            if (
+                picking_type_id == 1200 and
+                pedido_venda_ids
+            ):
+                total_pickings = client.execute(
+                    "stock.picking",
+                    "search_read",
+                    [
+                        ("picking_type_id", "=", waiting_picking_type_id),
+                        ("pedido_venda_id", "in", list(pedido_venda_ids)),
+                        ("state", "!=", "cancel"),
+                    ],
+                    fields=["pedido_venda_id", "tag_ids"],
+                )
+
+                for total_picking in total_pickings:
+                    pedido_venda = total_picking.get("pedido_venda_id")
+
+                    if pedido_venda:
+                        pedido_venda_id = pedido_venda[0]
+                        total_counts_by_pv[pedido_venda_id] += 1
+
+                        if 29 in total_picking.get("tag_ids", []):
+                            conferido_counts_by_pv[pedido_venda_id] += 1
+
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
@@ -205,6 +250,7 @@ class InventoryService:
                     if picking.get("user_id")
                     else None
                 ),
+                "tagIds": picking.get("tag_ids", []),
 
                 "pedido_venda_id": (
                     picking["pedido_venda_id"][0]
@@ -222,6 +268,19 @@ class InventoryService:
 
                 "waitingCount": (
                     waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "totalPickingCount": (
+                    total_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "conferidoCount": (
+                    conferido_counts_by_pv.get(
+                        picking["pedido_venda_id"][0],
+                        0,
+                    )
                     if picking.get("pedido_venda_id")
                     else 0
                 ),
@@ -940,3 +999,15 @@ class InventoryService:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error
 
+    def action_conferido_separacao(client, data):
+        try:
+            picking_id = data.get("picking_id")
+            # Forma de executar uma ação no servidor do Odoo via XML-RPC:
+            result = client.execute("ir.actions.server", "run", [1887], context = {
+                                                                    "active_model": "stock.picking",
+                                                                    "active_ids": [picking_id],
+                                                                    "active_id": picking_id})
+            return result
+        except Exception as error:
+            print(error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error
