@@ -223,6 +223,8 @@
     accent-color: var(--blue);
 
     border-radius: 92px;
+
+    touch-action: none;
 }
 
 /* PICKING SELECIONADO */
