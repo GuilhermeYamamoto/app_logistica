@@ -13,7 +13,7 @@
     margin-bottom: 12px;
     overflow: visible;
     position: relative;
-    cursor: pointer;
+    cursor: default;
 }
 
 
@@ -130,63 +130,9 @@
     border-color: var(--blue);
 }
 
-
-.pv-toggle {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translate(-50%, 50%);
-
-    width: 22px;
-    height: 22px;
-
-    padding: 0;
-    border: 2px solid var(--blue);
-    border-radius: 50%;
-
-    background: var(--app-surface);
-    color: var(--text);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-    z-index: 70;
-
-    box-sizing: border-box;
+.pv-generate-package-button {
+    width: 320px;
 }
-
-
-.pv-toggle:hover {
-    filter: brightness(.96);
-}
-
-
-.pv-toggle:active {
-    transform: translate(-50%, 50%) scale(.94);
-}
-
-
-.pv-toggle:focus-visible {
-    outline: 3px solid var(--odoo-focus);
-    outline-offset: 2px;
-}
-
-
-.pv-toggle-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 100%;
-    height: 100%;
-
-    font-size: 16px;
-    font-weight: 900;
-    line-height: 1;
-}
-
 
 .pv-title {
     font-size: 18px;
@@ -195,11 +141,12 @@
 
 
 .pv-pickings {
-    padding: 10px 14px 26px 32px;
-
     display: flex;
     flex-direction: column;
-    gap: 10px;
+
+    gap: 12px;
+
+    padding: 44px 18px 26px 26px;
 
     flex: 1 1 auto;
     min-height: 0;
@@ -210,8 +157,140 @@
     overscroll-behavior: contain;
 
     scrollbar-width: thin;
+
+    /* Indica visualmente que os pickings
+       pertencem ao PV acima */
+    border-top: 1px solid var(--app-border);
+    margin: 0 14px;
 }
 
+/* ============================================
+   PICKINGS DO EMPACOTAMENTO
+   ============================================ */
+
+.emp-picking-item {
+    display: flex;
+    align-items: center;
+
+    gap: 72px;
+
+    padding: 18px 22px;
+
+    background: var(--emp-picking-1);
+
+    border-left: 4px solid var(--blue);
+
+    border-radius: 8px;
+
+    box-sizing: border-box;
+
+    position: relative;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ============================================
+   DIFERENCIAÇÃO VISUAL DOS PICKINGS
+   ============================================ */
+
+.emp-picking-item {
+    background: var(--app-surface);
+}
+
+/* Ímpares */
+.emp-picking-item:nth-child(odd) {
+    background: var(--emp-picking-1);
+}
+
+/* Pares */
+.emp-picking-item:nth-child(even) {
+    background: var(--emp-picking-2);
+}
+
+/* CHECKBOX */
+
+.emp-picking-checkbox {
+    width: 24px;
+    height: 24px;
+
+    flex: 0 0 24px;
+
+    margin: 0;
+
+    cursor: pointer;
+
+    accent-color: var(--blue);
+
+    border-radius: 92px;
+}
+
+/* PICKING SELECIONADO */
+
+.emp-picking-item:has(.emp-picking-checkbox:checked) {
+    background: rgba(125, 115, 210, 0.35);
+}
+
+
+/* INFORMAÇÕES */
+
+.emp-picking-info {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    width: 100%;
+    min-width: 0;
+}
+
+
+/* LINHAS */
+
+.emp-picking-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+    gap: 40px;
+
+    width: 100%;
+}
+
+
+/* CAMPO */
+
+.emp-picking-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    min-width: 0;
+}
+
+
+/* LABEL */
+
+.emp-picking-label {
+    font-size: 11px;
+    font-weight: 700;
+
+    color: var(--app-muted);
+
+    text-transform: none;
+}
+
+
+/* VALOR */
+
+.emp-picking-value {
+    font-size: 15px;
+    font-weight: 800;
+
+    color: var(--text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .pv-pickings.hidden {
     display: none;
@@ -250,7 +329,11 @@
     }
 
     .pv-pickings {
-        padding: 8px 10px 24px 14px;
+        padding: 24px 10px 24px 24px;
+
+        margin: 0 8px;
+
+        gap: 10px;
     }
 
     .pv-header {
@@ -271,5 +354,40 @@
         height: 38px;
         flex: 0 0 130px;
         padding: 0;
+    }
+
+    .emp-picking-item {
+        gap: 14px;
+
+        padding: 14px 14px 14px 16px;
+
+        border-left-width: 3px;
+    }
+
+.emp-picking-info {
+    gap: 12px;
+}
+
+.emp-picking-row {
+    gap: 18px;
+}
+
+.emp-picking-checkbox {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+}
+
+.emp-picking-label {
+    font-size: 10px;
+}
+
+.emp-picking-value {
+    font-size: 13px;
+}
+
+    .pv-generate-package-button {
+        width: 150px;
+        flex-basis: 150px;
     }
 }

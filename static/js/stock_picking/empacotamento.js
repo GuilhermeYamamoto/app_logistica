@@ -12,7 +12,8 @@
 
     let pvGroups = [];
     let activePVCard = null;
-
+    let isCheckboxDragSelecting = false;
+    let checkboxDragPointerId = null;
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -48,6 +49,37 @@
                 behavior: "smooth",
             });
         });
+    }
+
+    function getFakePickingData(picking, index) {
+        const fakeData = [
+            {
+                produto: "PXSO50CA",
+                peso: "5,00 Kg",
+                lote: "2926745904",
+                quantidade: "3,00",
+            },
+            {
+                produto: "PXSO60CA",
+                peso: "8,50 Kg",
+                lote: "2926745905",
+                quantidade: "5,00",
+            },
+            {
+                produto: "PXSO70CA",
+                peso: "12,00 Kg",
+                lote: "2926745906",
+                quantidade: "8,00",
+            },
+            {
+                produto: "PXSO80CA",
+                peso: "6,75 Kg",
+                lote: "2926745907",
+                quantidade: "4,00",
+            },
+        ];
+
+        return fakeData[index % fakeData.length];
     }
 
     function buildPVGroups(records) {
@@ -90,6 +122,143 @@
         }, 0);
     }
 
+    function setupCheckboxDragSelection(pickingsList) {
+        let startCheckbox = null;
+        let hasDragged = false;
+        let suppressNextClick = false;
+        let dragTargetState = null;
+
+        pickingsList.addEventListener(
+            "pointerdown",
+            (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                isCheckboxDragSelecting = true;
+                checkboxDragPointerId = event.pointerId;
+                startCheckbox = checkbox;
+                hasDragged = false;
+
+                // O arraste vai manter o mesmo estado
+                // do primeiro checkbox.
+                dragTargetState = !checkbox.checked;
+
+                checkbox.setPointerCapture(
+                    event.pointerId
+                );
+            }
+        );
+
+        pickingsList.addEventListener(
+            "pointermove",
+            (event) => {
+                if (
+                    !isCheckboxDragSelecting ||
+                    event.pointerId !== checkboxDragPointerId
+                ) {
+                    return;
+                }
+
+                const element =
+                    document.elementFromPoint(
+                        event.clientX,
+                        event.clientY
+                    );
+
+                const pickingItem =
+                    element?.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
+                    return;
+                }
+
+                const checkbox =
+                    pickingItem.querySelector(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                // Verifica se realmente saiu da primeira caixa.
+                if (checkbox !== startCheckbox) {
+                    hasDragged = true;
+                }
+
+                // Quando realmente começou a arrastar,
+                // aplica o mesmo estado do primeiro checkbox
+                // em todos os checkboxes percorridos.
+                if (hasDragged) {
+                    startCheckbox.checked = dragTargetState;
+                    checkbox.checked = dragTargetState;
+                }
+            }
+        );
+
+        pickingsList.addEventListener(
+            "click",
+            (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                if (suppressNextClick) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    suppressNextClick = false;
+                }
+            },
+            true
+        );
+
+        const finishDragSelection = (event) => {
+            if (
+                !isCheckboxDragSelecting ||
+                event.pointerId !== checkboxDragPointerId
+            ) {
+                return;
+            }
+
+            // Se houve arraste, o próximo CLICK nativo
+            // precisa ser ignorado para não desmarcar
+            // o primeiro checkbox.
+            if (hasDragged) {
+                suppressNextClick = true;
+            }
+
+            isCheckboxDragSelecting = false;
+            checkboxDragPointerId = null;
+            startCheckbox = null;
+            hasDragged = false;
+            dragTargetState = null;
+        };
+
+        pickingsList.addEventListener(
+            "pointerup",
+            finishDragSelection
+        );
+
+        pickingsList.addEventListener(
+            "pointercancel",
+            finishDragSelection
+        );
+    }
+
     function renderPVGroupsDOM() {
         const container =
             document.getElementById("pickingsContainer");
@@ -103,11 +272,6 @@
             activePVCard?.dataset?.pvId || null;
 
         activePVCard = null;
-
-        // Pega os cards de picking que o AppInventory já criou.
-        const existingCards = Array.from(
-            container.querySelectorAll(".picking-card")
-        );
 
         // Limpa o container para reconstruir a estrutura por PV.
         container.replaceChildren();
@@ -160,17 +324,21 @@
             // AÇÕES DO PV
             // =========================
 
-            const pvActions =
-                document.createElement("div");
-
+            const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+
+            // =========================
+            // PV AINDA NÃO EMPACOTADO
+            // =========================
+
             // BOTÃO EMPACOTAR
-            const packageButton =
-                document.createElement("button");
+
+            const packageButton = document.createElement("button");
 
             packageButton.type = "button";
-            packageButton.className = "pv-action-button pv-package-button";
+            packageButton.className =
+                "pv-action-button pv-package-button";
 
             packageButton.setAttribute(
                 "aria-label",
@@ -186,15 +354,53 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    // Expande o PV.
+                    expandPV();
+
+                    // Remove EMPACOTAR e FINALIZAR.
+                    pvActions.replaceChildren();
+
+                    // Cria o botão GERAR PACOTE.
+                    const generatePackageButton =
+                        document.createElement("button");
+
+                    generatePackageButton.type = "button";
+                    generatePackageButton.className =
+                        "pv-action-button pv-generate-package-button";
+
+                    generatePackageButton.setAttribute(
+                        "aria-label",
+                        "Gerar pacote"
+                    );
+
+                    generatePackageButton.innerHTML = `
+                        <span class="pv-action-icon">📦</span>
+                        <span>GERAR PACOTE</span>
+                    `;
+
+                    generatePackageButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            // Sem funcionalidade por enquanto.
+                        }
+                    );
+
+                    pvActions.appendChild(
+                        generatePackageButton
+                    );
                 }
             );
 
             // BOTÃO FINALIZAR
-            const finishButton =
-                document.createElement("button");
+
+            const finishButton = document.createElement("button");
 
             finishButton.type = "button";
-            finishButton.className = "pv-action-button pv-finish-button";
+            finishButton.className =
+                "pv-action-button pv-finish-button";
 
             finishButton.setAttribute(
                 "aria-label",
@@ -237,114 +443,196 @@
                     ? "pv-pickings"
                     : "pv-pickings hidden";
 
-            for (const picking of group.pickings) {
-                const recordId =
-                    String(
-                        picking.id ||
-                        picking.id === 0
-                            ? picking.id
-                            : ""
-                    );
+            for (
+                const [index, picking]
+                of group.pickings.entries()
+            ) {
+                const fakeData =
+                    getFakePickingData(picking, index);
 
-                let match = null;
+                const pickingItem =
+                    document.createElement("div");
 
-                // Primeiro tenta localizar pelo recordId.
-                if (recordId) {
-                    match = existingCards.find(
-                        (card) =>
-                            String(
-                                card.dataset.recordId || ""
-                            ) === recordId
-                    );
-                }
+                pickingItem.className =
+                    "emp-picking-item";
 
-                // Fallback caso o dataset não exista.
-                if (!match) {
-                    match = existingCards.find((card) => {
-                        const refEl =
-                            card.querySelector(
-                                ".picking-identification strong"
-                            );
+                const checkbox =
+                    document.createElement("input");
 
-                        if (!refEl) {
-                            return false;
-                        }
+                checkbox.type = "checkbox";
+                checkbox.className =
+                    "emp-picking-checkbox";
 
-                        const text =
-                            (refEl.textContent || "").trim();
+                checkbox.setAttribute(
+                    "aria-label",
+                    `Selecionar picking ${index + 1}`
+                );
 
-                        const candidate =
-                            String(
-                                picking.pv ||
-                                picking.reference ||
-                                ""
-                            ).trim();
+                const info =
+                    document.createElement("div");
 
-                        return text === candidate;
-                    });
-                }
+                info.className =
+                    "emp-picking-info";
 
-                if (match) {
-                    // Remove apenas abas de chat do picking.
-                    // A aba .picking-tab permanece.
-                    try {
-                        match
-                            .querySelectorAll(
-                                ".chat-tab:not(.picking-tab)"
-                            )
-                            .forEach((tab) => tab.remove());
-                    } catch (error) {
-                        // Não crítico.
-                    }
+                // PRIMEIRA LINHA
 
-                    pickingsList.appendChild(match);
+                const firstRow =
+                    document.createElement("div");
 
-                    const index =
-                        existingCards.indexOf(match);
+                firstRow.className =
+                    "emp-picking-row";
 
-                    if (index >= 0) {
-                        existingCards.splice(index, 1);
-                    }
-                }
+                const product =
+                    document.createElement("div");
+
+                product.className =
+                    "emp-picking-field";
+
+                const productLabel =
+                    document.createElement("span");
+
+                productLabel.className =
+                    "emp-picking-label";
+
+                productLabel.textContent =
+                    "Produto";
+
+                const productValue =
+                    document.createElement("strong");
+
+                productValue.className =
+                    "emp-picking-value";
+
+                productValue.textContent =
+                    fakeData.produto;
+
+                product.append(
+                    productLabel,
+                    productValue
+                );
+
+                const weight =
+                    document.createElement("div");
+
+                weight.className =
+                    "emp-picking-field";
+
+                const weightLabel =
+                    document.createElement("span");
+
+                weightLabel.className =
+                    "emp-picking-label";
+
+                weightLabel.textContent =
+                    "Peso";
+
+                const weightValue =
+                    document.createElement("strong");
+
+                weightValue.className =
+                    "emp-picking-value";
+
+                weightValue.textContent =
+                    fakeData.peso;
+
+                weight.append(
+                    weightLabel,
+                    weightValue
+                );
+
+                firstRow.append(
+                    product,
+                    weight
+                );
+
+                // SEGUNDA LINHA
+
+                const secondRow =
+                    document.createElement("div");
+
+                secondRow.className =
+                    "emp-picking-row";
+
+                const lot =
+                    document.createElement("div");
+
+                lot.className =
+                    "emp-picking-field";
+
+                const lotLabel =
+                    document.createElement("span");
+
+                lotLabel.className =
+                    "emp-picking-label";
+
+                lotLabel.textContent =
+                    "Lote";
+
+                const lotValue =
+                    document.createElement("strong");
+
+                lotValue.className =
+                    "emp-picking-value";
+
+                lotValue.textContent =
+                    fakeData.lote;
+
+                lot.append(
+                    lotLabel,
+                    lotValue
+                );
+
+                const quantity =
+                    document.createElement("div");
+
+                quantity.className =
+                    "emp-picking-field";
+
+                const quantityLabel =
+                    document.createElement("span");
+
+                quantityLabel.className =
+                    "emp-picking-label";
+
+                quantityLabel.textContent =
+                    "Quantidade";
+
+                const quantityValue =
+                    document.createElement("strong");
+
+                quantityValue.className =
+                    "emp-picking-value";
+
+                quantityValue.textContent =
+                    fakeData.quantidade;
+
+                quantity.append(
+                    quantityLabel,
+                    quantityValue
+                );
+
+                secondRow.append(
+                    lot,
+                    quantity
+                );
+
+                info.append(
+                    firstRow,
+                    secondRow
+                );
+
+                pickingItem.append(
+                    checkbox,
+                    info
+                );
+
+                pickingsList.appendChild(
+                    pickingItem
+                );
             }
 
             pvCard.appendChild(pickingsList);
-
-            // =========================
-            // BOTÃO DE EXPANDIR
-            // =========================
-
-            const toggleButton =
-                document.createElement("button");
-
-            toggleButton.type = "button";
-            toggleButton.className = "pv-toggle";
-
-            toggleButton.setAttribute(
-                "aria-expanded",
-                shouldRestoreOpen ? "true" : "false"
-            );
-
-            toggleButton.setAttribute(
-                "aria-label",
-                shouldRestoreOpen
-                    ? "Recolher PV"
-                    : "Expandir PV"
-            );
-
-            const toggleIcon =
-                document.createElement("span");
-
-            toggleIcon.className =
-                "pv-toggle-icon";
-
-            toggleIcon.textContent =
-                shouldRestoreOpen
-                    ? "▴"
-                    : "▾";
-
-            toggleButton.appendChild(toggleIcon);
-            pvCard.appendChild(toggleButton);
+            setupCheckboxDragSelection(pickingsList);
 
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
@@ -355,36 +643,12 @@
             // EXPANDIR / RECOLHER PV
             // =========================
 
-            function togglePV() {
+            function expandPV() {
                 const isOpen =
-                    !pickingsList.classList.contains(
-                        "hidden"
-                    );
+                    !pickingsList.classList.contains("hidden");
 
+                // Se já estiver aberto, não faz nada.
                 if (isOpen) {
-                    // Fecha o PV.
-                    pickingsList.classList.add("hidden");
-
-                    toggleIcon.textContent = "▾";
-
-                    toggleButton.setAttribute(
-                        "aria-expanded",
-                        "false"
-                    );
-
-                    toggleButton.setAttribute(
-                        "aria-label",
-                        "Expandir PV"
-                    );
-
-                    pvCard.classList.remove(
-                        "pv-focus-open"
-                    );
-
-                    if (activePVCard === pvCard) {
-                        activePVCard = null;
-                    }
-
                     return;
                 }
 
@@ -404,18 +668,6 @@
                     "hidden"
                 );
 
-                toggleIcon.textContent = "▴";
-
-                toggleButton.setAttribute(
-                    "aria-expanded",
-                    "true"
-                );
-
-                toggleButton.setAttribute(
-                    "aria-label",
-                    "Recolher PV"
-                );
-
                 pvCard.classList.add(
                     "pv-focus-open"
                 );
@@ -423,41 +675,7 @@
                 scrollToExpandedPV(pvCard);
             }
 
-            // Clique na seta.
-            toggleButton.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-                    togglePV();
-                }
-            );
-
-            // Clique no próprio PV.
-            pvCard.addEventListener(
-                "click",
-                (event) => {
-                    if (
-                        event.target.closest(
-                            ".pv-toggle"
-                        ) ||
-                        event.target.closest(
-                            ".pv-pickings"
-                        )
-                    ) {
-                        return;
-                    }
-
-                    togglePV();
-                }
-            );
-
             container.appendChild(pvCard);
-        }
-
-        // Segurança: se algum picking não foi
-        // associado a um grupo, mantém no container.
-        for (const leftover of existingCards) {
-            container.appendChild(leftover);
         }
     }
 
