@@ -43,7 +43,13 @@
             <strong id="pendingCount">0</strong>
         </button>
         <button class="dashboard-card progress" data-filter="andamento" type="button">
-            <span class="dashboard-label">EM ANDAMENTO</span>
+            <span class="dashboard-label">
+                {% if stage.key == "separacao" %}
+                    CONFERIDOS
+                {% else %}
+                    EM ANDAMENTO
+                {% endif %}
+            </span>
             <strong id="progressCount">0</strong>
         </button>
     </section>

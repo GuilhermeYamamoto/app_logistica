@@ -8,6 +8,12 @@
         console.error("O controlador compartilhado do inventario não foi carregado.");
         return;
     }
+
+    function isConferido(picking) {
+        return (picking.tagIds || []).some(
+            (tagId) => Number(tagId) === 29,
+        );
+    }
     
    function enhanceCard(card, picking, context) {
         // Herda o Card base e adiciona funcionalidades específicas para a separacao
@@ -434,5 +440,15 @@
     // Configura o módulo de inventário com a função enhanceCard e permite a edição de quantidade
     inventory.configure({
         enhanceCard,
+        getSectionTitle: (filter) => filter === "andamento"
+            ? "PICKINGS CONFERIDOS"
+            : "PICKINGS PENDENTES",
+        getStatus: (picking) => isConferido(picking)
+            ? { label: "CONFERIDO", className: "status-progress" }
+            : { label: "PENDENTE", className: "status-waiting" },
+        isInProgress: isConferido,
+        isPending: (picking) =>
+            !picking.validated &&
+            !isConferido(picking),
     })
 }());
