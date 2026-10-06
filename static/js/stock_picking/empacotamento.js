@@ -474,71 +474,89 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        let availablePackages = [];
-
-        try {
-            availablePackages =
-                await getAvailablePackages();
-        } catch (error) {
-            console.error(
-                "Erro ao carregar embalagens:",
-                error
-            );
-
-            packageSelectorText.textContent =
-                "Erro ao carregar embalagens";
-
-            return;
-        }
-
-        for (const packageData of availablePackages) {
-            const option =
-                document.createElement("button");
-
-            option.type = "button";
-
-            option.className =
-                "emp-package-option";
-
-            option.dataset.packageId =
-                String(packageData.id);
-
-            option.textContent =
-                packageData.name;
-
-            option.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-
-                    selectedPackage =
-                        packageData;
-
-                    packageSelectorText.textContent =
-                        packageData.name;
-
-                    packageSelector.classList.add(
-                        "has-selection"
-                    );
-
-                    packageOptions.classList.add(
-                        "hidden"
-                    );
-
-                    finishPackageButton.disabled =
-                        false;
-                }
-            );
-
-            packageOptions.appendChild(option);
-        }
-
-        const togglePackageOptions =
-            () => {
-                packageOptions.classList.toggle(
+        async function togglePackageOptions() {
+            if (
+                !packageOptions.classList.contains(
+                    "hidden"
+                )
+            ) {
+                packageOptions.classList.add(
                     "hidden"
                 );
-            };
+
+                return;
+            }
+
+            packageOptions.replaceChildren();
+
+            packageSelectorText.textContent =
+                "Carregando embalagens...";
+
+            try {
+                const availablePackages =
+                    await getAvailablePackages();
+
+                for (const packageData of availablePackages) {
+                    const option =
+                        document.createElement("button");
+
+                    option.type = "button";
+
+                    option.className =
+                        "emp-package-option";
+
+                    option.dataset.packageId =
+                        String(packageData.id);
+
+                    option.textContent =
+                        packageData.name;
+
+                    option.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            selectedPackage =
+                                packageData;
+
+                            packageSelectorText.textContent =
+                                packageData.name;
+
+                            packageSelector.classList.add(
+                                "has-selection"
+                            );
+
+                            packageOptions.classList.add(
+                                "hidden"
+                            );
+
+                            finishPackageButton.disabled =
+                                false;
+                        }
+                    );
+
+                    packageOptions.appendChild(
+                        option
+                    );
+                }
+
+                packageSelectorText.textContent =
+                    selectedPackage?.name ||
+                    "Selecione a embalagem";
+
+                packageOptions.classList.remove(
+                    "hidden"
+                );
+            } catch (error) {
+                console.error(
+                    "Erro ao carregar embalagens:",
+                    error
+                );
+
+                packageSelectorText.textContent =
+                    "Erro ao carregar embalagens";
+            }
+        }
 
         packageSelector.addEventListener(
             "click",
