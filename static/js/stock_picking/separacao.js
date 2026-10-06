@@ -109,6 +109,16 @@
             return;
         }
 
+        const confirmed = await window.AppUI.confirmAction({
+            kicker: "ALTERAÇÃO DE PESO",
+            title: "REPLICAR PESO",
+            text: `Deseja replicar o peso de ${pesoPacotes} kg para os pacotes do picking ${picking.pv}?`,
+            confirmLabel: "REPLICAR PESO",
+        });
+        if (!confirmed) {
+            return;
+        }
+
         try {
             await inventory.runAction(async () => {
                 const response = await fetch(
@@ -450,29 +460,41 @@
                 corrigirPesoDivergente.addEventListener(
                     "click",
                     async () => {
+                        const confirmed = await window.AppUI.confirmAction({
+                            kicker: "CORREÇÃO DE PESO",
+                            title: "CORRIGIR PESO DIVERGENTE",
+                            text: `Deseja solicitar a correção do peso divergente do picking ${picking.pv}?`,
+                            confirmLabel: "CORRIGIR PESO",
+                        });
+                        if (!confirmed) {
+                            return;
+                        }
+
                         try {
-                            const response = await fetch(
-                                `/api/inventario/pickings/${picking.id}/corrigir-peso-divergente`,
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
+                            await inventory.runAction(async () => {
+                                const response = await fetch(
+                                    `/api/inventario/pickings/${picking.id}/corrigir-peso-divergente`,
+                                    {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                            picking_id: picking.id,
+                                        }),
                                     },
-                                    body: JSON.stringify({
-                                        picking_id: picking.id,
-                                    }),
-                                },
-                            );
-                            const data = await response.json().catch(() => ({}));
-                            if (!response.ok) {
-                                throw new Error(
-                                    data.detail ||
-                                    "Não foi possível abrir a solicitação de correção.",
                                 );
-                            }
-                            inventory.showToast(
-                                `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
-                            );
+                                const data = await response.json().catch(() => ({}));
+                                if (!response.ok) {
+                                    throw new Error(
+                                        data.detail ||
+                                        "Não foi possível abrir a solicitação de correção.",
+                                    );
+                                }
+                                inventory.showToast(
+                                    `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
+                                );
+                            });
                         } catch (error) {
                             console.error(
                                 "Erro ao solicitar correcao de peso:",
@@ -716,31 +738,33 @@
         // envia esses dados para a impressora IoT.
         async function printLabel(picking) {
             try {
-                const response = await fetch(
-                    `/api/inventario/${picking.id}/imprimir-etiqueta`,
-                    {
+                await inventory.runAction(async () => {
+                    const response = await fetch(
+                        `/api/inventario/${picking.id}/imprimir-etiqueta`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                        },
+                    );
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(data.detail || "Não foi possível imprimir a etiqueta.");
+                    }
+                    if (!data.iot_url || !data.payload) {
+                        throw new Error("Resposta inválida do servidor para impressão.");
+                    }
+
+                    const iotResponse = await fetch(data.iot_url, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                    },
-                );
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data.detail || "Não foi possível imprimir a etiqueta.");
-                }
-                if (!data.iot_url || !data.payload) {
-                    throw new Error("Resposta inválida do servidor para impressão.");
-                }
-
-                const iotResponse = await fetch(data.iot_url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data.payload),
+                        body: JSON.stringify(data.payload),
+                    });
+                    if (!iotResponse.ok) {
+                        const body = await iotResponse.json().catch(() => iotResponse.statusText);
+                        throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
+                    }
+                    inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
                 });
-                if (!iotResponse.ok) {
-                    const body = await iotResponse.json().catch(() => iotResponse.statusText);
-                    throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
-                }
-                inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
             } catch (error) {
                 console.error("Erro ao imprimir etiqueta:", error);
                 inventory.showToast(error.message || "Não foi possível imprimir a etiqueta.", "!");

@@ -215,29 +215,35 @@
             });
 
         try {
-            const response = await fetch(
-                "/api/inventario/responsaveis",
-                {
-                    method: "GET",
-                    headers: {
-                        Accept: "application/json",
+            const data = await window.AppInventory.runAction(
+                async () => {
+                const response = await fetch(
+                    "/api/inventario/responsaveis",
+                    {
+                        method: "GET",
+                        headers: {
+                            Accept: "application/json",
+                        },
+                        cache: "no-store",
                     },
-                    cache: "no-store",
+                );
+
+                const responseData =
+                    await response.json().catch(() => null);
+
+                if (
+                    !response.ok ||
+                    !Array.isArray(responseData)
+                ) {
+                    throw new Error(
+                        responseData?.detail ||
+                        "Não foi possível carregar os responsáveis.",
+                    );
+                }
+
+                return responseData;
                 },
             );
-
-            const data =
-                await response.json().catch(() => null);
-
-            if (
-                !response.ok ||
-                !Array.isArray(data)
-            ) {
-                throw new Error(
-                    data?.detail ||
-                        "Não foi possível carregar os responsáveis.",
-                );
-            }
 
             users = data;
         } catch (error) {
@@ -1167,57 +1173,58 @@
             "Enviando código lido...";
 
         try {
-            const response = await fetch(
-                `/api/inventario/pickings/${pickingId}/barcode`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
+            await window.AppInventory.runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${pickingId}/barcode`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+                        body: JSON.stringify({
+                            barcode,
+                        }),
                     },
-                    body: JSON.stringify({
-                        barcode,
-                    }),
-                },
-            );
+                );
 
-            const data =
-                await response
-                    .json()
-                    .catch(() => ({}));
+                const data =
+                    await response
+                        .json()
+                        .catch(() => ({}));
 
-            if (!response.ok) {
-                throw new Error(
-                    data.detail ||
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
                         "Não foi possível enviar o código lido.",
+                    );
+                }
+
+                const picking =
+                    window.AppInventory.getRecord(
+                        pickingId,
+                    );
+
+                if (picking) {
+                    picking.local =
+                        data.local || null;
+
+                    picking.barcodeRegistered =
+                        Boolean(data.local);
+                }
+
+                window.AppUI.closeModal(
+                    "barcodeScannerModal",
                 );
-            }
 
-            const picking =
-                window.AppInventory.getRecord(
-                    pickingId,
+                window.AppInventory.render();
+
+                window.AppInventory.showToast(
+                    `LOCAL DEFINIDO: ${
+                        data.local || "Não definido"
+                    }`,
                 );
-
-            if (picking) {
-                picking.local =
-                    data.local || null;
-
-                picking.barcodeRegistered =
-                    Boolean(data.local);
-            }
-
-            window.AppUI.closeModal(
-                "barcodeScannerModal",
-            );
-
-            window.AppInventory.render();
-
-            window.AppInventory.showToast(
-                `LOCAL DEFINIDO: ${
-                    data.local || "Não definido"
-                }`,
-            );
-
+            });
         } catch (error) {
             console.error(
                 "Erro ao enviar código de barras:",

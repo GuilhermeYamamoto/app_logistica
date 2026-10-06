@@ -814,23 +814,25 @@
             "CARREGANDO CAUSAS...";
 
         try {
-            const response = await fetch(
-                "/api/quality-alert/causas",
-            );
-
-            const data =
-                await response.json().catch(() => null);
-
-            if (
-                !response.ok ||
-                !Array.isArray(data)
-            ) {
-                throw new Error(
-                    "Não foi possível carregar as causas.",
+            await runAction(async () => {
+                const response = await fetch(
+                    "/api/quality-alert/causas",
                 );
-            }
 
-            qualityCauses = data;
+                const data =
+                    await response.json().catch(() => null);
+
+                if (
+                    !response.ok ||
+                    !Array.isArray(data)
+                ) {
+                    throw new Error(
+                        "Não foi possível carregar as causas.",
+                    );
+                }
+
+                qualityCauses = data;
+            });
 
             renderQualityCauses();
 
@@ -1012,53 +1014,53 @@
         );
 
         try {
-            const response = await fetch(
-                `/api/inventario/pickings/${record.id}/chat`,
-                {
-                    method: "GET",
-                    headers: {
-                        Accept: "application/json",
+            await runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${record.id}/chat`,
+                    {
+                        method: "GET",
+                        headers: {
+                            Accept: "application/json",
+                        },
+                        cache: "no-store",
                     },
-                    cache: "no-store",
-                },
-            );
-
-            const data =
-                await response.json().catch(() => null);
-
-            if (!response.ok) {
-                throw new Error(
-                    data?.detail ||
-                    "Não foi possível carregar o histórico do chat.",
                 );
-            }
 
-            const messages =
-                Array.isArray(data)
-                    ? data.map((message) => ({
-                        id: message.id,
-                        sender: "received",
-                        author:
-                            message.author ||
-                            "Sistema",
-                        text:
-                            message.text ||
-                            "",
-                        date:
-                            message.date ||
-                            null,
-                    }))
-                    : [];
+                const data =
+                    await response.json().catch(() => null);
 
-            conversations.set(
-                record.id,
-                messages,
-            );
+                if (!response.ok) {
+                    throw new Error(
+                        data?.detail ||
+                        "Não foi possível carregar o histórico do chat.",
+                    );
+                }
 
-            renderChat();
+                const messages =
+                    Array.isArray(data)
+                        ? data.map((message) => ({
+                            id: message.id,
+                            sender: "received",
+                            author:
+                                message.author ||
+                                "Sistema",
+                            text:
+                                message.text ||
+                                "",
+                            date:
+                                message.date ||
+                                null,
+                        }))
+                        : [];
 
-            render();
+                conversations.set(
+                    record.id,
+                    messages,
+                );
 
+                renderChat();
+                render();
+            });
         } catch (error) {
             console.error(
                 "Erro ao carregar chat:",
@@ -1188,58 +1190,58 @@
         elements.chatInput.disabled = true;
 
         try {
-            const response = await fetch(
-                `/api/inventario/pickings/${pickingId}/chat`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
+            await runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${pickingId}/chat`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Accept: "application/json",
+                        },
+                        body: JSON.stringify({
+                            message: text,
+                        }),
                     },
-                    body: JSON.stringify({
-                        message: text,
-                    }),
-                },
-            );
-
-            const data =
-                await response.json().catch(() => null);
-
-            if (!response.ok) {
-                throw new Error(
-                    data?.detail ||
-                    "Não foi possível registrar a mensagem.",
                 );
-            }
 
-            elements.chatInput.value = "";
+                const data =
+                    await response.json().catch(() => null);
 
-            const messages =
-                Array.isArray(data?.messages)
-                    ? data.messages.map((message) => ({
-                        id: message.id,
-                        sender: "received",
-                        author:
-                            message.author ||
-                            "Sistema",
-                        text:
-                            message.text ||
-                            "",
-                        date:
-                            message.date ||
-                            null,
-                    }))
-                    : [];
+                if (!response.ok) {
+                    throw new Error(
+                        data?.detail ||
+                        "Não foi possível registrar a mensagem.",
+                    );
+                }
 
-            conversations.set(
-                pickingId,
-                messages,
-            );
+                elements.chatInput.value = "";
 
-            renderChat();
+                const messages =
+                    Array.isArray(data?.messages)
+                        ? data.messages.map((message) => ({
+                            id: message.id,
+                            sender: "received",
+                            author:
+                                message.author ||
+                                "Sistema",
+                            text:
+                                message.text ||
+                                "",
+                            date:
+                                message.date ||
+                                null,
+                        }))
+                        : [];
 
-            render();
+                conversations.set(
+                    pickingId,
+                    messages,
+                );
 
+                renderChat();
+                render();
+            });
         } catch (error) {
             console.error(
                 "Erro ao enviar mensagem:",
@@ -1266,18 +1268,14 @@
             return;
         }
 
-        actionInProgress = true;
-
-        try {
+        await runAction(async () => {
             await options.refreshRecords({
                 getRecords: () => records,
                 replaceRecords,
                 render,
                 showToast,
             });
-        } finally {
-            actionInProgress = false;
-        }
+        });
     }
 
     function initializeQualityAlert() {
