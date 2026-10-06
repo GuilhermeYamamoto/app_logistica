@@ -260,6 +260,8 @@
         // Linhas do picking
         const moveLines = picking.move_lines || [];
         const conferido = isConferido(picking);
+        const pesoDivergente = Boolean(picking.divergencia_peso_picking);
+        const pesoConferido = !pesoDivergente;
 
         // O card base cria ações padrão automaticamente. Nesta etapa,
         // pickings pendentes exibem suas ações operacionais nas ações
@@ -415,7 +417,7 @@
                 "secondary-action",
                 "package-action",
             );
-            if (!picking.divergencia_peso_picking) {
+            if (!pesoDivergente) {
                 addPesoPacotes.classList.add("full-width-action");
             }
             addPesoPacotes.innerHTML =
@@ -431,7 +433,7 @@
 
             // O botão só é exibido quando o campo calculado pelo Odoo
             // indica que existe divergência de peso neste picking.
-            if (picking.divergencia_peso_picking) {
+            if (pesoDivergente) {
                 const corrigirPesoDivergente = document.createElement("button");
 
                 corrigirPesoDivergente.type = "button";
@@ -502,6 +504,11 @@
                 "secondary-action",
                 "print-action",
             );
+            imprimirEtqPacotes.disabled = !pesoConferido;
+            if (!pesoConferido) {
+                imprimirEtqPacotes.title =
+                    "Preencha e corrija o peso antes de imprimir.";
+            }
             imprimirEtqPacotes.innerHTML =
                 '<span class="action-icon-small">🖨️</span>Imprimir Etiqueta Embalagens';
             // Solicita a impressão das etiquetas das embalagens deste picking.
@@ -519,6 +526,11 @@
                 "secondary-action",
                 "conference-action",
             );
+            conferirSeparacao.disabled = !pesoConferido;
+            if (!pesoConferido) {
+                conferirSeparacao.title =
+                    "Preencha e corrija o peso antes de conferir.";
+            }
             conferirSeparacao.innerHTML =
                 '<span class="action-icon-small">✅</span>Conferir Separação';
 
