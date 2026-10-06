@@ -98,6 +98,106 @@ class InventoryService:
             ) from error
 
     ####################################
+    #  MARCAR MOVE LINES PARA PACOTE
+    ####################################
+    #
+    #  Executa o método marcar_para_pacote
+    #  diretamente no modelo stock.move.line.
+    #
+    ####################################
+
+    @staticmethod 
+    def marcar_para_pacote(
+        client: OdooClient,
+        move_line_ids: List[int],
+    ):
+        try: #tive que colocar o try except: pass por conta do erro do odoo que não retorna nada, mas o picking é validado
+
+            if not move_line_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Nenhuma linha de movimentação foi informada.",
+                )
+
+            try:
+                result = client.execute(
+                    "stock.move.line",
+                    "marcar_para_pacote",
+                    move_line_ids,
+                )
+
+                return {
+                    "success": True,
+                    "move_line_ids": move_line_ids,
+                    "result": result,
+                }
+
+            except (KeyError, OSError, xmlrpc.client.Error) as error:
+                print("==========================================")
+                print("ERRO AO MARCAR MOVE LINES PARA PACOTE")
+                print("ERRO:", error)
+                print("TIPO:", type(error))
+                print("MOVE LINE IDS:", move_line_ids)
+                print("==========================================")
+
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=str(error),
+                ) from error
+        except:
+            pass
+
+    ####################################
+    #  REMOVER MOVE LINES DO PACOTE
+    ####################################
+    #
+    #  Executa o método tirar_do_pacote
+    #  diretamente no modelo stock.move.line.
+    #
+    ####################################
+
+    @staticmethod 
+    def tirar_do_pacote(
+        client: OdooClient,
+        move_line_ids: List[int],
+    ):
+        try: #tive que colocar o try except: pass por conta do erro do odoo que não retorna nada, mas o picking é validado
+
+            if not move_line_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Nenhuma linha de movimentação foi informada.",
+                )
+
+            try:
+                result = client.execute(
+                    "stock.move.line",
+                    "tirar_do_pacote",
+                    move_line_ids,
+                )
+
+                return {
+                    "success": True,
+                    "move_line_ids": move_line_ids,
+                    "result": result,
+                }
+
+            except (KeyError, OSError, xmlrpc.client.Error) as error:
+                print("==========================================")
+                print("ERRO AO MARCAR MOVE LINES PARA PACOTE")
+                print("ERRO:", error)
+                print("TIPO:", type(error))
+                print("MOVE LINE IDS:", move_line_ids)
+                print("==========================================")
+
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=str(error),
+                ) from error
+        except:
+            pass
+
+    ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
     ####################################
     #
@@ -134,7 +234,7 @@ class InventoryService:
             
             move_lines_by_id = {}
             if move_line_ids:
-                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna"]
+                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna", "gerar_pacote"]
                 move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
                 move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
             
