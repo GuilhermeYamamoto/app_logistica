@@ -12,8 +12,6 @@
 
     let pvGroups = [];
     let activePVCard = null;
-    let isCheckboxDragSelecting = false;
-    let checkboxDragPointerId = null;
     let activePackageModal = null;
     let selectedPackage = null;
 
@@ -91,489 +89,6 @@
                 );
             }
         }, 0);
-    }
-
-    function setupCheckboxDragSelection(pickingsList) {
-        let startPicking = null;
-        let startCheckbox = null;
-
-        let hasDragged = false;
-        let suppressNextClick = false;
-
-        let dragTargetState = null;
-
-        let startX = 0;
-        let startY = 0;
-
-        let holdTimer = null;
-        let holdActivated = false;
-
-        const DRAG_THRESHOLD = 8;
-        const HOLD_DURATION = 500;
-
-        pickingsList.addEventListener(
-            "pointerdown",
-            (event) => {
-                const pickingItem =
-                    event.target.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                window.AppUI?.setGestureCaptured(true);
-
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
-                    );
-
-                if (!checkbox) {
-                    return;
-                }
-
-                if (checkbox.disabled) {
-                    return;
-                }
-
-                startPicking = pickingItem;
-                startCheckbox = checkbox;
-
-                hasDragged = false;
-                holdActivated = false;
-
-                startX = event.clientX;
-                startY = event.clientY;
-
-                // O estado que será aplicado
-                // durante a seleção múltipla.
-                dragTargetState = !checkbox.checked;
-
-                /*
-                * Não inicia o modo de seleção múltipla
-                * imediatamente.
-                *
-                * O usuário precisa manter o dedo/mouse
-                * pressionado por 1 segundo.
-                */
-                holdTimer = setTimeout(
-                    () => {
-                        if (
-                            !startPicking ||
-                            !startCheckbox
-                        ) {
-                            return;
-                        }
-
-                        holdActivated = true;
-
-                        isCheckboxDragSelecting = true;
-                        checkboxDragPointerId =
-                            event.pointerId;
-
-                        window.AppUI?.setGestureCaptured(true);
-
-                        // Vibração ao ativar a seleção múltipla.
-                        if ("vibrate" in navigator) {
-                            navigator.vibrate(50);
-                        }
-
-                        startCheckbox.checked =
-                            dragTargetState;
-
-                        try {
-                            startPicking.setPointerCapture(
-                                event.pointerId
-                            );
-                        } catch (error) {
-                            // Alguns dispositivos podem não
-                            // permitir pointer capture.
-                        }
-                    },
-                    HOLD_DURATION
-                );
-            }
-        );
-
-        pickingsList.addEventListener(
-            "pointermove",
-            (event) => {
-                /*
-                * Antes de completar 1 segundo,
-                * NÃO fazemos seleção múltipla.
-                *
-                * Isso permite que o movimento natural
-                * do dedo continue sendo interpretado
-                * como rolagem da lista.
-                */
-                if (
-                    !holdActivated ||
-                    !isCheckboxDragSelecting ||
-                    event.pointerId !== checkboxDragPointerId ||
-                    !startPicking
-                ) {
-                    return;
-                }
-
-                const distanceX =
-                    Math.abs(event.clientX - startX);
-
-                const distanceY =
-                    Math.abs(event.clientY - startY);
-
-                if (
-                    !hasDragged &&
-                    Math.max(distanceX, distanceY) >=
-                        DRAG_THRESHOLD
-                ) {
-                    hasDragged = true;
-                }
-
-                if (!hasDragged) {
-                    return;
-                }
-
-                const element =
-                    document.elementFromPoint(
-                        event.clientX,
-                        event.clientY
-                    );
-
-                const pickingItem =
-                    element?.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
-                    );
-
-                if (!checkbox || checkbox.disabled) {
-                    return;
-                }
-
-                checkbox.checked =
-                    dragTargetState;
-            }
-        );
-
-        pickingsList.addEventListener(
-            "click",
-            (event) => {
-                if (suppressNextClick) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    suppressNextClick = false;
-
-                    return;
-                }
-
-                const pickingItem =
-                    event.target.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
-                    );
-
-                if (!checkbox) {
-                    return;
-                }
-
-                if (checkbox.disabled) {
-                    return;
-                }
-
-                /*
-                * Se o clique foi diretamente na checkbox,
-                * mantemos o comportamento nativo do input.
-                */
-                if (
-                    event.target.closest(
-                        ".emp-picking-checkbox"
-                    )
-                ) {
-                    return;
-                }
-
-                /*
-                * Clique normal na caixa:
-                * seleciona/desseleciona o picking.
-                */
-                const newCheckedState =
-                    !checkbox.checked;
-
-                checkbox.checked =
-                    newCheckedState;
-
-                if (newCheckedState) {
-                    marcarMoveLinesDoPicking(
-                        pickingItem
-                    ).catch((error) => {
-                        console.error(
-                            "Erro ao marcar move lines para pacote:",
-                            error
-                        );
-
-                        checkbox.checked = false;
-
-                        alert(
-                            error.message ||
-                            "Não foi possível marcar o picking para pacote."
-                        );
-                    });
-                }
-            },
-            true
-        );
-
-        pickingsList.addEventListener(
-            "change",
-            async (event) => {
-                const checkbox =
-                    event.target.closest(
-                        ".emp-picking-checkbox"
-                    );
-
-                if (!checkbox) {
-                    return;
-                }
-
-                const pickingItem =
-                    checkbox.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                let moveLineIds = [];
-
-                try {
-                    moveLineIds = JSON.parse(
-                        pickingItem.dataset.moveLineIds || "[]"
-                    );
-                } catch (error) {
-                    console.error(
-                        "Não foi possível ler as move lines do picking:",
-                        error
-                    );
-
-                    checkbox.checked = !checkbox.checked;
-
-                    alert(
-                        "Não foi possível identificar as linhas do picking."
-                    );
-
-                    return;
-                }
-
-                moveLineIds = moveLineIds
-                    .map((id) => Number(id))
-                    .filter(
-                        (id) =>
-                            Number.isInteger(id) &&
-                            id > 0
-                    );
-
-                if (!moveLineIds.length) {
-                    checkbox.checked = !checkbox.checked;
-
-                    alert(
-                        "O picking selecionado não possui move lines."
-                    );
-
-                    return;
-                }
-
-                try {
-                    if (checkbox.checked) {
-                        await marcarMoveLinesParaPacote(
-                            moveLineIds
-                        );
-
-                        console.log(
-                            "Move lines marcadas para pacote:",
-                            moveLineIds
-                        );
-                    } else {
-                        await tirarMoveLinesDoPacote(
-                            moveLineIds
-                        );
-
-                        console.log(
-                            "Move lines removidas do pacote:",
-                            moveLineIds
-                        );
-                    }
-                } catch (error) {
-                    console.error(
-                        "Erro ao atualizar pacote das move lines:",
-                        error
-                    );
-
-                    // Desfaz a alteração visual da checkbox.
-                    checkbox.checked = !checkbox.checked;
-
-                    alert(
-                        error.message ||
-                        "Não foi possível atualizar o pacote."
-                    );
-                }
-            }
-        );
-
-        const finishDragSelection = (event) => {
-            /*
-            * Cancela o timer caso o usuário solte
-            * antes de completar 1 segundo.
-            */
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
-            }
-
-            /*
-            * Se a seleção múltipla ainda não foi ativada,
-            * não fazemos nada relacionado ao drag.
-            */
-            if (
-                !holdActivated ||
-                !isCheckboxDragSelecting ||
-                event.pointerId !== checkboxDragPointerId
-            ) {
-                window.AppUI?.setGestureCaptured(false);
-
-                startPicking = null;
-                startCheckbox = null;
-
-                hasDragged = false;
-                holdActivated = false;
-                dragTargetState = null;
-
-                startX = 0;
-                startY = 0;
-
-                isCheckboxDragSelecting = false;
-                checkboxDragPointerId = null;
-
-                return;
-            }
-
-            /*
-            * Se houve arraste, impedimos o click seguinte
-            * de alterar novamente o estado inicial.
-            */
-            if (hasDragged) {
-                suppressNextClick = true;
-            }
-
-            if (hasDragged) {
-                const selectedMoveLineIds = [];
-
-                pickingsList
-                    .querySelectorAll(
-                        ".emp-picking-item"
-                    )
-                    .forEach((pickingItem) => {
-                        const checkbox =
-                            pickingItem.querySelector(
-                                ".emp-picking-checkbox"
-                            );
-
-                        if (!checkbox?.checked) {
-                            return;
-                        }
-
-                        try {
-                            const moveLineIds =
-                                JSON.parse(
-                                    pickingItem.dataset.moveLineIds || "[]"
-                                );
-
-                            selectedMoveLineIds.push(
-                                ...moveLineIds
-                            );
-                        } catch (error) {
-                            console.error(
-                                "Erro ao ler move lines durante seleção múltipla:",
-                                error
-                            );
-                        }
-                    });
-
-                if (selectedMoveLineIds.length) {
-                    const uniqueMoveLineIds =
-                        [...new Set(selectedMoveLineIds)];
-
-                    const action =
-                        dragTargetState
-                            ? marcarMoveLinesParaPacote
-                            : tirarMoveLinesDoPacote;
-
-                    action(uniqueMoveLineIds)
-                        .then(() => {
-                            console.log(
-                                dragTargetState
-                                    ? "Move lines selecionadas marcadas para pacote:"
-                                    : "Move lines selecionadas removidas do pacote:",
-                                uniqueMoveLineIds
-                            );
-                        })
-                        .catch((error) => {
-                            console.error(
-                                "Erro ao atualizar move lines durante seleção múltipla:",
-                                error
-                            );
-
-                            alert(
-                                error.message ||
-                                "Não foi possível atualizar os pickings para pacote."
-                            );
-                        });
-                }
-            }
-
-            window.AppUI?.setGestureCaptured(false);
-
-            isCheckboxDragSelecting = false;
-            checkboxDragPointerId = null;
-
-            startPicking = null;
-            startCheckbox = null;
-
-            hasDragged = false;
-            holdActivated = false;
-            dragTargetState = null;
-
-            startX = 0;
-            startY = 0;
-        };
-
-        pickingsList.addEventListener(
-            "pointerup",
-            finishDragSelection
-        );
-
-        pickingsList.addEventListener(
-            "pointercancel",
-            finishDragSelection
-        );
     }
 
     async function getAvailablePackages() {
@@ -666,42 +181,106 @@
         return await response.json();
     }
 
-    async function marcarMoveLinesDoPicking(
-        pickingItem
-    ) {
-        if (!pickingItem) {
-            return;
-        }
+    function setupCheckboxChange(pickingsList) {
+        pickingsList.addEventListener(
+            "change",
+            async (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
 
-        let moveLineIds = [];
+                if (!checkbox) {
+                    return;
+                }
 
-        try {
-            moveLineIds = JSON.parse(
-                pickingItem.dataset.moveLineIds || "[]"
-            );
-        } catch (error) {
-            console.error(
-                "Não foi possível ler as move lines do picking:",
-                error
-            );
+                const pickingItem =
+                    checkbox.closest(
+                        ".emp-picking-item"
+                    );
 
-            throw new Error(
-                "Não foi possível identificar as linhas do picking."
-            );
-        }
+                if (!pickingItem) {
+                    return;
+                }
 
-        moveLineIds = moveLineIds
-            .map((id) => Number(id))
-            .filter((id) => Number.isInteger(id) && id > 0);
+                let moveLineIds = [];
 
-        if (!moveLineIds.length) {
-            throw new Error(
-                "O picking selecionado não possui move lines."
-            );
-        }
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]"
+                    );
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do picking:",
+                        error
+                    );
 
-        return await marcarMoveLinesParaPacote(
-            moveLineIds
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    alert(
+                        "Não foi possível identificar as linhas do picking."
+                    );
+
+                    return;
+                }
+
+                moveLineIds = moveLineIds
+                    .map((id) => Number(id))
+                    .filter(
+                        (id) =>
+                            Number.isInteger(id) &&
+                            id > 0
+                    );
+
+                if (!moveLineIds.length) {
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    alert(
+                        "O picking selecionado não possui move lines."
+                    );
+
+                    return;
+                }
+
+                try {
+                    if (checkbox.checked) {
+                        await marcarMoveLinesParaPacote(
+                            moveLineIds
+                        );
+
+                        console.log(
+                            "Move lines marcadas para pacote:",
+                            moveLineIds
+                        );
+                    } else {
+                        await tirarMoveLinesDoPacote(
+                            moveLineIds
+                        );
+
+                        console.log(
+                            "Move lines removidas do pacote:",
+                            moveLineIds
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Erro ao atualizar pacote das move lines:",
+                        error
+                    );
+
+                    // Volta a checkbox para o estado anterior
+                    // se o backend retornar erro.
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    alert(
+                        error.message ||
+                        "Não foi possível atualizar o pacote."
+                    );
+                }
+            }
         );
     }
 
@@ -895,71 +474,89 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        let availablePackages = [];
-
-        try {
-            availablePackages =
-                await getAvailablePackages();
-        } catch (error) {
-            console.error(
-                "Erro ao carregar embalagens:",
-                error
-            );
-
-            packageSelectorText.textContent =
-                "Erro ao carregar embalagens";
-
-            return;
-        }
-
-        for (const packageData of availablePackages) {
-            const option =
-                document.createElement("button");
-
-            option.type = "button";
-
-            option.className =
-                "emp-package-option";
-
-            option.dataset.packageId =
-                String(packageData.id);
-
-            option.textContent =
-                packageData.name;
-
-            option.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-
-                    selectedPackage =
-                        packageData;
-
-                    packageSelectorText.textContent =
-                        packageData.name;
-
-                    packageSelector.classList.add(
-                        "has-selection"
-                    );
-
-                    packageOptions.classList.add(
-                        "hidden"
-                    );
-
-                    finishPackageButton.disabled =
-                        false;
-                }
-            );
-
-            packageOptions.appendChild(option);
-        }
-
-        const togglePackageOptions =
-            () => {
-                packageOptions.classList.toggle(
+        async function togglePackageOptions() {
+            if (
+                !packageOptions.classList.contains(
+                    "hidden"
+                )
+            ) {
+                packageOptions.classList.add(
                     "hidden"
                 );
-            };
+
+                return;
+            }
+
+            packageOptions.replaceChildren();
+
+            packageSelectorText.textContent =
+                "Carregando embalagens...";
+
+            try {
+                const availablePackages =
+                    await getAvailablePackages();
+
+                for (const packageData of availablePackages) {
+                    const option =
+                        document.createElement("button");
+
+                    option.type = "button";
+
+                    option.className =
+                        "emp-package-option";
+
+                    option.dataset.packageId =
+                        String(packageData.id);
+
+                    option.textContent =
+                        packageData.name;
+
+                    option.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            selectedPackage =
+                                packageData;
+
+                            packageSelectorText.textContent =
+                                packageData.name;
+
+                            packageSelector.classList.add(
+                                "has-selection"
+                            );
+
+                            packageOptions.classList.add(
+                                "hidden"
+                            );
+
+                            finishPackageButton.disabled =
+                                false;
+                        }
+                    );
+
+                    packageOptions.appendChild(
+                        option
+                    );
+                }
+
+                packageSelectorText.textContent =
+                    selectedPackage?.name ||
+                    "Selecione a embalagem";
+
+                packageOptions.classList.remove(
+                    "hidden"
+                );
+            } catch (error) {
+                console.error(
+                    "Erro ao carregar embalagens:",
+                    error
+                );
+
+                packageSelectorText.textContent =
+                    "Erro ao carregar embalagens";
+            }
+        }
 
         packageSelector.addEventListener(
             "click",
@@ -1559,10 +1156,33 @@
                 pickingsList.appendChild(
                     pickingItem
                 );
+
+                pickingItem.addEventListener(
+                    "click",
+                    (event) => {
+                        if (event.target === checkbox) {
+                            return;
+                        }
+
+                        if (checkbox.disabled) {
+                            return;
+                        }
+
+                        checkbox.checked =
+                            !checkbox.checked;
+
+                        checkbox.dispatchEvent(
+                            new Event("change", {
+                                bubbles: true,
+                            })
+                        );
+                    }
+                );
             }
 
             pvCard.appendChild(pickingsList);
-            setupCheckboxDragSelection(pickingsList);
+
+            setupCheckboxChange(pickingsList);
 
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
