@@ -314,10 +314,128 @@
                 * Clique normal na caixa:
                 * seleciona/desseleciona o picking.
                 */
-                checkbox.checked =
+                const newCheckedState =
                     !checkbox.checked;
+
+                checkbox.checked =
+                    newCheckedState;
+
+                if (newCheckedState) {
+                    marcarMoveLinesDoPicking(
+                        pickingItem
+                    ).catch((error) => {
+                        console.error(
+                            "Erro ao marcar move lines para pacote:",
+                            error
+                        );
+
+                        checkbox.checked = false;
+
+                        alert(
+                            error.message ||
+                            "Não foi possível marcar o picking para pacote."
+                        );
+                    });
+                }
             },
             true
+        );
+
+        pickingsList.addEventListener(
+            "change",
+            async (event) => {
+                const checkbox =
+                    event.target.closest(
+                        ".emp-picking-checkbox"
+                    );
+
+                if (!checkbox) {
+                    return;
+                }
+
+                const pickingItem =
+                    checkbox.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
+                    return;
+                }
+
+                let moveLineIds = [];
+
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]"
+                    );
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do picking:",
+                        error
+                    );
+
+                    checkbox.checked = !checkbox.checked;
+
+                    alert(
+                        "Não foi possível identificar as linhas do picking."
+                    );
+
+                    return;
+                }
+
+                moveLineIds = moveLineIds
+                    .map((id) => Number(id))
+                    .filter(
+                        (id) =>
+                            Number.isInteger(id) &&
+                            id > 0
+                    );
+
+                if (!moveLineIds.length) {
+                    checkbox.checked = !checkbox.checked;
+
+                    alert(
+                        "O picking selecionado não possui move lines."
+                    );
+
+                    return;
+                }
+
+                try {
+                    if (checkbox.checked) {
+                        await marcarMoveLinesParaPacote(
+                            moveLineIds
+                        );
+
+                        console.log(
+                            "Move lines marcadas para pacote:",
+                            moveLineIds
+                        );
+                    } else {
+                        await tirarMoveLinesDoPacote(
+                            moveLineIds
+                        );
+
+                        console.log(
+                            "Move lines removidas do pacote:",
+                            moveLineIds
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Erro ao atualizar pacote das move lines:",
+                        error
+                    );
+
+                    // Desfaz a alteração visual da checkbox.
+                    checkbox.checked = !checkbox.checked;
+
+                    alert(
+                        error.message ||
+                        "Não foi possível atualizar o pacote."
+                    );
+                }
+            }
         );
 
         const finishDragSelection = (event) => {
@@ -365,6 +483,72 @@
                 suppressNextClick = true;
             }
 
+            if (hasDragged) {
+                const selectedMoveLineIds = [];
+
+                pickingsList
+                    .querySelectorAll(
+                        ".emp-picking-item"
+                    )
+                    .forEach((pickingItem) => {
+                        const checkbox =
+                            pickingItem.querySelector(
+                                ".emp-picking-checkbox"
+                            );
+
+                        if (!checkbox?.checked) {
+                            return;
+                        }
+
+                        try {
+                            const moveLineIds =
+                                JSON.parse(
+                                    pickingItem.dataset.moveLineIds || "[]"
+                                );
+
+                            selectedMoveLineIds.push(
+                                ...moveLineIds
+                            );
+                        } catch (error) {
+                            console.error(
+                                "Erro ao ler move lines durante seleção múltipla:",
+                                error
+                            );
+                        }
+                    });
+
+                if (selectedMoveLineIds.length) {
+                    const uniqueMoveLineIds =
+                        [...new Set(selectedMoveLineIds)];
+
+                    const action =
+                        dragTargetState
+                            ? marcarMoveLinesParaPacote
+                            : tirarMoveLinesDoPacote;
+
+                    action(uniqueMoveLineIds)
+                        .then(() => {
+                            console.log(
+                                dragTargetState
+                                    ? "Move lines selecionadas marcadas para pacote:"
+                                    : "Move lines selecionadas removidas do pacote:",
+                                uniqueMoveLineIds
+                            );
+                        })
+                        .catch((error) => {
+                            console.error(
+                                "Erro ao atualizar move lines durante seleção múltipla:",
+                                error
+                            );
+
+                            alert(
+                                error.message ||
+                                "Não foi possível atualizar os pickings para pacote."
+                            );
+                        });
+                }
+            }
+
             window.AppUI?.setGestureCaptured(false);
 
             isCheckboxDragSelecting = false;
@@ -392,39 +576,134 @@
         );
     }
 
-    function getAvailablePackages() {
-        /*
-        * Dados temporários para a interface.
-        *
-        * Futuramente esta função deverá consultar o backend
-        * para retornar as embalagens realmente disponíveis.
-        *
-        * Exemplo futuro:
-        *
-        * return fetch("/api/inventario/embalagens")
-        *     .then(response => response.json());
-        */
+    async function getAvailablePackages() {
+        const response = await fetch("/api/inventario/embalagens");
 
-        return [
-            {
-                id: 1,
-                name: "Caixa Pequena",
-            },
-            {
-                id: 2,
-                name: "Caixa Média",
-            },
-            {
-                id: 3,
-                name: "Caixa Grande",
-            },
-            {
-                id: 4,
-                name: "Embalagem Especial",
-            },
-        ];
+        if (!response.ok) {
+            throw new Error("Não foi possível carregar as embalagens disponíveis.");
+        }
+
+        return await response.json();
     }
 
+    async function marcarMoveLinesParaPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/marcar-para-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível marcar as linhas para pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function tirarMoveLinesDoPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/tirar-do-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível remover as linhas do pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function marcarMoveLinesDoPicking(
+        pickingItem
+    ) {
+        if (!pickingItem) {
+            return;
+        }
+
+        let moveLineIds = [];
+
+        try {
+            moveLineIds = JSON.parse(
+                pickingItem.dataset.moveLineIds || "[]"
+            );
+        } catch (error) {
+            console.error(
+                "Não foi possível ler as move lines do picking:",
+                error
+            );
+
+            throw new Error(
+                "Não foi possível identificar as linhas do picking."
+            );
+        }
+
+        moveLineIds = moveLineIds
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        if (!moveLineIds.length) {
+            throw new Error(
+                "O picking selecionado não possui move lines."
+            );
+        }
+
+        return await marcarMoveLinesParaPacote(
+            moveLineIds
+        );
+    }
 
     function closePackageModal() {
         if (!activePackageModal) {
@@ -487,7 +766,7 @@
         );
     }
 
-    function openPackageModal(pvGroup, selectedPickings) {
+    async function openPackageModal(pvGroup, selectedPickings) {
         closePackageModal();
 
         selectedPackage = null;
@@ -616,8 +895,22 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        const availablePackages =
-            getAvailablePackages();
+        let availablePackages = [];
+
+        try {
+            availablePackages =
+                await getAvailablePackages();
+        } catch (error) {
+            console.error(
+                "Erro ao carregar embalagens:",
+                error
+            );
+
+            packageSelectorText.textContent =
+                "Erro ao carregar embalagens";
+
+            return;
+        }
 
         for (const packageData of availablePackages) {
             const option =
@@ -1078,12 +1371,26 @@
                 pickingItem.dataset.pickingId =
                     String(picking.id);
 
+                pickingItem.dataset.moveLineIds =
+                    JSON.stringify(
+                        (picking.move_lines || [])
+                            .map((moveLine) => moveLine.id)
+                            .filter(Boolean)
+                    );
+
                 const checkbox =
                     document.createElement("input");
 
                 checkbox.type = "checkbox";
                 checkbox.className =
                     "emp-picking-checkbox";
+
+                checkbox.checked =
+                    (picking.move_lines || []).length > 0 &&
+                    (picking.move_lines || []).every(
+                        (moveLine) =>
+                            moveLine.gerar_pacote === true
+                    );
 
                 checkbox.setAttribute(
                     "aria-label",
@@ -1156,7 +1463,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    picking.move_lines?.[0]?.peso ?? "0";
+                    (picking.move_lines?.[0]?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,

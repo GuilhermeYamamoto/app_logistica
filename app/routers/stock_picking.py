@@ -205,6 +205,94 @@ def list_responsible_users(
 
     return InventoryService.list_active_responsible_users(client)
 
+####################################
+#  EMBALAGENS DISPONÍVEIS
+####################################
+
+@router.get("/api/inventario/embalagens")
+def list_package_types(
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Retorna os tipos de embalagem disponíveis
+    a partir do stock.picking.sale.wizard.
+    """
+
+    return InventoryService.list_package_types(client)
+
+####################################
+#  MARCAR MOVE LINES PARA PACOTE
+####################################
+
+@router.post("/api/inventario/marcar-para-pacote")
+def marcar_para_pacote(
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Marca as move lines selecionadas para pacote no Odoo.
+    """
+
+    move_line_ids = data.get("move_line_ids")
+
+    if not move_line_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma linha de movimentação foi informada.",
+        )
+
+    try:
+        move_line_ids = [
+            int(move_line_id)
+            for move_line_id in move_line_ids
+        ]
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Os IDs das linhas de movimentação são inválidos.",
+        )
+
+    return InventoryService.marcar_para_pacote(
+        client,
+        move_line_ids,
+    )
+
+####################################
+#  REMOVER MOVE LINES DO PACOTE
+####################################
+
+@router.post("/api/inventario/tirar-do-pacote")
+def tirar_do_pacote(
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Remove as move lines selecionadas do pacote no Odoo.
+    """
+
+    move_line_ids = data.get("move_line_ids")
+
+    if not move_line_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma linha de movimentação foi informada.",
+        )
+
+    try:
+        move_line_ids = [
+            int(move_line_id)
+            for move_line_id in move_line_ids
+        ]
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Os IDs das linhas de movimentação são inválidos.",
+        )
+
+    return InventoryService.tirar_do_pacote(
+        client,
+        move_line_ids,
+    )
 
 @router.post("/api/inventario/pickings/{picking_id}/responsavel")
 def set_responsible_user(
@@ -394,7 +482,7 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     """
     Chama a ação no Odoo que replica determinado peso para todos as linhas do picking na separação.
     """
-    replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
+    replicar_peso = InventoryService.action_replicar_peso(client, picking_data) 
     return {"success": True, "message": "Peso atualizado com sucesso."}
 
 @router.post("/api/inventario/pickings/{picking_id}/conferir-separacao")
