@@ -166,16 +166,24 @@ class InventoryService:
             )
 
         try:
-            result = client.execute(
-                "stock.move.line",
-                "tirar_do_pacote",
-                move_line_ids,
-            )
+            results = []
+
+            for move_line_id in move_line_ids:
+                result = client.execute(
+                    "stock.move.line",
+                    "tirar_do_pacote",
+                    [move_line_id],
+                )
+
+                results.append({
+                    "move_line_id": move_line_id,
+                    "result": result,
+                })
 
             return {
                 "success": True,
                 "move_line_ids": move_line_ids,
-                "result": result,
+                "results": results,
             }
 
         except xmlrpc.client.Fault as e:
