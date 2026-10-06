@@ -7,6 +7,32 @@
 {% endblock %}
 
 {% block inventory_modals %}
+    <div id="conferenciaSeparacaoModal" class="modal-overlay hidden">
+        <div class="modal action-modal">
+            <span class="modal-kicker">CONFERÊNCIA</span>
+            <h2>CONFERIR SEPARAÇÃO</h2>
+            <p id="conferenciaSeparacaoText">
+                Deseja realmente solicitar a conferência desta separação?
+            </p>
+            <div class="modal-footer">
+                <button
+                    class="secondary-button"
+                    type="button"
+                    data-close="conferenciaSeparacaoModal"
+                >
+                    CANCELAR
+                </button>
+                <button
+                    id="confirmConferenciaSeparacao"
+                    class="primary-button"
+                    type="button"
+                >
+                    CONFIRMAR
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="replicarPesoModal" class="modal-overlay hidden">
         <div class="modal">
             <div class="modal-header">

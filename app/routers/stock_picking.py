@@ -4,7 +4,7 @@ import xmlrpc.client
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings, static_asset_version
@@ -464,7 +464,14 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client,stage["picking_type_id"],)
-    return records
+    return JSONResponse(
+        content=records,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 ####################################
 #  Ação para replicar peso nos pickings da Separação
@@ -475,5 +482,26 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     """
     Chama a ação no Odoo que replica determinado peso para todos as linhas do picking na separação.
     """
-    replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
+    replicar_peso = InventoryService.action_replicar_peso(client, picking_data) 
     return {"success": True, "message": "Peso atualizado com sucesso."}
+
+@router.post("/api/inventario/pickings/{picking_id}/conferir-separacao")
+def action_conferir_separacao(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Chama a ação no servidor que adiciona o marcador de conferir a separacao.
+    """
+    return InventoryService.action_conferir_separacao(client, picking_data)
+
+@router.post("/api/inventario/pickings/{picking_id}/conferido-separacao")
+def action_conferido_separacao(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Chama a ação no servidor que adiciona o marcador de conferir a separacao.
+    """
+    return InventoryService.action_conferido_separacao(client, picking_data)
+
+@router.post("/api/inventario/pickings/{picking_id}/corrigir-peso-divergente")
+def action_corrigir_peso_produto(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Abre e valida o wizard do helpdesk de coreção de peso do produto.
+    """
+    return InventoryService.action_corrigir_peso_produto(client, picking_data)

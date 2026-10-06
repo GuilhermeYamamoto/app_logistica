@@ -38,6 +38,7 @@
                 ? { label: "EM ANDAMENTO", className: "status-progress" }
                 : { label: "PENDENTE", className: "status-waiting" },
         isInProgress: (record) => Boolean(record.inProgress),
+        isPending: (record) => !record.validated,
         matchesRecord: () => true,
         normalizeRecord: (record) => record,
         onInitialized: () => {},
@@ -112,7 +113,7 @@
             return !record.validated && options.isInProgress(record);
         }
 
-        return !record.validated;
+        return options.isPending(record);
     }
 
     function createElement(tagName, className, text) {
@@ -429,8 +430,7 @@
         if (elements.pendingCount) {
             elements.pendingCount.textContent = formatCount(
                 records.filter(
-                    (record) =>
-                        !record.validated
+                    (record) => options.isPending(record),
                 ).length,
             );
         }
