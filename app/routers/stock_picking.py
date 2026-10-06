@@ -4,7 +4,7 @@ import xmlrpc.client
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings, static_asset_version
@@ -376,7 +376,14 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client,stage["picking_type_id"],)
-    return records
+    return JSONResponse(
+        content=records,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 ####################################
 #  Ação para replicar peso nos pickings da Separação

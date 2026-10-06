@@ -26,7 +26,7 @@
     async function fetchStageRecords() {
         const stageKey = document.body.dataset.stageKey;
         const response = await fetch(
-            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}`,
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}?t=${Date.now()}`,
             {
                 headers: { Accept: "application/json" },
                 cache: "no-store",
@@ -83,6 +83,12 @@
         }
 
         selectedReplicarPesoPicking = picking;
+        const pesoInput = document
+            .getElementById("replicarPesoModal")
+            ?.querySelector("#pesoPacotes");
+        if (pesoInput) {
+            pesoInput.value = "";
+        }
         window.AppUI.openModal("replicarPesoModal");
     }
 
