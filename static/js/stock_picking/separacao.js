@@ -10,6 +10,7 @@
     }
 
     let selectedConferenciaPicking = null;
+    let selectedReplicarPesoPicking = null;
 
     // Retorna true quando o picking possui a tag 29, usada pelo Odoo
     // para indicar que a separação foi conferida.
@@ -73,83 +74,162 @@
             });
     }
 
+    // Abre o modal de replicação e registra qual picking será atualizado.
+    // O formulário do modal possui um único listener, configurado em
+    // initializeReplicarPesoModal().
+    function openModalReplicarPeso(picking) {
+        if (inventory.isActionInProgress()) {
+            return;
+        }
+
+        selectedReplicarPesoPicking = picking;
+        window.AppUI.openModal("replicarPesoModal");
+    }
+
+    // Envia o peso informado para o wizard do Odoo, aguarda a atualização
+    // e sincroniza novamente os registros exibidos na etapa.
+    async function submitReplicarPeso(event) {
+        event.preventDefault();
+
+        if (inventory.isActionInProgress()) {
+            return;
+        }
+
+        const picking = selectedReplicarPesoPicking;
+        const modal = document.getElementById("replicarPesoModal");
+        const pesoPacotes = modal?.querySelector("#pesoPacotes")?.value;
+
+        if (!picking || pesoPacotes === undefined) {
+            return;
+        }
+
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    "/api/replicar-peso", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            picking_id: picking.id,
+                            peso: pesoPacotes,
+                        }),
+                    },
+                );
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || "Não foi possível replicar o peso.",
+                    );
+                }
+
+                window.AppUI.closeModal("replicarPesoModal");
+                await refreshStageRecords();
+                inventory.showToast("Peso replicado com sucesso!", "✓");
+            });
+        } catch (error) {
+            console.error("Erro ao replicar peso:", error);
+            inventory.showToast(
+                error.message || "Erro ao replicar peso. Tente novamente.",
+                "✗",
+            );
+        } finally {
+            selectedReplicarPesoPicking = null;
+        }
+    }
+
+    // Registra uma única vez o submit do modal global de replicação.
+    function initializeReplicarPesoModal() {
+        document
+            .getElementById("inputPesoForm")
+            ?.addEventListener(
+                "submit",
+                submitReplicarPeso,
+            );
+    }
+
+    initializeReplicarPesoModal();
+
     // Abre o modal de confirmação para a ação "Conferir Separação".
     // O picking fica armazenado temporariamente até o usuário confirmar
     // ou cancelar a operação.
     function openConferenciaSeparacaoModal(picking) {
-            if (inventory.isActionInProgress()) {
-                return;
-            }
+        if (inventory.isActionInProgress()) {
+            return;
+        }
 
-            selectedConferenciaPicking = picking;
+        selectedConferenciaPicking = picking;
 
-            const confirmationText = document.getElementById(
-                "conferenciaSeparacaoText",
-            );
-            if (confirmationText) {
-                confirmationText.textContent =
-                    `Deseja realmente solicitar a conferência do picking ${picking.pv}?`;
-            }
+        const confirmationText = document.getElementById(
+            "conferenciaSeparacaoText",
+        );
+        if (confirmationText) {
+            confirmationText.textContent =
+                `Deseja realmente solicitar a conferência do picking ${picking.pv}?`;
+        }
 
-            window.AppUI.openModal("conferenciaSeparacaoModal");
+        window.AppUI.openModal("conferenciaSeparacaoModal");
     }
 
     // Envia a solicitação ao FastAPI somente depois da confirmação.
     // runAction aplica o carregamento global e impede ações concorrentes.
     async function confirmConferenciaSeparacao() {
-            const picking = selectedConferenciaPicking;
-            const button = document.getElementById(
-                "confirmConferenciaSeparacao",
-            );
+        const picking = selectedConferenciaPicking;
+        const button = document.getElementById(
+            "confirmConferenciaSeparacao",
+        );
 
-            if (!picking || inventory.isActionInProgress()) {
-                return;
-            }
+        if (!picking || inventory.isActionInProgress()) {
+            return;
+        }
 
-            const originalText = button?.textContent;
-            if (button) {
-                button.disabled = true;
-                button.textContent = "CONFIRMANDO...";
-            }
+        const originalText = button?.textContent;
+        if (button) {
+            button.disabled = true;
+            button.textContent = "CONFIRMANDO...";
+        }
 
-            try {
-                await inventory.runAction(async () => {
-                    const response = await fetch(
-                        `/api/inventario/pickings/${picking.id}/conferir-separacao`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ picking_id: picking.id }),
-                        },
-                    );
-                    const data = await response.json().catch(() => ({}));
-
-                    if (!response.ok) {
-                        throw new Error(
-                            data.detail ||
-                            "Não foi possível conferir a separação.",
-                        );
-                    }
-
-                    window.AppUI.closeModal("conferenciaSeparacaoModal");
-                    inventory.showToast(
-                        `Solicitada Conferência do picking ${picking.pv} com sucesso!`,
-                    );
-                    window.location.reload();
-                });
-            } catch (error) {
-                console.error("Erro ao conferir separação:", error);
-                inventory.showToast(
-                    error.message ||
-                    "Não foi possível solicitar a conferência da separação.",
-                    "!",
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${picking.id}/conferir-separacao`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ picking_id: picking.id }),
+                    },
                 );
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.textContent = originalText;
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível conferir a separação.",
+                    );
                 }
+
+                window.AppUI.closeModal("conferenciaSeparacaoModal");
+                inventory.showToast(
+                    `Solicitada Conferência do picking ${picking.pv} com sucesso!`,
+                );
+                window.location.reload();
+            });
+        } catch (error) {
+            console.error("Erro ao conferir separação:", error);
+            inventory.showToast(
+                error.message ||
+                "Não foi possível solicitar a conferência da separação.",
+                "!",
+            );
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = originalText;
             }
+        }
     }
 
     // Registra uma única vez o botão de confirmação do modal.
@@ -613,58 +693,6 @@
 
             togglePickingLines();
         });
-
-        // Abre o modal de replicação e conecta o formulário ao picking
-        // atualmente selecionado.
-        function openModalReplicarPeso(picking) {
-            window.AppUI.openModal(
-                "replicarPesoModal",
-            );
-            const replicarPesoModal = document.getElementById("replicarPesoModal");
-            const inputPesoForm = replicarPesoModal.querySelector("#inputPesoForm");
-            inputPesoForm?.addEventListener("submit", submitReplicarPeso);
-        }
-
-        // Envia o peso informado para o wizard do Odoo, aguarda a
-        // atualização e sincroniza novamente o card com o servidor.
-        async function submitReplicarPeso(event) {
-            event.preventDefault();
-            const pesoPacotes = document.getElementById("replicarPesoModal").querySelector("#pesoPacotes").value;
-            const payload = {
-                picking_id: picking.id,
-                peso: pesoPacotes,
-            };
-            try {
-                await inventory.runAction(async () => {
-                    const response = await fetch(
-                        "/api/replicar-peso", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify(payload),
-                        },
-                    );
-                    const data = await response.json().catch(() => ({}));
-
-                    if (!response.ok) {
-                        throw new Error(
-                            data.detail || "Não foi possível replicar o peso.",
-                        );
-                    }
-
-                    window.AppUI.closeModal("replicarPesoModal");
-                    await refreshStageRecords();
-                    inventory.showToast("Peso replicado com sucesso!", "✓");
-                });
-            } catch (error) {
-                console.error("Erro ao replicar peso:", error);
-                inventory.showToast(
-                    error.message || "Erro ao replicar peso. Tente novamente.",
-                    "✗",
-                );
-            }
-        }
 
         // Solicita ao FastAPI os dados da etiqueta e, em seguida,
         // envia esses dados para a impressora IoT.
