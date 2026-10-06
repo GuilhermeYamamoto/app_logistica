@@ -98,6 +98,13 @@
     grid-column: 1 / -1;
 }
 
+.secondary-actions .secondary-action:disabled {
+    background: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+    filter: none;
+}
+
 .picking-actions .validation-action {
     grid-column: 1 / -1;
 }
