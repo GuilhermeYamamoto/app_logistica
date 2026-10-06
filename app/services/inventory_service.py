@@ -117,41 +117,33 @@ class InventoryService:
         client: OdooClient,
         move_line_ids: List[int],
     ):
-        try: #tive que colocar o try except: pass por conta do erro do odoo que não retorna nada, mas o picking é validado
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma linha de movimentação foi informada.",
+            )
 
-            if not move_line_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Nenhuma linha de movimentação foi informada.",
-                )
+        try:
+            result = client.execute(
+                "stock.move.line",
+                "marcar_para_pacote",
+                move_line_ids,
+            )
 
-            try:
-                result = client.execute(
-                    "stock.move.line",
-                    "marcar_para_pacote",
-                    move_line_ids,
-                )
+            return {
+                "success": True,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
 
-                return {
-                    "success": True,
-                    "move_line_ids": move_line_ids,
-                    "result": result,
-                }
-
-            except (KeyError, OSError, xmlrpc.client.Error) as error:
-                print("==========================================")
-                print("ERRO AO MARCAR MOVE LINES PARA PACOTE")
-                print("ERRO:", error)
-                print("TIPO:", type(error))
-                print("MOVE LINE IDS:", move_line_ids)
-                print("==========================================")
-
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=str(error),
-                ) from error
-        except:
-            pass
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi marcado, mas não conseguiu serializar o retorno.")
+                result = None
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+            return {"success": True, "move_line_ids": move_line_ids, "result": result}
 
     ####################################
     #  REMOVER MOVE LINES DO PACOTE
@@ -167,41 +159,33 @@ class InventoryService:
         client: OdooClient,
         move_line_ids: List[int],
     ):
-        try: #tive que colocar o try except: pass por conta do erro do odoo que não retorna nada, mas o picking é validado
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma linha de movimentação foi informada.",
+            )
 
-            if not move_line_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Nenhuma linha de movimentação foi informada.",
-                )
+        try:
+            result = client.execute(
+                "stock.move.line",
+                "tirar_do_pacote",
+                move_line_ids,
+            )
 
-            try:
-                result = client.execute(
-                    "stock.move.line",
-                    "tirar_do_pacote",
-                    move_line_ids,
-                )
+            return {
+                "success": True,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
 
-                return {
-                    "success": True,
-                    "move_line_ids": move_line_ids,
-                    "result": result,
-                }
-
-            except (KeyError, OSError, xmlrpc.client.Error) as error:
-                print("==========================================")
-                print("ERRO AO MARCAR MOVE LINES PARA PACOTE")
-                print("ERRO:", error)
-                print("TIPO:", type(error))
-                print("MOVE LINE IDS:", move_line_ids)
-                print("==========================================")
-
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=str(error),
-                ) from error
-        except:
-            pass
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi desmarcado, mas não conseguiu serializar o retorno.")
+                result = None
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+            return {"success": True, "move_line_ids": move_line_ids, "result": result}
 
     ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
