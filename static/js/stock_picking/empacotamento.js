@@ -101,6 +101,38 @@
         return await response.json();
     }
 
+    async function gerarPacote(data) {
+        const response = await fetch(
+            "/api/inventario/gerar-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível gerar o pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
     async function marcarMoveLinesParaPacote(
         moveLineIds
     ) {
@@ -619,58 +651,126 @@
 
         finishPackageButton.addEventListener(
             "click",
-            (event) => {
+            async (event) => {
                 event.stopPropagation();
 
                 if (!selectedPackage) {
                     return;
                 }
 
-                /*
-                * Estrutura preparada para o backend.
-                *
-                * Futuramente este objeto será enviado
-                * para o endpoint responsável pela geração
-                * do pacote.
-                */
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    alert(
+                        "Nenhum picking foi selecionado."
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    alert(
+                        "Nenhuma move line foi encontrada nos pickings selecionados."
+                    );
+
+                    return;
+                }
+
                 const packagePayload = {
-                    pedido_venda_id:
-                        pvGroup.pedido_venda_id,
-
-                    pedido_venda_name:
-                        pvGroup.pedido_venda_name,
-
                     picking_ids:
-                        selectedPickings.map(
-                            (picking) => picking.id
-                        ),
+                        pickingIds,
 
-                    embalagem_id:
-                        selectedPackage.id,
+                    move_line_ids:
+                        moveLineIds,
+
+                    package_type_id:
+                        Number(selectedPackage.id),
                 };
 
                 console.log(
-                    "Payload preparado para gerar pacote:",
+                    "Payload enviado para gerar pacote:",
                     packagePayload
                 );
 
-                /*
-                * Marca visualmente os pickings selecionados
-                * como empacotados.
-                */
-                const activePVPickings =
-                    activePVCard?.querySelector(
-                        ".pv-pickings"
+                finishPackageButton.disabled =
+                    true;
+
+                finishPackageButton.textContent =
+                    "GERANDO...";
+
+                try {
+                    const result =
+                        await gerarPacote(
+                            packagePayload
+                        );
+
+                    console.log(
+                        "Pacote gerado com sucesso:",
+                        result
                     );
 
-                if (activePVPickings) {
-                    markPickingsAsPacked(
-                        activePVPickings,
-                        selectedPickings
+                    /*
+                    * Marca visualmente os pickings selecionados
+                    * como empacotados somente depois que o Odoo
+                    * confirmar a operação.
+                    */
+                    const activePVPickings =
+                        activePVCard?.querySelector(
+                            ".pv-pickings"
+                        );
+
+                    if (activePVPickings) {
+                        markPickingsAsPacked(
+                            activePVPickings,
+                            selectedPickings
+                        );
+                    }
+
+                    closePackageModal();
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao gerar pacote:",
+                        error
                     );
+
+                    alert(
+                        error.message ||
+                        "Não foi possível gerar o pacote."
+                    );
+
+                    finishPackageButton.disabled =
+                        false;
+
+                    finishPackageButton.textContent =
+                        "FINALIZAR";
                 }
-
-                closePackageModal();
             }
         );
 

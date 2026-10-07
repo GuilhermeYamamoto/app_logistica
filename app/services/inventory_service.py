@@ -195,6 +195,124 @@ class InventoryService:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
             return {"success": True, "move_line_ids": move_line_ids, "result": result}
 
+
+    ####################################
+    #  GERAR PACOTE
+    ####################################
+    #
+    #  Cria o wizard stock.picking.sale.wizard
+    #  e executa o método action_put_in_pack.
+    #
+    #  Equivalente ao fluxo utilizado no Odoo:
+    #
+    #  wizard = env["stock.picking.sale.wizard"].create({
+    #      "picking_ids": [(6, 0, picking_ids)],
+    #      "move_line_ids": [(6, 0, move_line_ids)],
+    #      "package_type_id": package_type_id,
+    #  })
+    #
+    #  wizard.action_put_in_pack()
+    #
+    ####################################
+
+    @staticmethod
+    def action_put_in_pack(
+        client: OdooClient,
+        picking_ids: List[int],
+        move_line_ids: List[int],
+        package_type_id: int,
+    ):
+        if not picking_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum picking foi informado para gerar o pacote.",
+            )
+
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma move line foi informada para gerar o pacote.",
+            )
+
+        if not package_type_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum tipo de embalagem foi informado.",
+            )
+
+        try:
+            # Cria o wizard no Odoo.
+            wizard_id = client.execute(
+                "stock.picking.sale.wizard",
+                "create",
+                [{
+                    "picking_ids": [
+                        (6, 0, picking_ids)
+                    ],
+                    "move_line_ids": [
+                        (6, 0, move_line_ids)
+                    ],
+                    "package_type_id": package_type_id,
+                }],
+            )
+
+            # Executa a ação responsável por gerar o pacote.
+            try:
+                if isinstance(wizard_id, (list, tuple)):
+                    wizard_id = wizard_id[0]
+
+
+                    result = client.execute(
+                        "stock.picking.sale.wizard",
+                        "action_put_in_pack",
+                        [wizard_id], context = {"from_empacotar": True,"default_picking_type_id": 148} #Etapa EMPACOTAMENTO}
+                    )
+
+                if not wizard_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="O Odoo não conseguiu criar o wizard de embalagem.",
+                    )
+
+            except xmlrpc.client.Fault as error:
+                error_message = str(error)
+
+                # O método pode executar a operação no Odoo,
+                # mas não retornar um valor serializável pelo XML-RPC.
+                if "cannot marshal" in error_message:
+                    print(
+                        "AVISO: O pacote foi gerado, "
+                        "mas o Odoo não conseguiu serializar o retorno."
+                    )
+
+                    result = None
+
+                else:
+                    raise
+
+            return {
+                "success": True,
+                "wizard_id": wizard_id,
+                "picking_ids": picking_ids,
+                "move_line_ids": move_line_ids,
+                "package_type_id": package_type_id,
+                "result": result,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(
+                "Erro ao gerar pacote no Odoo:",
+                error,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível gerar o pacote no Odoo.",
+            ) from error        
+
     ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
     ####################################
