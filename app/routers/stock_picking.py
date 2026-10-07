@@ -220,6 +220,28 @@ def list_package_types(
 
     return InventoryService.list_package_types(client)
 
+
+####################################
+#  GERAR PACOTE
+####################################
+
+@router.post("/api/inventario/gerar-pacote")
+def gerar_pacote(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Cria o wizard de embalagem no Odoo
+    e executa action_put_in_pack.
+    """
+
+    return InventoryService.action_put_in_pack(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+        data.get("package_type_id"),
+    )
+
 ####################################
 #  MARCAR MOVE LINES PARA PACOTE
 ####################################
