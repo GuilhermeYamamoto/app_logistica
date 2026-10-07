@@ -314,6 +314,94 @@ class InventoryService:
             ) from error        
 
     ####################################
+    #  FINALIZAR
+    ####################################
+    #
+    #  Cria o wizard stock.picking.sale.wizard
+    #  e executa o método action_finalizar.
+    #
+    ####################################
+
+    @staticmethod
+    def action_finalizar(
+        client: OdooClient,
+        picking_ids: List[int],
+        move_line_ids: List[int],
+    ):
+        if not picking_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum picking foi informado para finalizar.",
+            )
+
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma move line foi informada para finalizar.",
+            )
+
+        try:
+            # Cria o wizard no Odoo.
+            wizard_id = client.execute(
+                "stock.picking.sale.wizard",
+                "create",
+                [{
+                    "picking_ids": [
+                        (6, 0, picking_ids)
+                    ],
+                    "move_line_ids": [
+                        (6, 0, move_line_ids)
+                    ],
+                }],
+            )
+
+            if isinstance(wizard_id, (list, tuple)):
+                wizard_id = wizard_id[0]
+
+            if not wizard_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="O Odoo não conseguiu criar o wizard de finalização.",
+                )
+
+            # Executa action_finalizar no wizard.
+            try:
+                result = client.execute(
+                    "stock.picking.sale.wizard",
+                    "action_finalizar",
+                    [wizard_id],
+                )
+
+            except xmlrpc.client.Fault as error:
+                error_message = str(error)
+
+                if "cannot marshal" in error_message:
+                    print(
+                        "AVISO: O picking foi finalizado, "
+                        "mas o Odoo não conseguiu serializar o retorno."
+                    )
+
+                    result = None
+
+            return {
+                "wizard_id": wizard_id,
+                "picking_ids": picking_ids,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(
+                "Erro ao finalizar no Odoo:",
+                error,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível finalizar no Odoo.",
+            ) from error
+
+    ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
     ####################################
     #

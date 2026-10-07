@@ -134,6 +134,38 @@
         return await response.json();
     }
 
+    async function finalizarPickings(data) {
+        const response = await fetch(
+            "/api/inventario/finalizar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível finalizar.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
     async function marcarMoveLinesParaPacote(
         moveLineIds
     ) {
@@ -393,7 +425,7 @@
     }
 
 
-    function openFinishModal() {
+    function openFinishModal(selectedPickings) {
         closeFinishModal();
 
         // =========================================
@@ -552,8 +584,102 @@
         // Por enquanto, sem funcionalidade.
         confirmButton.addEventListener(
             "click",
-            (event) => {
+            async (event) => {
                 event.stopPropagation();
+
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    alert(
+                        "Nenhum picking foi selecionado."
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    alert(
+                        "Nenhuma move line foi encontrada nos pickings selecionados."
+                    );
+
+                    return;
+                }
+
+                const finishPayload = {
+                    picking_ids:
+                        pickingIds,
+
+                    move_line_ids:
+                        moveLineIds,
+                };
+
+                console.log(
+                    "Payload enviado para finalizar:",
+                    finishPayload
+                );
+
+                confirmButton.disabled =
+                    true;
+
+                confirmButton.textContent =
+                    "FINALIZANDO...";
+
+                try {
+                    const result =
+                        await finalizarPickings(
+                            finishPayload
+                        );
+
+                    console.log(
+                        "Finalização concluída:",
+                        result
+                    );
+
+                    closeFinishModal();
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao finalizar:",
+                        error
+                    );
+
+                    alert(
+                        error.message ||
+                        "Não foi possível finalizar."
+                    );
+
+                    confirmButton.disabled =
+                        false;
+
+                    confirmButton.textContent =
+                        "CONFIRMAR";
+                }
             }
         );
 
@@ -972,6 +1098,29 @@
                         result
                     );
 
+                    const finishPayload = {
+                        picking_ids:
+                            pickingIds,
+
+                        move_line_ids:
+                            moveLineIds,
+                    };
+
+                    console.log(
+                        "Payload enviado para finalizar:",
+                        finishPayload
+                    );
+
+                    const finishResult =
+                        await finalizarPickings(
+                            finishPayload
+                        );
+
+                    console.log(
+                        "Pickings finalizados com sucesso:",
+                        finishResult
+                    );
+
                     /*
                     * Marca visualmente os pickings selecionados
                     * como empacotados somente depois que o Odoo
@@ -1186,7 +1335,9 @@
                         (event) => {
                             event.stopPropagation();
 
-                            openFinishModal();
+                            openFinishModal(
+                                group.pickings
+                            );
                         }
                     );
 
