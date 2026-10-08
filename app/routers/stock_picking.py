@@ -336,6 +336,17 @@ def tirar_do_pacote(
         move_line_ids,
     )
 
+@router.post("/api/inventario/selecionar-todos")
+def selecionar_todos(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    return InventoryService.action_select_all(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+    )
+
 @router.post("/api/inventario/pickings/{picking_id}/responsavel")
 def set_responsible_user(
     picking_id: int,

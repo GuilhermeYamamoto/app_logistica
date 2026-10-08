@@ -292,6 +292,38 @@
         return await response.json();
     }
 
+    async function selecionarTodos(data) {
+        const response = await fetch(
+            "/api/inventario/selecionar-todos",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível selecionar todos os pickings.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
     function setupCheckboxChange(pickingsList) {
         pickingsList.addEventListener(
             "change",
@@ -1804,6 +1836,134 @@
             selectAllCheckbox.setAttribute(
                 "aria-label",
                 "Selecionar todos os pickings"
+            );
+
+            selectAllCheckbox.addEventListener(
+                "change",
+                async () => {
+                    const pickingIds =
+                        group.pickings
+                            .map(
+                                (picking) =>
+                                    Number(picking.id)
+                            )
+                            .filter(
+                                (id) =>
+                                    Number.isInteger(id) &&
+                                    id > 0
+                            );
+
+                    const moveLineIds =
+                        group.pickings
+                            .flatMap(
+                                (picking) =>
+                                    picking.move_lines || []
+                            )
+                            .map(
+                                (moveLine) =>
+                                    Number(moveLine.id)
+                            )
+                            .filter(
+                                (id) =>
+                                    Number.isInteger(id) &&
+                                    id > 0
+                            );
+
+                    if (!pickingIds.length) {
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            "Nenhum picking foi encontrado.",
+                            "!"
+                        );
+
+                        return;
+                    }
+
+                    if (!moveLineIds.length) {
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            "Nenhuma move line foi encontrada nos pickings.",
+                            "!"
+                        );
+
+                        return;
+                    }
+
+                    const selectAllPayload = {
+                        picking_ids:
+                            pickingIds,
+
+                        move_line_ids:
+                            moveLineIds,
+                    };
+
+                    console.log(
+                        "Payload enviado para selecionar todos:",
+                        selectAllPayload
+                    );
+
+                    selectAllCheckbox.disabled = true;
+
+                    try {
+                        const result =
+                            await selecionarTodos(
+                                selectAllPayload
+                            );
+
+                        console.log(
+                            "Todos os pickings selecionados:",
+                            result
+                        );
+
+                        const pickingItems =
+                            pickingsList.querySelectorAll(
+                                ".emp-picking-item"
+                            );
+
+                        pickingItems.forEach(
+                            (pickingItem) => {
+                                const checkbox =
+                                    pickingItem.querySelector(
+                                        ".emp-picking-checkbox"
+                                    );
+
+                                if (
+                                    checkbox &&
+                                    !checkbox.disabled
+                                ) {
+                                    checkbox.checked = true;
+                                }
+                            }
+                        );
+
+                        selectAllCheckbox.checked = true;
+
+                        inventory.showToast(
+                            "Todos os pickings foram selecionados!"
+                        );
+
+                    } catch (error) {
+                        console.error(
+                            "Erro ao selecionar todos os pickings:",
+                            error
+                        );
+
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            sanitizeToastError(
+                                error,
+                                "Não foi possível selecionar todos os pickings."
+                            ),
+                            "!"
+                        );
+
+                    } finally {
+                        selectAllCheckbox.disabled = false;
+                    }
+                }
             );
 
             const selectAllLabel =
