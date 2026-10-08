@@ -271,6 +271,45 @@
     background: var(--emp-picking-2);
 }
 
+/* ============================================
+   CHECKBOX SELECIONAR TODOS
+   ============================================ */
+
+.emp-select-all-container {
+    display: flex;
+    align-items: center;
+
+    min-height: 24px;
+
+    padding-left: 26px;
+
+    gap: 20px;
+
+    flex: 0 0 auto;
+}
+
+.emp-select-all-label {
+    font-size: 13px;
+    font-weight: 700;
+
+    color: var(--muted);
+
+    user-select: none;
+}
+
+.emp-select-all-checkbox {
+    width: 24px;
+    height: 24px;
+
+    margin: 0;
+
+    cursor: pointer;
+
+    accent-color: var(--blue);
+
+    touch-action: none;
+}
+
 /* CHECKBOX */
 
 .emp-picking-checkbox {
@@ -471,10 +510,7 @@
     }
 
     .emp-picking-item {
-        gap: 14px;
-
         padding: 14px 14px 14px 16px;
-
         border-left-width: 3px;
     }
 

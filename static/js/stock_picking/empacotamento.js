@@ -1782,6 +1782,48 @@
                 );
             }
 
+            // =========================
+            // CHECKBOX SELECIONAR TODOS
+            // =========================
+
+            const selectAllContainer =
+                document.createElement("div");
+
+            selectAllContainer.className =
+                "emp-select-all-container";
+
+            const selectAllCheckbox =
+                document.createElement("input");
+
+            selectAllCheckbox.type =
+                "checkbox";
+
+            selectAllCheckbox.className =
+                "emp-select-all-checkbox";
+
+            selectAllCheckbox.setAttribute(
+                "aria-label",
+                "Selecionar todos os pickings"
+            );
+
+            const selectAllLabel =
+                document.createElement("span");
+
+            selectAllLabel.className =
+                "emp-select-all-label";
+
+            selectAllLabel.textContent =
+                "Selecionar todos";
+
+            selectAllContainer.append(
+                selectAllCheckbox,
+                selectAllLabel
+            );
+
+            pickingsList.prepend(
+                selectAllContainer
+            );
+
             pvCard.appendChild(pickingsList);
 
             setupCheckboxChange(pickingsList);
