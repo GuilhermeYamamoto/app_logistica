@@ -243,6 +243,26 @@ def gerar_pacote(
     )
 
 ####################################
+#  FINALIZAR
+####################################
+
+@router.post("/api/inventario/finalizar")
+def finalizar(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Cria o wizard de finalização no Odoo
+    e executa action_finalizar.
+    """
+
+    return InventoryService.action_finalizar(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+    )
+
+####################################
 #  MARCAR MOVE LINES PARA PACOTE
 ####################################
 

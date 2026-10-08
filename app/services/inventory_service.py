@@ -69,251 +69,6 @@ class InventoryService:
         ]
 
     ####################################
-    #  LISTAR EMBALAGENS DISPONÍVEIS
-    ####################################
-    #
-    #  Consulta diretamente os tipos de embalagem
-    #  cadastrados no Odoo.
-    #
-    #  Modelo:
-    #  stock.package.type
-    #
-    ####################################
-    @staticmethod
-    def list_package_types(client: OdooClient):
-        try:
-            package_types = client.execute(
-                "stock.package.type",
-                "search_read",
-                [],
-                fields=[
-                    "id",
-                    "name",
-                ],
-            )
-
-            return sorted(
-                package_types,
-                key=lambda package: (package.get("name") or "").lower(),
-            )
-
-        except (KeyError, OSError, xmlrpc.client.Error) as error:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Não foi possível consultar as embalagens disponíveis.",
-            ) from error
-
-    ####################################
-    #  MARCAR MOVE LINES PARA PACOTE
-    ####################################
-    #
-    #  Executa o método marcar_para_pacote
-    #  diretamente no modelo stock.move.line.
-    #
-    ####################################
-
-    @staticmethod 
-    def marcar_para_pacote(
-        client: OdooClient,
-        move_line_ids: List[int],
-    ):
-        if not move_line_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhuma linha de movimentação foi informada.",
-            )
-
-        try:
-            result = client.execute(
-                "stock.move.line",
-                "marcar_para_pacote",
-                move_line_ids,
-            )
-
-            return {
-                "success": True,
-                "move_line_ids": move_line_ids,
-                "result": result,
-            }
-
-        except xmlrpc.client.Fault as e:
-            error_message = str(e)
-            if "cannot marshal" in error_message:
-                print("AVISO: O picking foi marcado, mas não conseguiu serializar o retorno.")
-                result = None
-            else:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-            return {"success": True, "move_line_ids": move_line_ids, "result": result}
-
-    ####################################
-    #  REMOVER MOVE LINES DO PACOTE
-    ####################################
-    #
-    #  Executa o método tirar_do_pacote
-    #  diretamente no modelo stock.move.line.
-    #
-    ####################################
-
-    @staticmethod 
-    def tirar_do_pacote(
-        client: OdooClient,
-        move_line_ids: List[int],
-    ):
-        if not move_line_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhuma linha de movimentação foi informada.",
-            )
-
-        try:
-            results = []
-
-            for move_line_id in move_line_ids:
-                result = client.execute(
-                    "stock.move.line",
-                    "tirar_do_pacote",
-                    [move_line_id],
-                )
-
-                results.append({
-                    "move_line_id": move_line_id,
-                    "result": result,
-                })
-
-            return {
-                "success": True,
-                "move_line_ids": move_line_ids,
-                "results": results,
-            }
-
-        except xmlrpc.client.Fault as e:
-            error_message = str(e)
-            if "cannot marshal" in error_message:
-                print("AVISO: O picking foi desmarcado, mas não conseguiu serializar o retorno.")
-                result = None
-            else:
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
-            return {"success": True, "move_line_ids": move_line_ids, "result": result}
-
-
-    ####################################
-    #  GERAR PACOTE
-    ####################################
-    #
-    #  Cria o wizard stock.picking.sale.wizard
-    #  e executa o método action_put_in_pack.
-    #
-    #  Equivalente ao fluxo utilizado no Odoo:
-    #
-    #  wizard = env["stock.picking.sale.wizard"].create({
-    #      "picking_ids": [(6, 0, picking_ids)],
-    #      "move_line_ids": [(6, 0, move_line_ids)],
-    #      "package_type_id": package_type_id,
-    #  })
-    #
-    #  wizard.action_put_in_pack()
-    #
-    ####################################
-
-    @staticmethod
-    def action_put_in_pack(
-        client: OdooClient,
-        picking_ids: List[int],
-        move_line_ids: List[int],
-        package_type_id: int,
-    ):
-        if not picking_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhum picking foi informado para gerar o pacote.",
-            )
-
-        if not move_line_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhuma move line foi informada para gerar o pacote.",
-            )
-
-        if not package_type_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhum tipo de embalagem foi informado.",
-            )
-
-        try:
-            # Cria o wizard no Odoo.
-            wizard_id = client.execute(
-                "stock.picking.sale.wizard",
-                "create",
-                [{
-                    "picking_ids": [
-                        (6, 0, picking_ids)
-                    ],
-                    "move_line_ids": [
-                        (6, 0, move_line_ids)
-                    ],
-                    "package_type_id": package_type_id,
-                }],
-            )
-
-            # Executa a ação responsável por gerar o pacote.
-            try:
-                if isinstance(wizard_id, (list, tuple)):
-                    wizard_id = wizard_id[0]
-
-
-                    result = client.execute(
-                        "stock.picking.sale.wizard",
-                        "action_put_in_pack",
-                        [wizard_id], context = {"from_empacotar": True,"default_picking_type_id": 148} #Etapa EMPACOTAMENTO}
-                    )
-
-                if not wizard_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail="O Odoo não conseguiu criar o wizard de embalagem.",
-                    )
-
-            except xmlrpc.client.Fault as error:
-                error_message = str(error)
-
-                # O método pode executar a operação no Odoo,
-                # mas não retornar um valor serializável pelo XML-RPC.
-                if "cannot marshal" in error_message:
-                    print(
-                        "AVISO: O pacote foi gerado, "
-                        "mas o Odoo não conseguiu serializar o retorno."
-                    )
-
-                    result = None
-
-                else:
-                    raise
-
-            return {
-                "success": True,
-                "wizard_id": wizard_id,
-                "picking_ids": picking_ids,
-                "move_line_ids": move_line_ids,
-                "package_type_id": package_type_id,
-                "result": result,
-            }
-
-        except HTTPException:
-            raise
-
-        except (KeyError, OSError, xmlrpc.client.Error) as error:
-            print(
-                "Erro ao gerar pacote no Odoo:",
-                error,
-            )
-
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Não foi possível gerar o pacote no Odoo.",
-            ) from error        
-
-    ####################################
     #  LISTAR OS PICKINGS DE CADA ETAPA
     ####################################
     #
@@ -544,6 +299,339 @@ class InventoryService:
             records.append(record)
 
         return {"picking_type_id": picking_type_id, "records": records}
+
+        ####################################
+    #  LISTAR EMBALAGENS DISPONÍVEIS
+    ####################################
+    #
+    #  Consulta diretamente os tipos de embalagem
+    #  cadastrados no Odoo.
+    #
+    #  Modelo:
+    #  stock.package.type
+    #
+    ####################################
+    @staticmethod
+    def list_package_types(client: OdooClient):
+        try:
+            package_types = client.execute(
+                "stock.package.type",
+                "search_read",
+                [],
+                fields=[
+                    "id",
+                    "name",
+                ],
+            )
+
+            return sorted(
+                package_types,
+                key=lambda package: (package.get("name") or "").lower(),
+            )
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível consultar as embalagens disponíveis.",
+            ) from error
+
+        ####################################
+    #  MARCAR MOVE LINES PARA PACOTE
+    ####################################
+    #
+    #  Executa o método marcar_para_pacote
+    #  diretamente no modelo stock.move.line.
+    #
+    ####################################
+
+    @staticmethod 
+    def marcar_para_pacote(
+        client: OdooClient,
+        move_line_ids: List[int],
+    ):
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma linha de movimentação foi informada.",
+            )
+
+        try:
+            result = client.execute(
+                "stock.move.line",
+                "marcar_para_pacote",
+                move_line_ids,
+            )
+
+            return {
+                "success": True,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
+
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi marcado, mas não conseguiu serializar o retorno.")
+                result = None
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+            return {"success": True, "move_line_ids": move_line_ids, "result": result}
+
+    ####################################
+    #  REMOVER MOVE LINES DO PACOTE
+    ####################################
+    #
+    #  Executa o método tirar_do_pacote
+    #  diretamente no modelo stock.move.line.
+    #
+    ####################################
+
+    @staticmethod 
+    def tirar_do_pacote(
+        client: OdooClient,
+        move_line_ids: List[int],
+    ):
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma linha de movimentação foi informada.",
+            )
+
+        try:
+            results = []
+
+            for move_line_id in move_line_ids:
+                result = client.execute(
+                    "stock.move.line",
+                    "tirar_do_pacote",
+                    [move_line_id],
+                )
+
+                results.append({
+                    "move_line_id": move_line_id,
+                    "result": result,
+                })
+
+            return {
+                "success": True,
+                "move_line_ids": move_line_ids,
+                "results": results,
+            }
+
+        except xmlrpc.client.Fault as e:
+            error_message = str(e)
+            if "cannot marshal" in error_message:
+                print("AVISO: O picking foi desmarcado, mas não conseguiu serializar o retorno.")
+                result = None
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+            return {"success": True, "move_line_ids": move_line_ids, "result": result}
+
+
+    ####################################
+    #  GERAR PACOTE
+    ####################################
+    #
+    #  Cria o wizard stock.picking.sale.wizard
+    #  e executa o método action_put_in_pack.
+    #
+    #  Equivalente ao fluxo utilizado no Odoo:
+    #
+    #  wizard = env["stock.picking.sale.wizard"].create({
+    #      "picking_ids": [(6, 0, picking_ids)],
+    #      "move_line_ids": [(6, 0, move_line_ids)],
+    #      "package_type_id": package_type_id,
+    #  })
+    #
+    #  wizard.action_put_in_pack()
+    #
+    ####################################
+
+    @staticmethod
+    def action_put_in_pack(
+        client: OdooClient,
+        picking_ids: List[int],
+        move_line_ids: List[int],
+        package_type_id: int,
+    ):
+        if not picking_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum picking foi informado para gerar o pacote.",
+            )
+
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma move line foi informada para gerar o pacote.",
+            )
+
+        if not package_type_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum tipo de embalagem foi informado.",
+            )
+
+        try:
+            # Cria o wizard no Odoo.
+            wizard_id = client.execute(
+                "stock.picking.sale.wizard",
+                "create",
+                [{
+                    "picking_ids": [
+                        (6, 0, picking_ids)
+                    ],
+                    "move_line_ids": [
+                        (6, 0, move_line_ids)
+                    ],
+                    "package_type_id": package_type_id,
+                }],
+            )
+
+            # Executa a ação responsável por gerar o pacote.
+            try:
+                if isinstance(wizard_id, (list, tuple)):
+                    wizard_id = wizard_id[0]
+
+
+                    result = client.execute(
+                        "stock.picking.sale.wizard",
+                        "action_put_in_pack",
+                        [wizard_id], context = {"from_empacotar": True,"default_picking_type_id": 148} #Etapa EMPACOTAMENTO}
+                    )
+
+                if not wizard_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="O Odoo não conseguiu criar o wizard de embalagem.",
+                    )
+
+            except xmlrpc.client.Fault as error:
+                error_message = str(error)
+
+                # O método pode executar a operação no Odoo,
+                # mas não retornar um valor serializável pelo XML-RPC.
+                if "cannot marshal" in error_message:
+                    print(
+                        "AVISO: O pacote foi gerado, "
+                        "mas o Odoo não conseguiu serializar o retorno."
+                    )
+
+                    result = None
+
+                else:
+                    raise
+
+            return {
+                "success": True,
+                "wizard_id": wizard_id,
+                "picking_ids": picking_ids,
+                "move_line_ids": move_line_ids,
+                "package_type_id": package_type_id,
+                "result": result,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(
+                "Erro ao gerar pacote no Odoo:",
+                error,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível gerar o pacote no Odoo.",
+            ) from error        
+
+    ####################################
+    #  FINALIZAR
+    ####################################
+    #
+    #  Cria o wizard stock.picking.sale.wizard
+    #  e executa o método action_finalizar.
+    #
+    ####################################
+
+    @staticmethod
+    def action_finalizar(
+        client: OdooClient,
+        picking_ids: List[int],
+        move_line_ids: List[int],
+    ):
+        if not picking_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum picking foi informado para finalizar.",
+            )
+
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma move line foi informada para finalizar.",
+            )
+
+        try:
+            # Cria o wizard no Odoo.
+            wizard_id = client.execute(
+                "stock.picking.sale.wizard",
+                "create",
+                [{
+                    "picking_ids": [
+                        (6, 0, picking_ids)
+                    ],
+                    "move_line_ids": [
+                        (6, 0, move_line_ids)
+                    ],
+                }],
+            )
+
+            if isinstance(wizard_id, (list, tuple)):
+                wizard_id = wizard_id[0]
+
+            if not wizard_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="O Odoo não conseguiu criar o wizard de finalização.",
+                )
+
+            # Executa action_finalizar no wizard.
+            try:
+                result = client.execute(
+                    "stock.picking.sale.wizard",
+                    "action_finalizar",
+                    [wizard_id],
+                )
+
+            except xmlrpc.client.Fault as error:
+                error_message = str(error)
+
+                if "cannot marshal" in error_message:
+                    print(
+                        "AVISO: O picking foi finalizado, "
+                        "mas o Odoo não conseguiu serializar o retorno."
+                    )
+
+                    result = None
+
+            return {
+                "wizard_id": wizard_id,
+                "picking_ids": picking_ids,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(
+                "Erro ao finalizar no Odoo:",
+                error,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível finalizar no Odoo.",
+            ) from error
 
     ####################################
     #  IMPRESSÃO DA ETIQUETA DE QUALIDADE ou SEPARAÇÃO

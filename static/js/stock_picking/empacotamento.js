@@ -14,6 +14,7 @@
     let activePVCard = null;
     let activePackageModal = null;
     let selectedPackage = null;
+    let activeFinishModal = null;
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -116,6 +117,38 @@
         if (!response.ok) {
             let detail =
                 "Não foi possível gerar o pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function finalizarPickings(data) {
+        const response = await fetch(
+            "/api/inventario/finalizar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível finalizar.";
 
             try {
                 const errorData =
@@ -374,6 +407,336 @@
                     checkbox.disabled = true;
                 }
             }
+        );
+    }
+
+    function closeFinishModal() {
+        if (!activeFinishModal) {
+            return;
+        }
+
+        activeFinishModal.remove();
+
+        activeFinishModal = null;
+
+        document.body.classList.remove(
+            "emp-modal-open"
+        );
+    }
+
+
+    function openFinishModal(selectedPickings) {
+        closeFinishModal();
+
+        // =========================================
+        // OVERLAY
+        // =========================================
+
+        const modalOverlay =
+            document.createElement("div");
+
+        modalOverlay.className =
+            "modal-overlay";
+
+
+        // =========================================
+        // MODAL
+        // =========================================
+
+        const modal =
+            document.createElement("div");
+
+        modal.className =
+            "modal action-modal";
+
+
+        // =========================================
+        // CABEÇALHO
+        // =========================================
+
+        const modalHeader =
+            document.createElement("div");
+
+        modalHeader.className =
+            "modal-header";
+
+
+        const headerContent =
+            document.createElement("div");
+
+
+        const kicker =
+            document.createElement("span");
+
+        kicker.className =
+            "modal-kicker";
+
+        kicker.textContent =
+            "FINALIZAÇÃO";
+
+
+        const title =
+            document.createElement("h2");
+
+        title.textContent =
+            "Finalizar";
+
+
+        headerContent.append(
+            kicker,
+            title
+        );
+
+
+        const closeButton =
+            document.createElement("button");
+
+        closeButton.type = "button";
+
+        closeButton.className =
+            "close-modal";
+
+        closeButton.setAttribute(
+            "aria-label",
+            "Fechar"
+        );
+
+        closeButton.textContent =
+            "×";
+
+        closeButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        modalHeader.append(
+            headerContent,
+            closeButton
+        );
+
+
+        // =========================================
+        // ÍCONE
+        // =========================================
+
+        const actionIcon =
+            document.createElement("div");
+
+        actionIcon.className =
+            "action-icon validation-icon";
+
+        actionIcon.textContent =
+            "✓";
+
+
+        // =========================================
+        // MENSAGEM
+        // =========================================
+
+        const message =
+            document.createElement("p");
+
+        message.textContent =
+            "Você tem certeza que deseja finalizar?";
+
+
+        // =========================================
+        // BOTÕES
+        // =========================================
+
+        const modalFooter =
+            document.createElement("div");
+
+        modalFooter.className =
+            "modal-footer";
+
+
+        const cancelButton =
+            document.createElement("button");
+
+        cancelButton.type = "button";
+
+        cancelButton.className =
+            "secondary-button";
+
+        cancelButton.textContent =
+            "CANCELAR";
+
+        cancelButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        const confirmButton =
+            document.createElement("button");
+
+        confirmButton.type = "button";
+
+        confirmButton.className =
+            "primary-button";
+
+        confirmButton.textContent =
+            "CONFIRMAR";
+
+
+        // Por enquanto, sem funcionalidade.
+        confirmButton.addEventListener(
+            "click",
+            async (event) => {
+                event.stopPropagation();
+
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    alert(
+                        "Nenhum picking foi selecionado."
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    alert(
+                        "Nenhuma move line foi encontrada nos pickings selecionados."
+                    );
+
+                    return;
+                }
+
+                const finishPayload = {
+                    picking_ids:
+                        pickingIds,
+
+                    move_line_ids:
+                        moveLineIds,
+                };
+
+                console.log(
+                    "Payload enviado para finalizar:",
+                    finishPayload
+                );
+
+                confirmButton.disabled =
+                    true;
+
+                confirmButton.textContent =
+                    "FINALIZANDO...";
+
+                try {
+                    const result =
+                        await finalizarPickings(
+                            finishPayload
+                        );
+
+                    console.log(
+                        "Finalização concluída:",
+                        result
+                    );
+
+                    closeFinishModal();
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao finalizar:",
+                        error
+                    );
+
+                    alert(
+                        error.message ||
+                        "Não foi possível finalizar."
+                    );
+
+                    confirmButton.disabled =
+                        false;
+
+                    confirmButton.textContent =
+                        "CONFIRMAR";
+                }
+            }
+        );
+
+
+        modalFooter.append(
+            cancelButton,
+            confirmButton
+        );
+
+
+        // =========================================
+        // MONTAGEM
+        // =========================================
+
+        modal.append(
+            modalHeader,
+            actionIcon,
+            message,
+            modalFooter
+        );
+
+
+        modalOverlay.appendChild(
+            modal
+        );
+
+
+        // =========================================
+        // FECHAR CLICANDO FORA
+        // =========================================
+
+        modalOverlay.addEventListener(
+            "click",
+            (event) => {
+                if (
+                    event.target ===
+                    modalOverlay
+                ) {
+                    closeFinishModal();
+                }
+            }
+        );
+
+
+        // =========================================
+        // ABRIR
+        // =========================================
+
+        document.body.appendChild(
+            modalOverlay
+        );
+
+        activeFinishModal =
+            modalOverlay;
+
+        document.body.classList.add(
+            "emp-modal-open"
         );
     }
 
@@ -948,6 +1311,10 @@
                         "click",
                         (event) => {
                             event.stopPropagation();
+
+                            openFinishModal(
+                                group.pickings
+                            );
                         }
                     );
 
@@ -1028,6 +1395,10 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    openFinishModal(
+                        group.pickings
+                    );
                 }
             );
 
