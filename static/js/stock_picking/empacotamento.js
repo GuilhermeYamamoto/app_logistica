@@ -16,6 +16,20 @@
     let selectedPackage = null;
     let activeFinishModal = null;
 
+    function sanitizeToastError(error, fallback) {
+        const rawMessage = error?.message || "";
+        const cleaned = String(rawMessage)
+            .trim()
+            .replace(/^Error:\s*/i, "")
+            .replace(/\s+/g, " ");
+
+        if (!cleaned) {
+            return fallback;
+        }
+
+        return cleaned.length > 80 ? fallback : cleaned;
+    }
+
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
     }
@@ -166,6 +180,38 @@
         return await response.json();
     }
 
+    async function refreshRecords({ replaceRecords }) {
+        const stageKey =
+            document.body.dataset.stageKey;
+
+        const response = await fetch(
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}`,
+            {
+                headers: {
+                    Accept: "application/json",
+                },
+                cache: "no-store",
+            }
+        );
+
+        const data =
+            await response.json().catch(
+                () => null
+            );
+
+        if (
+            !response.ok ||
+            !Array.isArray(data?.records)
+        ) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível atualizar os registros."
+            );
+        }
+
+        replaceRecords(data.records);
+    }
+
     async function marcarMoveLinesParaPacote(
         moveLineIds
     ) {
@@ -283,8 +329,9 @@
                     checkbox.checked =
                         !checkbox.checked;
 
-                    alert(
-                        "Não foi possível identificar as linhas do picking."
+                    inventory.showToast(
+                        "Não foi possível identificar as linhas do picking.",
+                        "!"
                     );
 
                     return;
@@ -302,8 +349,9 @@
                     checkbox.checked =
                         !checkbox.checked;
 
-                    alert(
-                        "O picking selecionado não possui move lines."
+                    inventory.showToast(
+                        "O picking selecionado não possui move lines.",
+                        "!"
                     );
 
                     return;
@@ -315,6 +363,10 @@
                             moveLineIds
                         );
 
+                        inventory.showToast(
+                            "Picking adicionado ao pacote!"
+                        );
+
                         console.log(
                             "Move lines marcadas para pacote:",
                             moveLineIds
@@ -322,6 +374,10 @@
                     } else {
                         await tirarMoveLinesDoPacote(
                             moveLineIds
+                        );
+
+                        inventory.showToast(
+                            "Picking removido do pacote!"
                         );
 
                         console.log(
@@ -340,9 +396,12 @@
                     checkbox.checked =
                         !checkbox.checked;
 
-                    alert(
-                        error.message ||
-                        "Não foi possível atualizar o pacote."
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível atualizar o pacote."
+                        ),
+                        "!"
                     );
                 }
             }
@@ -616,16 +675,18 @@
                         );
 
                 if (!pickingIds.length) {
-                    alert(
-                        "Nenhum picking foi selecionado."
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
                     );
 
                     return;
                 }
 
                 if (!moveLineIds.length) {
-                    alert(
-                        "Nenhuma move line foi encontrada nos pickings selecionados."
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
                     );
 
                     return;
@@ -661,7 +722,35 @@
                         result
                     );
 
+                    const finalizedPickingIds =
+                        new Set(
+                            pickingIds.map(
+                                (id) => Number(id)
+                            )
+                        );
+
+                    const currentRecords =
+                        inventory.getRecords
+                            ? inventory.getRecords()
+                            : [];
+
+                    const remainingRecords =
+                        currentRecords.filter(
+                            (record) =>
+                                !finalizedPickingIds.has(
+                                    Number(record.id)
+                                )
+                        );
+
                     closeFinishModal();
+
+                    inventory.replaceRecords(
+                        remainingRecords
+                    );
+
+                    inventory.showToast(
+                        "Finalização concluída com sucesso!"
+                    );
 
                 } catch (error) {
                     console.error(
@@ -669,9 +758,12 @@
                         error
                     );
 
-                    alert(
-                        error.message ||
-                        "Não foi possível finalizar."
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível finalizar."
+                        ),
+                        "!"
                     );
 
                     confirmButton.disabled =
@@ -927,6 +1019,10 @@
 
                             finishPackageButton.disabled =
                                 false;
+
+                            inventory.showToast(
+                                "Embalagem selecionada!"
+                            );
                         }
                     );
 
@@ -1050,16 +1146,18 @@
                         );
 
                 if (!pickingIds.length) {
-                    alert(
-                        "Nenhum picking foi selecionado."
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
                     );
 
                     return;
                 }
 
                 if (!moveLineIds.length) {
-                    alert(
-                        "Nenhuma move line foi encontrada nos pickings selecionados."
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
                     );
 
                     return;
@@ -1098,6 +1196,10 @@
                         result
                     );
 
+                    inventory.showToast(
+                        "Pacote gerado com sucesso!"
+                    );
+
                     /*
                     * Marca visualmente os pickings selecionados
                     * como empacotados somente depois que o Odoo
@@ -1123,9 +1225,12 @@
                         error
                     );
 
-                    alert(
-                        error.message ||
-                        "Não foi possível gerar o pacote."
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível gerar pacote."
+                        ),
+                        "!"
                     );
 
                     finishPackageButton.disabled =
@@ -1250,6 +1355,25 @@
             const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+            let expandedCompletedButton = null;
+            let expandedGeneratePackageButton = null;
+
+            function restoreDefaultPVActions() {
+                if (expandedCompletedButton) {
+                    expandedCompletedButton.remove();
+                    expandedCompletedButton = null;
+                }
+
+                if (expandedGeneratePackageButton) {
+                    expandedGeneratePackageButton.remove();
+                    expandedGeneratePackageButton = null;
+                }
+
+                pvActions.replaceChildren(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             // =========================
             // PV AINDA NÃO EMPACOTADO
@@ -1278,36 +1402,43 @@
                 (event) => {
                     event.stopPropagation();
 
-                    // Expande o PV.
+                    if (activePVCard && activePVCard !== pvCard) {
+                        return;
+                    }
+
                     expandPV();
 
-                    // Remove EMPACOTAR e FINALIZAR.
-                    pvActions.replaceChildren();
+                    if (expandedGeneratePackageButton) {
+                        expandedGeneratePackageButton.remove();
+                    }
+
+                    if (expandedCompletedButton) {
+                        expandedCompletedButton.remove();
+                    }
 
                     // =========================
                     // BOTÃO CONCLUÍDO
                     // =========================
 
-                    const completedButton =
+                    expandedCompletedButton =
                         document.createElement("button");
 
-                    completedButton.type = "button";
+                    expandedCompletedButton.type = "button";
 
-                    completedButton.className =
+                    expandedCompletedButton.className =
                         "pv-completed-button";
 
-                    completedButton.innerHTML = `
+                    expandedCompletedButton.innerHTML = `
                         <span class="pv-completed-icon">✓</span>
                         <span>CONCLUÍDO</span>
                     `;
 
-                    completedButton.setAttribute(
+                    expandedCompletedButton.setAttribute(
                         "aria-label",
                         "Concluir PV"
                     );
 
-                    // Por enquanto, sem funcionalidade.
-                    completedButton.addEventListener(
+                    expandedCompletedButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
@@ -1318,27 +1449,27 @@
                         }
                     );
 
-                    pvCard.appendChild(completedButton);
+                    pvCard.appendChild(expandedCompletedButton);
 
                     // Cria o botão GERAR PACOTE.
-                    const generatePackageButton =
+                    expandedGeneratePackageButton =
                         document.createElement("button");
 
-                    generatePackageButton.type = "button";
-                    generatePackageButton.className =
+                    expandedGeneratePackageButton.type = "button";
+                    expandedGeneratePackageButton.className =
                         "pv-action-button pv-generate-package-button";
 
-                    generatePackageButton.setAttribute(
+                    expandedGeneratePackageButton.setAttribute(
                         "aria-label",
                         "Gerar pacote"
                     );
 
-                    generatePackageButton.innerHTML = `
+                    expandedGeneratePackageButton.innerHTML = `
                         <span class="pv-action-icon">📦</span>
                         <span>GERAR PACOTE</span>
                     `;
 
-                    generatePackageButton.addEventListener(
+                    expandedGeneratePackageButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
@@ -1367,8 +1498,8 @@
                         }
                     );
 
-                    pvActions.appendChild(
-                        generatePackageButton
+                    pvActions.replaceChildren(
+                        expandedGeneratePackageButton
                     );
                 }
             );
@@ -1664,17 +1795,21 @@
             // EXPANDIR / RECOLHER PV
             // =========================
 
+            function collapsePV() {
+                activePVCard = null;
+                pickingsList.classList.add("hidden");
+                pvCard.classList.remove("pv-focus-open");
+                restoreDefaultPVActions();
+            }
+
             function expandPV() {
                 const isOpen =
                     !pickingsList.classList.contains("hidden");
 
-                // Se já estiver aberto, não faz nada.
                 if (isOpen) {
                     return;
                 }
 
-                // Não permite abrir outro PV enquanto
-                // já existe um PV aberto.
                 if (
                     activePVCard &&
                     activePVCard !== pvCard
@@ -1682,7 +1817,6 @@
                     return;
                 }
 
-                // Abre o PV.
                 activePVCard = pvCard;
 
                 pickingsList.classList.remove(
@@ -1695,6 +1829,18 @@
 
                 scrollToExpandedPV(pvCard);
             }
+
+            header.addEventListener("click", (event) => {
+                if (event.target.closest("button")) {
+                    return;
+                }
+
+                if (pickingsList.classList.contains("hidden")) {
+                    return;
+                }
+
+                collapsePV();
+            });
 
             container.appendChild(pvCard);
         }
@@ -1721,5 +1867,6 @@
         onRecordsReplaced,
         onAfterRender: handleAfterRender,
         enhanceCard,
+        refreshRecords,
     });
 }());

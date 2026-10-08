@@ -12,7 +12,7 @@
     let barcodeScannerActive = false;
     let barcodeScannerPickingId = null;
     const DEFAULT_RESPONSIBLES = new Set([
-        "silvando ferrei",
+        "silvando ferreira",
         "jose santos",
     ]);
 

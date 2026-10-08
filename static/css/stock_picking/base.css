@@ -1247,7 +1247,7 @@ body {
 
 .toast {
     position: fixed;
-    z-index: 3000;
+    z-index: 11000;
     right: 25px;
     bottom: 25px;
     min-width: 310px;
