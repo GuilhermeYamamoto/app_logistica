@@ -1098,29 +1098,6 @@
                         result
                     );
 
-                    const finishPayload = {
-                        picking_ids:
-                            pickingIds,
-
-                        move_line_ids:
-                            moveLineIds,
-                    };
-
-                    console.log(
-                        "Payload enviado para finalizar:",
-                        finishPayload
-                    );
-
-                    const finishResult =
-                        await finalizarPickings(
-                            finishPayload
-                        );
-
-                    console.log(
-                        "Pickings finalizados com sucesso:",
-                        finishResult
-                    );
-
                     /*
                     * Marca visualmente os pickings selecionados
                     * como empacotados somente depois que o Odoo
@@ -1418,6 +1395,10 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    openFinishModal(
+                        group.pickings
+                    );
                 }
             );
 

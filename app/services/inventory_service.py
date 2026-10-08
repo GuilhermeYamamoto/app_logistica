@@ -69,6 +69,238 @@ class InventoryService:
         ]
 
     ####################################
+    #  LISTAR OS PICKINGS DE CADA ETAPA
+    ####################################
+    #
+    #  Consulta os pickings do Odoo pertencentes ao tipo de operação
+    #  informado. Também consulta os movimentos relacionados a cada
+    #  picking para obter os produtos e as quantidades esperadas e
+    #  recebidas.
+    #
+    #  Ao final, organiza os dados em um formato simplificado para
+    #  utilização pelo frontend.
+    #
+    ####################################
+    @staticmethod
+    def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
+        try:
+            pickings = None
+            if picking_type_id not in [120, 1200]: # As etapas listadas tem particularidades
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            else:
+                if picking_type_id == 120: # Separação
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            # Busca os pickings que estão aguardando para entrar na etapa
+            waiting_picking_type_id = (
+                120 if picking_type_id == 1200 else picking_type_id
+            )
+
+            waiting_pickings = client.execute(
+                "stock.picking",
+                "search_read",
+                [
+                    ("picking_type_id", "=", waiting_picking_type_id),
+                    ("state", "=", "waiting"),
+                ],
+                fields=["id", "pedido_venda_id"],
+            )
+
+            # Conta quantos pickings waiting existem por Pedido de Venda
+            waiting_counts_by_pv = defaultdict(int)
+
+            for waiting_picking in waiting_pickings:
+                pedido_venda = waiting_picking.get("pedido_venda_id")
+
+                if pedido_venda:
+                    pedido_venda_id = pedido_venda[0]
+                    waiting_counts_by_pv[pedido_venda_id] += 1
+
+            pedido_venda_ids = {
+                picking["pedido_venda_id"][0]
+                for picking in pickings
+                if picking.get("pedido_venda_id")
+            }
+            total_counts_by_pv = defaultdict(int)
+            conferido_counts_by_pv = defaultdict(int)
+
+            if (
+                picking_type_id == 1200 and
+                pedido_venda_ids
+            ):
+                total_pickings = client.execute(
+                    "stock.picking",
+                    "search_read",
+                    [
+                        ("picking_type_id", "=", waiting_picking_type_id),
+                        ("pedido_venda_id", "in", list(pedido_venda_ids)),
+                        ("state", "!=", "cancel"),
+                    ],
+                    fields=["pedido_venda_id", "tag_ids"],
+                )
+
+                for total_picking in total_pickings:
+                    pedido_venda = total_picking.get("pedido_venda_id")
+
+                    if pedido_venda:
+                        pedido_venda_id = pedido_venda[0]
+                        total_counts_by_pv[pedido_venda_id] += 1
+
+                        if 29 in total_picking.get("tag_ids", []):
+                            conferido_counts_by_pv[pedido_venda_id] += 1
+
+            move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
+            
+            move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
+            
+            move_lines_by_id = {}
+            if move_line_ids:
+                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna", "gerar_pacote"]
+                move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
+                move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
+            
+            moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
+            received_quantity_field = None
+            if move_ids:
+                move_fields = client.execute("stock.move", "fields_get")
+                received_quantity_field = next((field for field in ("quantity", "quantity_done") if field in move_fields), None)
+                fields = ["picking_id", "product_id", "product_uom_qty", "move_dest_ids"]
+                if received_quantity_field is not None:
+                    fields.append(received_quantity_field)
+                moves = client.execute("stock.move", "search_read", [("id", "in", move_ids)], fields=fields)
+
+                for move in moves:
+                    moves_by_picking[move["picking_id"][0]].append(move)
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings da etapa solicitada")) from error
+
+        destination_move_ids = list({
+            move_dest_id
+            for moves in moves_by_picking.values()
+            for move in moves
+            for move_dest_id in move.get("move_dest_ids", [])
+        })
+        destination_moves_by_id: Dict[int, Dict[str, Any]] = {}
+        if destination_move_ids:
+            destination_moves = client.execute("stock.move", "search_read", [("id", "in", destination_move_ids)], fields=["id", "location_dest_id"])
+            destination_moves_by_id = {move["id"]: move for move in destination_moves}
+    
+        records = []
+        for picking in pickings:
+            moves = moves_by_picking[picking["id"]]
+            product_names = [move["product_id"][1] for move in moves if move["product_id"]]
+            expected_quantity = sum(move["product_uom_qty"] for move in moves)
+            received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
+            local = None
+            if picking_type_id == 137:
+                for move in moves:
+                    for move_dest_id in move.get("move_dest_ids", []):
+                        destination_move = destination_moves_by_id.get(move_dest_id, {})
+                        location_dest = destination_move.get("location_dest_id")
+                        if location_dest:
+                            if isinstance(location_dest, (list, tuple)):
+                                local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
+                            else:
+                                local = str(location_dest)
+                            break
+                    if local:
+                        break
+            else:
+                local = picking["x_studio_local_do_material"]    
+
+            barcode_registered = bool(local)
+            partner = picking["pedido_compra_id"]
+            cliente = picking["partner_id"]
+            nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
+
+            photo_relation = picking.get("fotos_count") or []
+            if isinstance(photo_relation, (list, tuple)):
+                photo_count = len(photo_relation)
+            else:
+                photo_count = int(photo_relation or 0)
+            
+            record = {
+                "nf_number": nf_number,
+                "id": picking["id"],
+                "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
+                "reference": picking["name"],
+                "client": (partner[1] if partner else "Sem fornecedor"),
+                "partner": (cliente[1]) if cliente else "Sem cliente",
+                "product": (", ".join(product_names) or "Sem produtos"),
+                "expectedQuantity": expected_quantity,
+                "receivedQuantity": received_quantity,
+                "validated": (picking["state"] == "done"),
+                "state": picking["state"],
+                "scheduledDate": picking["scheduled_date"],
+                "photoCount": photo_count,
+                "photosRegistered": photo_count >= 3,
+                "barcodeRegistered": bool(barcode_registered),
+                "local": local,
+                "cliente": (cliente[1] if cliente else "Cliente não definido"),
+                "userId": (
+                    picking["user_id"][0]
+                    if picking.get("user_id")
+                    else None
+                ),
+
+                "userName": (
+                    picking["user_id"][1]
+                    if picking.get("user_id")
+                    else None
+                ),
+                "tagIds": picking.get("tag_ids", []),
+
+                "pedido_venda_id": (
+                    picking["pedido_venda_id"][0]
+                    if picking.get("pedido_venda_id")
+                    else None
+                ),
+
+                "pedido_venda_name": (
+                    picking["pedido_venda_id"][1]
+                    if picking.get("pedido_venda_id")
+                    else None
+                ),
+                "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
+                "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
+
+                "waitingCount": (
+                    waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "totalPickingCount": (
+                    total_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "conferidoCount": (
+                    conferido_counts_by_pv.get(
+                        picking["pedido_venda_id"][0],
+                        0,
+                    )
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "divergencia_peso_picking": picking.get("divergencia_peso_picking", False),
+            }
+
+            result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
+            if result_package_ids:
+                for package in result_package_ids:
+                    picking_id = package.get("picking_id")[0]
+                    if picking_id == picking.get("id"):
+                        if package.get("result_package_id"):
+                            record["resultPackageName"] = package.get("result_package_id")[1]
+                            break
+
+            records.append(record)
+
+        return {"picking_type_id": picking_type_id, "records": records}
+
+        ####################################
     #  LISTAR EMBALAGENS DISPONÍVEIS
     ####################################
     #
@@ -103,7 +335,7 @@ class InventoryService:
                 detail="Não foi possível consultar as embalagens disponíveis.",
             ) from error
 
-    ####################################
+        ####################################
     #  MARCAR MOVE LINES PARA PACOTE
     ####################################
     #
@@ -400,238 +632,6 @@ class InventoryService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Não foi possível finalizar no Odoo.",
             ) from error
-
-    ####################################
-    #  LISTAR OS PICKINGS DE CADA ETAPA
-    ####################################
-    #
-    #  Consulta os pickings do Odoo pertencentes ao tipo de operação
-    #  informado. Também consulta os movimentos relacionados a cada
-    #  picking para obter os produtos e as quantidades esperadas e
-    #  recebidas.
-    #
-    #  Ao final, organiza os dados em um formato simplificado para
-    #  utilização pelo frontend.
-    #
-    ####################################
-    @staticmethod
-    def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
-        try:
-            pickings = None
-            if picking_type_id not in [120, 1200]: # As etapas listadas tem particularidades
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
-            else:
-                if picking_type_id == 120: # Separação
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
-                elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
-            # Busca os pickings que estão aguardando para entrar na etapa
-            waiting_picking_type_id = (
-                120 if picking_type_id == 1200 else picking_type_id
-            )
-
-            waiting_pickings = client.execute(
-                "stock.picking",
-                "search_read",
-                [
-                    ("picking_type_id", "=", waiting_picking_type_id),
-                    ("state", "=", "waiting"),
-                ],
-                fields=["id", "pedido_venda_id"],
-            )
-
-            # Conta quantos pickings waiting existem por Pedido de Venda
-            waiting_counts_by_pv = defaultdict(int)
-
-            for waiting_picking in waiting_pickings:
-                pedido_venda = waiting_picking.get("pedido_venda_id")
-
-                if pedido_venda:
-                    pedido_venda_id = pedido_venda[0]
-                    waiting_counts_by_pv[pedido_venda_id] += 1
-
-            pedido_venda_ids = {
-                picking["pedido_venda_id"][0]
-                for picking in pickings
-                if picking.get("pedido_venda_id")
-            }
-            total_counts_by_pv = defaultdict(int)
-            conferido_counts_by_pv = defaultdict(int)
-
-            if (
-                picking_type_id == 1200 and
-                pedido_venda_ids
-            ):
-                total_pickings = client.execute(
-                    "stock.picking",
-                    "search_read",
-                    [
-                        ("picking_type_id", "=", waiting_picking_type_id),
-                        ("pedido_venda_id", "in", list(pedido_venda_ids)),
-                        ("state", "!=", "cancel"),
-                    ],
-                    fields=["pedido_venda_id", "tag_ids"],
-                )
-
-                for total_picking in total_pickings:
-                    pedido_venda = total_picking.get("pedido_venda_id")
-
-                    if pedido_venda:
-                        pedido_venda_id = pedido_venda[0]
-                        total_counts_by_pv[pedido_venda_id] += 1
-
-                        if 29 in total_picking.get("tag_ids", []):
-                            conferido_counts_by_pv[pedido_venda_id] += 1
-
-            move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
-            
-            move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
-            
-            move_lines_by_id = {}
-            if move_line_ids:
-                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna", "gerar_pacote"]
-                move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
-                move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
-            
-            moves_by_picking: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
-            received_quantity_field = None
-            if move_ids:
-                move_fields = client.execute("stock.move", "fields_get")
-                received_quantity_field = next((field for field in ("quantity", "quantity_done") if field in move_fields), None)
-                fields = ["picking_id", "product_id", "product_uom_qty", "move_dest_ids"]
-                if received_quantity_field is not None:
-                    fields.append(received_quantity_field)
-                moves = client.execute("stock.move", "search_read", [("id", "in", move_ids)], fields=fields)
-
-                for move in moves:
-                    moves_by_picking[move["picking_id"][0]].append(move)
-
-        except (KeyError, OSError, xmlrpc.client.Error) as error:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível consultar os pickings da etapa solicitada")) from error
-
-        destination_move_ids = list({
-            move_dest_id
-            for moves in moves_by_picking.values()
-            for move in moves
-            for move_dest_id in move.get("move_dest_ids", [])
-        })
-        destination_moves_by_id: Dict[int, Dict[str, Any]] = {}
-        if destination_move_ids:
-            destination_moves = client.execute("stock.move", "search_read", [("id", "in", destination_move_ids)], fields=["id", "location_dest_id"])
-            destination_moves_by_id = {move["id"]: move for move in destination_moves}
-    
-        records = []
-        for picking in pickings:
-            moves = moves_by_picking[picking["id"]]
-            product_names = [move["product_id"][1] for move in moves if move["product_id"]]
-            expected_quantity = sum(move["product_uom_qty"] for move in moves)
-            received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
-            local = None
-            if picking_type_id == 137:
-                for move in moves:
-                    for move_dest_id in move.get("move_dest_ids", []):
-                        destination_move = destination_moves_by_id.get(move_dest_id, {})
-                        location_dest = destination_move.get("location_dest_id")
-                        if location_dest:
-                            if isinstance(location_dest, (list, tuple)):
-                                local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
-                            else:
-                                local = str(location_dest)
-                            break
-                    if local:
-                        break
-            else:
-                local = picking["x_studio_local_do_material"]    
-
-            barcode_registered = bool(local)
-            partner = picking["pedido_compra_id"]
-            cliente = picking["partner_id"]
-            nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
-
-            photo_relation = picking.get("fotos_count") or []
-            if isinstance(photo_relation, (list, tuple)):
-                photo_count = len(photo_relation)
-            else:
-                photo_count = int(photo_relation or 0)
-            
-            record = {
-                "nf_number": nf_number,
-                "id": picking["id"],
-                "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
-                "reference": picking["name"],
-                "client": (partner[1] if partner else "Sem fornecedor"),
-                "partner": (cliente[1]) if cliente else "Sem cliente",
-                "product": (", ".join(product_names) or "Sem produtos"),
-                "expectedQuantity": expected_quantity,
-                "receivedQuantity": received_quantity,
-                "validated": (picking["state"] == "done"),
-                "state": picking["state"],
-                "scheduledDate": picking["scheduled_date"],
-                "photoCount": photo_count,
-                "photosRegistered": photo_count >= 3,
-                "barcodeRegistered": bool(barcode_registered),
-                "local": local,
-                "cliente": (cliente[1] if cliente else "Cliente não definido"),
-                "userId": (
-                    picking["user_id"][0]
-                    if picking.get("user_id")
-                    else None
-                ),
-
-                "userName": (
-                    picking["user_id"][1]
-                    if picking.get("user_id")
-                    else None
-                ),
-                "tagIds": picking.get("tag_ids", []),
-
-                "pedido_venda_id": (
-                    picking["pedido_venda_id"][0]
-                    if picking.get("pedido_venda_id")
-                    else None
-                ),
-
-                "pedido_venda_name": (
-                    picking["pedido_venda_id"][1]
-                    if picking.get("pedido_venda_id")
-                    else None
-                ),
-                "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
-                "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
-
-                "waitingCount": (
-                    waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
-                    if picking.get("pedido_venda_id")
-                    else 0
-                ),
-                "totalPickingCount": (
-                    total_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
-                    if picking.get("pedido_venda_id")
-                    else 0
-                ),
-                "conferidoCount": (
-                    conferido_counts_by_pv.get(
-                        picking["pedido_venda_id"][0],
-                        0,
-                    )
-                    if picking.get("pedido_venda_id")
-                    else 0
-                ),
-                "divergencia_peso_picking": picking.get("divergencia_peso_picking", False),
-            }
-
-            result_package_ids = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=["result_package_id", "picking_id"])
-            if result_package_ids:
-                for package in result_package_ids:
-                    picking_id = package.get("picking_id")[0]
-                    if picking_id == picking.get("id"):
-                        if package.get("result_package_id"):
-                            record["resultPackageName"] = package.get("result_package_id")[1]
-                            break
-
-            records.append(record)
-
-        return {"picking_type_id": picking_type_id, "records": records}
 
     ####################################
     #  IMPRESSÃO DA ETIQUETA DE QUALIDADE ou SEPARAÇÃO
