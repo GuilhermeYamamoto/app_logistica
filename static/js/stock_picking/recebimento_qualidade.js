@@ -440,7 +440,7 @@
 
         document
             .getElementById("confirmLocationButton")
-            ?.addEventListener("click", confirmLocationSelection);
+            ?.addEventListener("click", confirmLocationButton);
 
         document
             .getElementById("locationSearchInput")
