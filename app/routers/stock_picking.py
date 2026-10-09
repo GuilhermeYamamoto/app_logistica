@@ -442,7 +442,7 @@ def save_picking_photos(data: SavePickingPhotos = Body(...), client=Depends(get_
 @router.post("/api/inventario/pickings/{picking_id}/barcode")
 def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: OdooClient = Depends(get_odoo_client)):
     """Recebe o código de barras lido para o picking informado."""
-    return InventoryService.preencher_destino_estq_transitorio(client, picking_id, data.barcode)
+    return InventoryService.preencher_local_destino(client, picking_id, data.barcode)
 
 
 @router.get("/api/inventario/pickings/{picking_id}/location")
@@ -547,3 +547,10 @@ def action_corrigir_peso_produto(picking_data = Body(...),client: OdooClient = D
     Abre e valida o wizard do helpdesk de coreção de peso do produto.
     """
     return InventoryService.action_corrigir_peso_produto(client, picking_data)
+
+@router.post("/api/inventario/pickings/{picking_id}/enviar-conferencia-expedicao")
+def enviar_conferencia_expedicao(picking_data = Body(...),client: OdooClient = Depends(get_odoo_client)):
+    """
+    Chama a ação no servidor que preenche o campo x_studio_local_definido.
+    """
+    return InventoryService.action_local_definido(client, picking_data)

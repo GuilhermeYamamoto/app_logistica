@@ -55,10 +55,16 @@ class InventoryService:
                 "template": "stock_picking/empacotamento.html",
             },
             {
+                "key": "armazenamento-expedicao",
+                "name": "Armazenamento Expedicao",
+                "picking_type_id": 1390, # Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de armazenamento e conferencia da expedicao, que no Odoo são realizadas no mesmo picking_type_id (139)
+                "template": "stock_picking/armazenamento_expedicao.html",
+            },
+            {
                 "key": "conferencia-expedicao",
                 "name": "Conferencia Expedicao",
                 "picking_type_id": 139,
-                "template": "stock_picking/conferencia_expedicao.html",
+                "template": "stock_picking/conferencia_expedicao.html"
             },
             {
                 "key": "faturamento",
@@ -85,13 +91,17 @@ class InventoryService:
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
         try:
             pickings = None
-            if picking_type_id not in [120, 1200]: # As etapas listadas tem particularidades
+            if picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
                 pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                elif picking_type_id == 139: # Conferencia da Expedicao
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                elif picking_type_id == 1390: # Etapa criada apenas para diferenciar a conferencia da expedicao da armazenagem, que no Odoo são realizadas no mesmo picking_type_id (139)
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 139), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", False)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
             # Busca os pickings que estão aguardando para entrar na etapa
             waiting_picking_type_id = (
                 120 if picking_type_id == 1200 else picking_type_id
@@ -966,8 +976,24 @@ class InventoryService:
         de estoque, incluindo locais internos e de trânsito.
         """
 
-        picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
-        centro_distruibuicao = 11 if picking_type_id in [137, 138] else 5963
+        picking_type_records = client.execute(
+            "stock.picking",
+            "search_read",
+            [("id", "=", picking_id)],
+            fields=["picking_type_id"],
+            limit=1,
+        )
+        picking_type = (
+            picking_type_records[0].get("picking_type_id")
+            if picking_type_records
+            else None
+        )
+        picking_type_id = (
+            picking_type[0]
+            if isinstance(picking_type, (list, tuple))
+            else picking_type
+        )
+        centro_distruibuicao = 5963 if picking_type_id in [137, 138] else 11
 
         try:
             locations = client.execute("stock.location","search_read", [
@@ -1005,85 +1031,69 @@ class InventoryService:
 
 
     @staticmethod
-    def set_destination_location(
-        client: OdooClient,
-        picking_id: int,
-        location_id: int,
-    ):
+    def set_destination_location(client: OdooClient, picking_id: int, location_id: int):
         """
-        Define manualmente o local de destino dos movimentos da etapa
-        seguinte ao picking informado.
+        Define manualmente o local de destino conforme a etapa do picking.
+
+        O Recebimento Qualidade (137) grava o local nos movimentos da
+        etapa seguinte (138). A etapa 139 grava o local nos
+        próprios movimentos do picking.
         """
 
         try:
-            # 1. Valida se o local existe.
-            location_records = client.execute(
-                "stock.location",
-                "search_read",
-                [("id", "=", location_id)],
-                fields=["id", "name", "complete_name"],
-                limit=1,
-            )
+            updated_moves = []
+            # Valida se o local escolhido existe no Odoo
+            location_records = client.execute("stock.location", "search_read", [("id", "=", location_id)], fields=["id", "name", "complete_name"], limit=1)
 
             if not location_records:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Local selecionado não foi encontrado.",
-                )
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local selecionado não foi encontrado.")
 
             location = location_records[0]
 
-            # 2. Busca os movimentos do picking atual.
-            moves = client.execute(
-                "stock.move",
-                "search_read",
-                [("picking_id", "=", picking_id)],
-                fields=["id", "move_dest_ids"],
-            )
+            # Verifica qual o tipo de operação do picking
+            picking_type_records = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
+            
+            if not picking_type_records:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Picking não encontrado.")
+            
+            picking_type_id = picking_type_records[0].get("picking_type_id")[0] if picking_type_records[0].get("picking_type_id") else None
 
-            if not moves:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Movimentação não encontrada para este recebimento.",
-                )
+            if picking_type_id == 137:
+                # Se for Recebimento Qualidade (137), atualiza o local nos movimentos da etapa Estoque Transitório (138) - E uma ação automatizada valida automaticamente o estoque transitório.
+                moves = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["id", "move_dest_ids"])
 
-            # 3. Descobre os movimentos da etapa seguinte.
-            destination_move_ids = []
+                if not moves:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
 
-            for move in moves:
-                for destination_id in move.get("move_dest_ids") or []:
-                    destination_move_ids.append(destination_id)
+                destination_move_ids = []
 
-            destination_move_ids = list(
-                dict.fromkeys(destination_move_ids)
-            )
+                for move in moves:
+                    for destination_id in move.get("move_dest_ids") or []:
+                        destination_move_ids.append(destination_id)
 
-            if not destination_move_ids:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=(
-                        "Nenhum movimento de destino encontrado "
-                        "para este recebimento."
-                    ),
-                )
+                destination_move_ids = list(dict.fromkeys(destination_move_ids))
 
-            # 4. Define o local selecionado.
-            client.execute(
-                "stock.move",
-                "write",
-                destination_move_ids,
-                {
-                    "location_dest_id": location_id,
-                },
-            )
+                if not destination_move_ids:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhum movimento de destino encontrado para este recebimento.")
 
-            # 5. Confirma a gravação no Odoo.
-            updated_moves = client.execute(
-                "stock.move",
-                "read",
-                destination_move_ids,
-                fields=["id", "location_dest_id"],
-            )
+                client.execute("stock.move", "write", destination_move_ids, {"location_dest_id": location_id})
+
+                # Verifica se a alteracao foi realizada com sucesso
+                updated_moves = client.execute("stock.move", "read", destination_move_ids, fields=["id", "location_dest_id"])
+
+            elif picking_type_id == 139:
+                # Se for Conferência para Expedição (139), atualiza o local nos próprios movimentos do picking.
+                move_lines = client.execute("stock.move.line", "search_read", [("picking_id", "=", picking_id)], fields=["id"])
+
+                if not move_lines:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
+
+                target_move_ids = list(dict.fromkeys(move_line["id"] for move_line in move_lines))
+
+                client.execute("stock.move.line", "write", target_move_ids, {"location_dest_id": location_id})
+
+                # Verifica se a alteração foi realizada com sucesso
+                updated_moves = client.execute("stock.move.line", "read", target_move_ids, fields=["id", "location_dest_id"])
 
             local = None
 
@@ -1092,10 +1102,7 @@ class InventoryService:
 
                 if location_dest:
                     if isinstance(location_dest, (list, tuple)):
-                        local = (
-                            location_dest[1]
-                            if len(location_dest) > 1
-                            else str(location_dest[0])
+                        local = (location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
                         )
                     else:
                         local = str(location_dest)
@@ -1106,6 +1113,7 @@ class InventoryService:
                 "success": True,
                 "picking_id": picking_id,
                 "location_id": location_id,
+                "picking_type_id": picking_type_id,
                 "local": local,
             }
 
@@ -1113,15 +1121,13 @@ class InventoryService:
             raise
 
         except (KeyError, OSError, xmlrpc.client.Error) as error:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Não foi possível definir o local do recebimento.",
-            ) from error
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível definir o local do recebimento.") from error
 
 
     @staticmethod
-    def preencher_destino_estq_transitorio(client, picking_id, barcode):
+    def preencher_local_destino(client, picking_id, barcode):
         """
+        Se for Recebimento Qualidade (137):
         Define o local da movimentação da etapa 138 a partir do código
         lido na etapa 137.
         Fluxo:
@@ -1130,44 +1136,81 @@ class InventoryService:
             -> move_dest_ids
                 -> stock.move da etapa 138
                     -> location_dest_id
+        Se for Conferencia para Expedição (139):
+        Define o local de destino da propria etapa de conferência (139) a partir do código lido na etapa 139.
         """
-        # 1. Localiza o endereço/local através do código de barras
-        location_records = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id", "name"], limit=1)
-        if not location_records:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local não encontrado para o código informado.")
-        location = location_records[0]
-        # 2. Busca os movimentos da etapa 137
-        moves = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["id", "move_dest_ids"])
-        if not moves:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
-        # 3. Descobre os movimentos da etapa 138 através de move_dest_ids
-        destination_move_ids = []
-        for move in moves:
-            for destination_id in move.get("move_dest_ids") or []:
-                destination_move_ids.append(destination_id)
-        destination_move_ids = list(dict.fromkeys(destination_move_ids))
-        if not destination_move_ids:
-            raise ValueError(f"Nenhum movimento de destino encontrado para o picking {picking_id}.")
+        try:
+            updated_move_ids = []
 
-        # 4. Grava o local no movimento da etapa 138
-        client.execute("stock.move", "write", destination_move_ids, {"location_dest_id": location["id"]})
-        # 5. Lê novamente o Odoo para confirmar o valor gravado
-        updated_moves = client.execute("stock.move", "read", destination_move_ids, fields=["id", "location_dest_id"])
-        local = None
-        for move in updated_moves:
-            location_dest = move.get("location_dest_id")
-            if location_dest:
-                if isinstance(location_dest, list):
-                    local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
-                else:
-                    local = str(location_dest)
-                break
-        return {
-            "success": True,
-            "picking_id": picking_id,
-            "barcode": barcode,
-            "local": local,
-        }
+            location_records = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id", "name", "name"], limit=1)
+            if not location_records:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local selecionado não foi encontrado.")
+
+            location_id = location_records[0].get("id")
+
+            picking_type_records = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
+
+            if not picking_type_records:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Picking não encontrado.")
+
+            picking_type_id = picking_type_records[0].get("picking_type_id")[0] if picking_type_records[0].get("picking_type_id") else None
+
+            if picking_type_id == 137:
+                moves = client.execute("stock.move", "search_read", [("picking_id", "=", picking_id)], fields=["id", "move_dest_ids"])
+
+                if not moves:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
+
+                destination_move_ids = []
+
+                for move in moves:
+                    for destination_id in move.get("move_dest_ids") or []:
+                        destination_move_ids.append(destination_id)
+
+                destination_move_ids = list(dict.fromkeys(destination_move_ids))
+
+                if not destination_move_ids:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhum movimento de destino encontrado para este recebimento.")
+
+                client.execute("stock.move", "write", destination_move_ids, {"location_dest_id": location_id})
+
+                updated_move_ids = destination_move_ids
+
+            elif picking_type_id == 139:
+                move_lines = client.execute("stock.move.line", "search_read", [("picking_id", "=", picking_id)], fields=["id"])
+
+                if not move_lines:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
+
+                target_move_ids = list(dict.fromkeys(move_line["id"] for move_line in move_lines))
+
+                client.execute("stock.move.line", "write", target_move_ids, {"location_dest_id": location_id})
+
+                updated_move_ids = target_move_ids
+
+            updated_moves = client.execute("stock.move.line", "read", updated_move_ids, fields=["id", "location_dest_id"])
+            local = None
+            for move in updated_moves:
+                location_dest = move.get("location_dest_id")
+                if location_dest:
+                    if isinstance(location_dest, list):
+                        local = location_dest[1] if len(location_dest) > 1 else str(location_dest[0])
+                    else:
+                        local = str(location_dest)
+                    break
+
+            return {
+                "success": True,
+                "picking_id": picking_id,
+                "barcode": barcode,
+                "local": local,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível preencher o local de destino do recebimento.") from error
 
     ####################################
     #  CHAT DO RECEBIMENTO
@@ -1362,3 +1405,16 @@ class InventoryService:
                 }])
         except Exception as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
+
+    def action_local_definido(client, data):
+        try:
+            picking_id = data.get("picking_id")
+            # Forma de executar uma ação no servidor do Odoo via XML-RPC:
+            result = client.execute("ir.actions.server", "run", [1870], context = {
+                                                                    "active_model": "stock.picking",
+                                                                    "active_ids": [picking_id],
+                                                                    "active_id": picking_id})
+            return result
+        except Exception as error:
+            print(error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error

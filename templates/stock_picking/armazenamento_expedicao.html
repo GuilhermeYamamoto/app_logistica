@@ -1,0 +1,66 @@
+{% extends "stock_picking/base.html" %}
+
+{% block title %}Conferência Expedição{% endblock %}
+
+{% block inventory_head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/stock_picking/armazenamento_expedicao.css') }}?v={{ static_asset_version('css/stock_picking/armazenamento_expedicao.css') }}">
+{% endblock %}
+
+{% block inventory_modals %}
+    <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal barcode-scanner-modal">
+            <div id="barcodeScannerView">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-kicker">LEITURA PELA CÂMERA</span>
+                        <h2>LER CODIGO DE BARRAS</h2>
+                        <p>Posicione o código do local dentro da area de leitura.</p>
+                    </div>
+                    <button class="close-modal" type="button" data-close="barcodeScannerModal">x</button>
+                </div>
+                <div class="barcode-camera-container">
+                    <video id="barcodeScannerVideo" autoplay muted playsinline></video>
+                    <div class="barcode-scanner-guide" aria-hidden="true"></div>
+                </div>
+                <p id="barcodeScannerStatus" class="barcode-scanner-status" role="status"></p>
+                <div class="barcode-manual-option">
+                    <span>Problemas com a camera? </span>
+                        <button id="chooseLocationButton" class="barcode-choose-location-button" type="button">ESCOLHER LOCAL</button>
+                </div>
+                <div class="modal-footer">
+                    <button class="secondary-button" type="button" data-close="barcodeScannerModal">Cancelar</button>
+                </div>
+            </div>
+            <div id="locationSelectionView" class="hidden">
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-kicker">SELEÇÃO MANUAL</span>
+                        <h2>ESCOLHER LOCAL</h2>
+                        <p>Selecione o local de destino do material.</p>
+                    </div>
+                    <button class="close-modal" type="button" data-close="barcodeScannerModal">x</button>
+                </div>
+                <div class="location-search-container">
+                    <input id="locationSearchInput" class="location-search-input" type="search" placeholder="Pesquisar local..." autocomplete="off">
+                </div>
+                <div id="locationList" class="location-list"></div>
+                <p id="locationSelectionStatus" class="location-selection-status" role="status"></p>
+                <div class="modal-footer">
+                    <button id="backToBarcodeButton" class="secondary-button" type="button">VOLTAR</button>
+                    <button id="confirmLocationButton" class="primary-button" type="button" disabled>CONFIRMAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block inventory_scripts %}
+    <script src="{{ url_for('static', path='js/zxing-browser.min.js') }}?v={{ static_asset_version('js/zxing-browser.min.js') }}"></script>
+    <script src="{{ url_for('static', path='js/stock_picking/armazenamento_expedicao.js') }}?v={{ static_asset_version('js/stock_picking/armazenamento_expedicao.js') }}"></script>
+{% endblock %}
+
+{% block inventory_base_script %}
+    {{ super() }}
+{% endblock %}
