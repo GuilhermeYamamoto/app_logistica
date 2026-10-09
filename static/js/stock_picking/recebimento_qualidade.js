@@ -523,29 +523,29 @@
         }   
 
         try {
-            const response = await fetch(
-                `/api/inventario/pickings/${barcodeScannerPickingId}/location`,
-                {
-                    headers: {
-                        Accept: "application/json",
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${barcodeScannerPickingId}/location`,
+                    {
+                        headers: {
+                            Accept: "application/json",
+                        },
+                        cache: "no-store",
                     },
-                    cache: "no-store",
-                },
-            );
-
-            const data = await response.json().catch(() => null);
-
-            if (!response.ok || !Array.isArray(data)) {
-                throw new Error(
-                    data?.detail ||
-                    "Não foi possível carregar os locais.",
                 );
-            }
 
-            inventoryLocations = data;
+                const data = await response.json().catch(() => null);
 
-            renderLocationList(inventoryLocations);
+                if (!response.ok || !Array.isArray(data)) {
+                    throw new Error(
+                        data?.detail ||
+                        "Não foi possível carregar os locais.",
+                    );
+                }
 
+                inventoryLocations = data;
+                renderLocationList(inventoryLocations);
+            });
         } catch (error) {
             console.error("Erro ao carregar locais:", error);
 
@@ -666,7 +666,7 @@
         );
     }
 
-    async function confirmLocationSelection() {
+    async function saveLocationSelection() {
         const pickingId = barcodeScannerPickingId;
         const confirmButton = document.getElementById(
             "confirmLocationButton",
@@ -770,6 +770,28 @@
                     originalText;
             }
         }
+
+        async function confirmLocationSelection() {
+            const pickingId = barcodeScannerPickingId;
+            const location = inventoryLocations.find(
+                (item) =>
+                    Number(item.id) === Number(selectedLocationId),
+            );
+
+            if (!pickingId || !location || inventory.isActionInProgress()) {
+                return;
+            }
+
+            const confirmed = await window.AppUI.confirmAction({
+                kicker: "DEFINIÇÃO DE LOCAL",
+                title: "CONFIRMAR LOCAL",
+                text: `Deseja definir o local "${location.name}" para este picking?`,
+                confirmLabel: "CONFIRMAR LOCAL",
+            });
+            if (confirmed) {
+                await saveLocationSelection();
+            }
+        }
     }
 
     function resetLocationSelection() {
@@ -864,38 +886,38 @@
         barcodeScannerActive = false;
         status.textContent = "Enviando código lido...";
         try {
-            const response = await fetch(
-                `/api/inventario/pickings/${pickingId}/barcode`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ barcode }),
-                },
-            );
-
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-                throw new Error(
-                    data.detail || "Não foi possível enviar o código lido."
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${pickingId}/barcode`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ barcode }),
+                    },
                 );
-            }
 
-            const picking = inventory.getRecord(pickingId);
+                const data = await response.json().catch(() => ({}));
 
-            if (picking) {
-                picking.local = data.local || null;
-                picking.barcodeRegistered = Boolean(data.local);
-            }
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || "Não foi possível enviar o código lido.",
+                    );
+                }
 
-            window.AppUI.closeModal("barcodeScannerModal");
+                const picking = inventory.getRecord(pickingId);
 
-            inventory.render();
+                if (picking) {
+                    picking.local = data.local || null;
+                    picking.barcodeRegistered = Boolean(data.local);
+                }
 
-            inventory.showToast(
-                `LOCAL DEFINIDO: ${data.local || "Não definido"}`
-            );
+                window.AppUI.closeModal("barcodeScannerModal");
+                inventory.render();
 
+                inventory.showToast(
+                    `LOCAL DEFINIDO: ${data.local || "Não definido"}`
+                );
+            });
         } catch (error) {
             console.error("Erro ao enviar código de barras:", error);
 

@@ -12,10 +12,23 @@
 
     let pvGroups = [];
     let activePVCard = null;
-    let isCheckboxDragSelecting = false;
-    let checkboxDragPointerId = null;
     let activePackageModal = null;
     let selectedPackage = null;
+    let activeFinishModal = null;
+
+    function sanitizeToastError(error, fallback) {
+        const rawMessage = error?.message || "";
+        const cleaned = String(rawMessage)
+            .trim()
+            .replace(/^Error:\s*/i, "")
+            .replace(/\s+/g, " ");
+
+        if (!cleaned) {
+            return fallback;
+        }
+
+        return cleaned.length > 80 ? fallback : cleaned;
+    }
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -93,40 +106,198 @@
         }, 0);
     }
 
-    function setupCheckboxDragSelection(pickingsList) {
-        let startPicking = null;
-        let startCheckbox = null;
+    async function getAvailablePackages() {
+        const response = await fetch("/api/inventario/embalagens");
 
-        let hasDragged = false;
-        let suppressNextClick = false;
+        if (!response.ok) {
+            throw new Error("Não foi possível carregar as embalagens disponíveis.");
+        }
 
-        let dragTargetState = null;
+        return await response.json();
+    }
 
-        let startX = 0;
-        let startY = 0;
+    async function gerarPacote(data) {
+        const response = await fetch(
+            "/api/inventario/gerar-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
 
-        let holdTimer = null;
-        let holdActivated = false;
+        if (!response.ok) {
+            let detail =
+                "Não foi possível gerar o pacote.";
 
-        const DRAG_THRESHOLD = 8;
-        const HOLD_DURATION = 500;
+            try {
+                const errorData =
+                    await response.json();
 
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function finalizarPickings(data) {
+        const response = await fetch(
+            "/api/inventario/finalizar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível finalizar.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function refreshRecords({ replaceRecords }) {
+        const stageKey =
+            document.body.dataset.stageKey;
+
+        const response = await fetch(
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}`,
+            {
+                headers: {
+                    Accept: "application/json",
+                },
+                cache: "no-store",
+            }
+        );
+
+        const data =
+            await response.json().catch(
+                () => null
+            );
+
+        if (
+            !response.ok ||
+            !Array.isArray(data?.records)
+        ) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível atualizar os registros."
+            );
+        }
+
+        replaceRecords(data.records);
+    }
+
+    async function marcarMoveLinesParaPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/marcar-para-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível marcar as linhas para pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function tirarMoveLinesDoPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/tirar-do-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível remover as linhas do pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    function setupCheckboxChange(pickingsList) {
         pickingsList.addEventListener(
-            "pointerdown",
-            (event) => {
-                const pickingItem =
-                    event.target.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                window.AppUI?.setGestureCaptured(true);
-
+            "change",
+            async (event) => {
                 const checkbox =
-                    pickingItem.querySelector(
+                    event.target.closest(
                         ".emp-picking-checkbox"
                     );
 
@@ -134,115 +305,8 @@
                     return;
                 }
 
-                if (checkbox.disabled) {
-                    return;
-                }
-
-                startPicking = pickingItem;
-                startCheckbox = checkbox;
-
-                hasDragged = false;
-                holdActivated = false;
-
-                startX = event.clientX;
-                startY = event.clientY;
-
-                // O estado que será aplicado
-                // durante a seleção múltipla.
-                dragTargetState = !checkbox.checked;
-
-                /*
-                * Não inicia o modo de seleção múltipla
-                * imediatamente.
-                *
-                * O usuário precisa manter o dedo/mouse
-                * pressionado por 1 segundo.
-                */
-                holdTimer = setTimeout(
-                    () => {
-                        if (
-                            !startPicking ||
-                            !startCheckbox
-                        ) {
-                            return;
-                        }
-
-                        holdActivated = true;
-
-                        isCheckboxDragSelecting = true;
-                        checkboxDragPointerId =
-                            event.pointerId;
-
-                        window.AppUI?.setGestureCaptured(true);
-
-                        // Vibração ao ativar a seleção múltipla.
-                        if ("vibrate" in navigator) {
-                            navigator.vibrate(50);
-                        }
-
-                        startCheckbox.checked =
-                            dragTargetState;
-
-                        try {
-                            startPicking.setPointerCapture(
-                                event.pointerId
-                            );
-                        } catch (error) {
-                            // Alguns dispositivos podem não
-                            // permitir pointer capture.
-                        }
-                    },
-                    HOLD_DURATION
-                );
-            }
-        );
-
-        pickingsList.addEventListener(
-            "pointermove",
-            (event) => {
-                /*
-                * Antes de completar 1 segundo,
-                * NÃO fazemos seleção múltipla.
-                *
-                * Isso permite que o movimento natural
-                * do dedo continue sendo interpretado
-                * como rolagem da lista.
-                */
-                if (
-                    !holdActivated ||
-                    !isCheckboxDragSelecting ||
-                    event.pointerId !== checkboxDragPointerId ||
-                    !startPicking
-                ) {
-                    return;
-                }
-
-                const distanceX =
-                    Math.abs(event.clientX - startX);
-
-                const distanceY =
-                    Math.abs(event.clientY - startY);
-
-                if (
-                    !hasDragged &&
-                    Math.max(distanceX, distanceY) >=
-                        DRAG_THRESHOLD
-                ) {
-                    hasDragged = true;
-                }
-
-                if (!hasDragged) {
-                    return;
-                }
-
-                const element =
-                    document.elementFromPoint(
-                        event.clientX,
-                        event.clientY
-                    );
-
                 const pickingItem =
-                    element?.closest(
+                    checkbox.closest(
                         ".emp-picking-item"
                     );
 
@@ -250,181 +314,99 @@
                     return;
                 }
 
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
+                let moveLineIds = [];
+
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]"
+                    );
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do picking:",
+                        error
                     );
 
-                if (!checkbox || checkbox.disabled) {
-                    return;
-                }
+                    checkbox.checked =
+                        !checkbox.checked;
 
-                checkbox.checked =
-                    dragTargetState;
-            }
-        );
-
-        pickingsList.addEventListener(
-            "click",
-            (event) => {
-                if (suppressNextClick) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    suppressNextClick = false;
-
-                    return;
-                }
-
-                const pickingItem =
-                    event.target.closest(
-                        ".emp-picking-item"
+                    inventory.showToast(
+                        "Não foi possível identificar as linhas do picking.",
+                        "!"
                     );
 
-                if (!pickingItem) {
                     return;
                 }
 
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
+                moveLineIds = moveLineIds
+                    .map((id) => Number(id))
+                    .filter(
+                        (id) =>
+                            Number.isInteger(id) &&
+                            id > 0
                     );
 
-                if (!checkbox) {
+                if (!moveLineIds.length) {
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    inventory.showToast(
+                        "O picking selecionado não possui move lines.",
+                        "!"
+                    );
+
                     return;
                 }
 
-                if (checkbox.disabled) {
-                    return;
+                try {
+                    if (checkbox.checked) {
+                        await marcarMoveLinesParaPacote(
+                            moveLineIds
+                        );
+
+                        inventory.showToast(
+                            "Picking adicionado ao pacote!"
+                        );
+
+                        console.log(
+                            "Move lines marcadas para pacote:",
+                            moveLineIds
+                        );
+                    } else {
+                        await tirarMoveLinesDoPacote(
+                            moveLineIds
+                        );
+
+                        inventory.showToast(
+                            "Picking removido do pacote!"
+                        );
+
+                        console.log(
+                            "Move lines removidas do pacote:",
+                            moveLineIds
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Erro ao atualizar pacote das move lines:",
+                        error
+                    );
+
+                    // Volta a checkbox para o estado anterior
+                    // se o backend retornar erro.
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível atualizar o pacote."
+                        ),
+                        "!"
+                    );
                 }
-
-                /*
-                * Se o clique foi diretamente na checkbox,
-                * mantemos o comportamento nativo do input.
-                */
-                if (
-                    event.target.closest(
-                        ".emp-picking-checkbox"
-                    )
-                ) {
-                    return;
-                }
-
-                /*
-                * Clique normal na caixa:
-                * seleciona/desseleciona o picking.
-                */
-                checkbox.checked =
-                    !checkbox.checked;
-            },
-            true
-        );
-
-        const finishDragSelection = (event) => {
-            /*
-            * Cancela o timer caso o usuário solte
-            * antes de completar 1 segundo.
-            */
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
             }
-
-            /*
-            * Se a seleção múltipla ainda não foi ativada,
-            * não fazemos nada relacionado ao drag.
-            */
-            if (
-                !holdActivated ||
-                !isCheckboxDragSelecting ||
-                event.pointerId !== checkboxDragPointerId
-            ) {
-                window.AppUI?.setGestureCaptured(false);
-
-                startPicking = null;
-                startCheckbox = null;
-
-                hasDragged = false;
-                holdActivated = false;
-                dragTargetState = null;
-
-                startX = 0;
-                startY = 0;
-
-                isCheckboxDragSelecting = false;
-                checkboxDragPointerId = null;
-
-                return;
-            }
-
-            /*
-            * Se houve arraste, impedimos o click seguinte
-            * de alterar novamente o estado inicial.
-            */
-            if (hasDragged) {
-                suppressNextClick = true;
-            }
-
-            window.AppUI?.setGestureCaptured(false);
-
-            isCheckboxDragSelecting = false;
-            checkboxDragPointerId = null;
-
-            startPicking = null;
-            startCheckbox = null;
-
-            hasDragged = false;
-            holdActivated = false;
-            dragTargetState = null;
-
-            startX = 0;
-            startY = 0;
-        };
-
-        pickingsList.addEventListener(
-            "pointerup",
-            finishDragSelection
-        );
-
-        pickingsList.addEventListener(
-            "pointercancel",
-            finishDragSelection
         );
     }
-
-    function getAvailablePackages() {
-        /*
-        * Dados temporários para a interface.
-        *
-        * Futuramente esta função deverá consultar o backend
-        * para retornar as embalagens realmente disponíveis.
-        *
-        * Exemplo futuro:
-        *
-        * return fetch("/api/inventario/embalagens")
-        *     .then(response => response.json());
-        */
-
-        return [
-            {
-                id: 1,
-                name: "Caixa Pequena",
-            },
-            {
-                id: 2,
-                name: "Caixa Média",
-            },
-            {
-                id: 3,
-                name: "Caixa Grande",
-            },
-            {
-                id: 4,
-                name: "Embalagem Especial",
-            },
-        ];
-    }
-
 
     function closePackageModal() {
         if (!activePackageModal) {
@@ -487,7 +469,370 @@
         );
     }
 
-    function openPackageModal(pvGroup, selectedPickings) {
+    function closeFinishModal() {
+        if (!activeFinishModal) {
+            return;
+        }
+
+        activeFinishModal.remove();
+
+        activeFinishModal = null;
+
+        document.body.classList.remove(
+            "emp-modal-open"
+        );
+    }
+
+
+    function openFinishModal(selectedPickings) {
+        closeFinishModal();
+
+        // =========================================
+        // OVERLAY
+        // =========================================
+
+        const modalOverlay =
+            document.createElement("div");
+
+        modalOverlay.className =
+            "modal-overlay";
+
+
+        // =========================================
+        // MODAL
+        // =========================================
+
+        const modal =
+            document.createElement("div");
+
+        modal.className =
+            "modal action-modal";
+
+
+        // =========================================
+        // CABEÇALHO
+        // =========================================
+
+        const modalHeader =
+            document.createElement("div");
+
+        modalHeader.className =
+            "modal-header";
+
+
+        const headerContent =
+            document.createElement("div");
+
+
+        const kicker =
+            document.createElement("span");
+
+        kicker.className =
+            "modal-kicker";
+
+        kicker.textContent =
+            "FINALIZAÇÃO";
+
+
+        const title =
+            document.createElement("h2");
+
+        title.textContent =
+            "Finalizar";
+
+
+        headerContent.append(
+            kicker,
+            title
+        );
+
+
+        const closeButton =
+            document.createElement("button");
+
+        closeButton.type = "button";
+
+        closeButton.className =
+            "close-modal";
+
+        closeButton.setAttribute(
+            "aria-label",
+            "Fechar"
+        );
+
+        closeButton.textContent =
+            "×";
+
+        closeButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        modalHeader.append(
+            headerContent,
+            closeButton
+        );
+
+
+        // =========================================
+        // ÍCONE
+        // =========================================
+
+        const actionIcon =
+            document.createElement("div");
+
+        actionIcon.className =
+            "action-icon validation-icon";
+
+        actionIcon.textContent =
+            "✓";
+
+
+        // =========================================
+        // MENSAGEM
+        // =========================================
+
+        const message =
+            document.createElement("p");
+
+        message.textContent =
+            "Você tem certeza que deseja finalizar?";
+
+
+        // =========================================
+        // BOTÕES
+        // =========================================
+
+        const modalFooter =
+            document.createElement("div");
+
+        modalFooter.className =
+            "modal-footer";
+
+
+        const cancelButton =
+            document.createElement("button");
+
+        cancelButton.type = "button";
+
+        cancelButton.className =
+            "secondary-button";
+
+        cancelButton.textContent =
+            "CANCELAR";
+
+        cancelButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        const confirmButton =
+            document.createElement("button");
+
+        confirmButton.type = "button";
+
+        confirmButton.className =
+            "primary-button";
+
+        confirmButton.textContent =
+            "CONFIRMAR";
+
+
+        // Por enquanto, sem funcionalidade.
+        confirmButton.addEventListener(
+            "click",
+            async (event) => {
+                event.stopPropagation();
+
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                const finishPayload = {
+                    picking_ids:
+                        pickingIds,
+
+                    move_line_ids:
+                        moveLineIds,
+                };
+
+                console.log(
+                    "Payload enviado para finalizar:",
+                    finishPayload
+                );
+
+                confirmButton.disabled =
+                    true;
+
+                confirmButton.textContent =
+                    "FINALIZANDO...";
+
+                try {
+                    const result =
+                        await finalizarPickings(
+                            finishPayload
+                        );
+
+                    console.log(
+                        "Finalização concluída:",
+                        result
+                    );
+
+                    const finalizedPickingIds =
+                        new Set(
+                            pickingIds.map(
+                                (id) => Number(id)
+                            )
+                        );
+
+                    const currentRecords =
+                        inventory.getRecords
+                            ? inventory.getRecords()
+                            : [];
+
+                    const remainingRecords =
+                        currentRecords.filter(
+                            (record) =>
+                                !finalizedPickingIds.has(
+                                    Number(record.id)
+                                )
+                        );
+
+                    closeFinishModal();
+
+                    inventory.replaceRecords(
+                        remainingRecords
+                    );
+
+                    inventory.showToast(
+                        "Finalização concluída com sucesso!"
+                    );
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao finalizar:",
+                        error
+                    );
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível finalizar."
+                        ),
+                        "!"
+                    );
+
+                    confirmButton.disabled =
+                        false;
+
+                    confirmButton.textContent =
+                        "CONFIRMAR";
+                }
+            }
+        );
+
+
+        modalFooter.append(
+            cancelButton,
+            confirmButton
+        );
+
+
+        // =========================================
+        // MONTAGEM
+        // =========================================
+
+        modal.append(
+            modalHeader,
+            actionIcon,
+            message,
+            modalFooter
+        );
+
+
+        modalOverlay.appendChild(
+            modal
+        );
+
+
+        // =========================================
+        // FECHAR CLICANDO FORA
+        // =========================================
+
+        modalOverlay.addEventListener(
+            "click",
+            (event) => {
+                if (
+                    event.target ===
+                    modalOverlay
+                ) {
+                    closeFinishModal();
+                }
+            }
+        );
+
+
+        // =========================================
+        // ABRIR
+        // =========================================
+
+        document.body.appendChild(
+            modalOverlay
+        );
+
+        activeFinishModal =
+            modalOverlay;
+
+        document.body.classList.add(
+            "emp-modal-open"
+        );
+    }
+
+    async function openPackageModal(pvGroup, selectedPickings) {
         closePackageModal();
 
         selectedPackage = null;
@@ -616,57 +961,93 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        const availablePackages =
-            getAvailablePackages();
-
-        for (const packageData of availablePackages) {
-            const option =
-                document.createElement("button");
-
-            option.type = "button";
-
-            option.className =
-                "emp-package-option";
-
-            option.dataset.packageId =
-                String(packageData.id);
-
-            option.textContent =
-                packageData.name;
-
-            option.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-
-                    selectedPackage =
-                        packageData;
-
-                    packageSelectorText.textContent =
-                        packageData.name;
-
-                    packageSelector.classList.add(
-                        "has-selection"
-                    );
-
-                    packageOptions.classList.add(
-                        "hidden"
-                    );
-
-                    finishPackageButton.disabled =
-                        false;
-                }
-            );
-
-            packageOptions.appendChild(option);
-        }
-
-        const togglePackageOptions =
-            () => {
-                packageOptions.classList.toggle(
+        async function togglePackageOptions() {
+            if (
+                !packageOptions.classList.contains(
+                    "hidden"
+                )
+            ) {
+                packageOptions.classList.add(
                     "hidden"
                 );
-            };
+
+                return;
+            }
+
+            packageOptions.replaceChildren();
+
+            packageSelectorText.textContent =
+                "Carregando embalagens...";
+
+            try {
+                const availablePackages =
+                    await getAvailablePackages();
+
+                for (const packageData of availablePackages) {
+                    const option =
+                        document.createElement("button");
+
+                    option.type = "button";
+
+                    option.className =
+                        "emp-package-option";
+
+                    option.dataset.packageId =
+                        String(packageData.id);
+
+                    option.textContent =
+                        packageData.name;
+
+                    option.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            selectedPackage =
+                                packageData;
+
+                            packageSelectorText.textContent =
+                                packageData.name;
+
+                            packageSelector.classList.add(
+                                "has-selection"
+                            );
+
+                            packageOptions.classList.add(
+                                "hidden"
+                            );
+
+                            finishPackageButton.disabled =
+                                false;
+
+                            inventory.showToast(
+                                "Embalagem selecionada!"
+                            );
+                        }
+                    );
+
+                    packageOptions.appendChild(
+                        option
+                    );
+                }
+
+                packageSelectorText.textContent =
+                    selectedPackage?.name ||
+                    "Selecione a embalagem";
+
+                packageOptions.classList.remove(
+                    "hidden"
+                );
+            } catch (error) {
+                console.error(
+                    "Erro ao carregar embalagens:",
+                    error
+                );
+
+                packageSelectorText.textContent =
+                    "Erro ao carregar embalagens";
+            }
+        }
 
         packageSelector.addEventListener(
             "click",
@@ -729,58 +1110,135 @@
 
         finishPackageButton.addEventListener(
             "click",
-            (event) => {
+            async (event) => {
                 event.stopPropagation();
 
                 if (!selectedPackage) {
                     return;
                 }
 
-                /*
-                * Estrutura preparada para o backend.
-                *
-                * Futuramente este objeto será enviado
-                * para o endpoint responsável pela geração
-                * do pacote.
-                */
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
+                    );
+
+                    return;
+                }
+
                 const packagePayload = {
-                    pedido_venda_id:
-                        pvGroup.pedido_venda_id,
-
-                    pedido_venda_name:
-                        pvGroup.pedido_venda_name,
-
                     picking_ids:
-                        selectedPickings.map(
-                            (picking) => picking.id
-                        ),
+                        pickingIds,
 
-                    embalagem_id:
-                        selectedPackage.id,
+                    move_line_ids:
+                        moveLineIds,
+
+                    package_type_id:
+                        Number(selectedPackage.id),
                 };
 
                 console.log(
-                    "Payload preparado para gerar pacote:",
+                    "Payload enviado para gerar pacote:",
                     packagePayload
                 );
 
-                /*
-                * Marca visualmente os pickings selecionados
-                * como empacotados.
-                */
-                const activePVPickings =
-                    activePVCard?.querySelector(
-                        ".pv-pickings"
+                finishPackageButton.disabled =
+                    true;
+
+                finishPackageButton.textContent =
+                    "GERANDO...";
+
+                try {
+                    const result =
+                        await gerarPacote(
+                            packagePayload
+                        );
+
+                    console.log(
+                        "Pacote gerado com sucesso:",
+                        result
                     );
 
-                if (activePVPickings) {
-                    markPickingsAsPacked(
-                        activePVPickings,
-                        selectedPickings
+                    inventory.showToast(
+                        "Pacote gerado com sucesso!"
                     );
+
+                    /*
+                    * Marca visualmente os pickings selecionados
+                    * como empacotados somente depois que o Odoo
+                    * confirmar a operação.
+                    */
+                    const activePVPickings =
+                        activePVCard?.querySelector(
+                            ".pv-pickings"
+                        );
+
+                    if (activePVPickings) {
+                        markPickingsAsPacked(
+                            activePVPickings,
+                            selectedPickings
+                        );
+                    }
+
+                    closePackageModal();
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao gerar pacote:",
+                        error
+                    );
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível gerar pacote."
+                        ),
+                        "!"
+                    );
+
+                    finishPackageButton.disabled =
+                        false;
+
+                    finishPackageButton.textContent =
+                        "FINALIZAR";
                 }
-
-                closePackageModal();
             }
         );
 
@@ -897,6 +1355,25 @@
             const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+            let expandedCompletedButton = null;
+            let expandedGeneratePackageButton = null;
+
+            function restoreDefaultPVActions() {
+                if (expandedCompletedButton) {
+                    expandedCompletedButton.remove();
+                    expandedCompletedButton = null;
+                }
+
+                if (expandedGeneratePackageButton) {
+                    expandedGeneratePackageButton.remove();
+                    expandedGeneratePackageButton = null;
+                }
+
+                pvActions.replaceChildren(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             // =========================
             // PV AINDA NÃO EMPACOTADO
@@ -925,63 +1402,74 @@
                 (event) => {
                     event.stopPropagation();
 
-                    // Expande o PV.
+                    if (activePVCard && activePVCard !== pvCard) {
+                        return;
+                    }
+
                     expandPV();
 
-                    // Remove EMPACOTAR e FINALIZAR.
-                    pvActions.replaceChildren();
+                    if (expandedGeneratePackageButton) {
+                        expandedGeneratePackageButton.remove();
+                    }
+
+                    if (expandedCompletedButton) {
+                        expandedCompletedButton.remove();
+                    }
 
                     // =========================
                     // BOTÃO CONCLUÍDO
                     // =========================
 
-                    const completedButton =
+                    expandedCompletedButton =
                         document.createElement("button");
 
-                    completedButton.type = "button";
+                    expandedCompletedButton.type = "button";
 
-                    completedButton.className =
+                    expandedCompletedButton.className =
                         "pv-completed-button";
 
-                    completedButton.innerHTML = `
+                    expandedCompletedButton.innerHTML = `
                         <span class="pv-completed-icon">✓</span>
                         <span>CONCLUÍDO</span>
                     `;
 
-                    completedButton.setAttribute(
+                    expandedCompletedButton.setAttribute(
                         "aria-label",
                         "Concluir PV"
                     );
 
-                    // Por enquanto, sem funcionalidade.
-                    completedButton.addEventListener(
+                    expandedCompletedButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
+
+                            openFinishModal(
+                                group.pickings
+                            );
                         }
                     );
 
-                    pvCard.appendChild(completedButton);
+                    pvCard.appendChild(expandedCompletedButton);
 
                     // Cria o botão GERAR PACOTE.
-                    const generatePackageButton =
+                    expandedGeneratePackageButton =
                         document.createElement("button");
 
-                    generatePackageButton.type = "button";
-                    generatePackageButton.className =
+                    expandedGeneratePackageButton.type = "button";
+                    expandedGeneratePackageButton.className =
                         "pv-action-button pv-generate-package-button";
 
-                    generatePackageButton.setAttribute(
+                    expandedGeneratePackageButton.setAttribute(
                         "aria-label",
                         "Gerar pacote"
                     );
 
-                    generatePackageButton.innerHTML = `
+                    expandedGeneratePackageButton.innerHTML = `
                         <span class="pv-action-icon">📦</span>
                         <span>GERAR PACOTE</span>
                     `;
 
-                    generatePackageButton.addEventListener(
+                    expandedGeneratePackageButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
@@ -1010,8 +1498,8 @@
                         }
                     );
 
-                    pvActions.appendChild(
-                        generatePackageButton
+                    pvActions.replaceChildren(
+                        expandedGeneratePackageButton
                     );
                 }
             );
@@ -1038,6 +1526,10 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    openFinishModal(
+                        group.pickings
+                    );
                 }
             );
 
@@ -1078,12 +1570,26 @@
                 pickingItem.dataset.pickingId =
                     String(picking.id);
 
+                pickingItem.dataset.moveLineIds =
+                    JSON.stringify(
+                        (picking.move_lines || [])
+                            .map((moveLine) => moveLine.id)
+                            .filter(Boolean)
+                    );
+
                 const checkbox =
                     document.createElement("input");
 
                 checkbox.type = "checkbox";
                 checkbox.className =
                     "emp-picking-checkbox";
+
+                checkbox.checked =
+                    (picking.move_lines || []).length > 0 &&
+                    (picking.move_lines || []).every(
+                        (moveLine) =>
+                            moveLine.gerar_pacote === true
+                    );
 
                 checkbox.setAttribute(
                     "aria-label",
@@ -1156,7 +1662,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    picking.move_lines?.[0]?.peso ?? "0";
+                    (picking.move_lines?.[0]?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,
@@ -1252,10 +1758,33 @@
                 pickingsList.appendChild(
                     pickingItem
                 );
+
+                pickingItem.addEventListener(
+                    "click",
+                    (event) => {
+                        if (event.target === checkbox) {
+                            return;
+                        }
+
+                        if (checkbox.disabled) {
+                            return;
+                        }
+
+                        checkbox.checked =
+                            !checkbox.checked;
+
+                        checkbox.dispatchEvent(
+                            new Event("change", {
+                                bubbles: true,
+                            })
+                        );
+                    }
+                );
             }
 
             pvCard.appendChild(pickingsList);
-            setupCheckboxDragSelection(pickingsList);
+
+            setupCheckboxChange(pickingsList);
 
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
@@ -1266,17 +1795,21 @@
             // EXPANDIR / RECOLHER PV
             // =========================
 
+            function collapsePV() {
+                activePVCard = null;
+                pickingsList.classList.add("hidden");
+                pvCard.classList.remove("pv-focus-open");
+                restoreDefaultPVActions();
+            }
+
             function expandPV() {
                 const isOpen =
                     !pickingsList.classList.contains("hidden");
 
-                // Se já estiver aberto, não faz nada.
                 if (isOpen) {
                     return;
                 }
 
-                // Não permite abrir outro PV enquanto
-                // já existe um PV aberto.
                 if (
                     activePVCard &&
                     activePVCard !== pvCard
@@ -1284,7 +1817,6 @@
                     return;
                 }
 
-                // Abre o PV.
                 activePVCard = pvCard;
 
                 pickingsList.classList.remove(
@@ -1297,6 +1829,18 @@
 
                 scrollToExpandedPV(pvCard);
             }
+
+            header.addEventListener("click", (event) => {
+                if (event.target.closest("button")) {
+                    return;
+                }
+
+                if (pickingsList.classList.contains("hidden")) {
+                    return;
+                }
+
+                collapsePV();
+            });
 
             container.appendChild(pvCard);
         }
@@ -1323,5 +1867,6 @@
         onRecordsReplaced,
         onAfterRender: handleAfterRender,
         enhanceCard,
+        refreshRecords,
     });
 }());
