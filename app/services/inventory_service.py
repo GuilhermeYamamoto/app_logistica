@@ -553,6 +553,94 @@ class InventoryService:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Não foi possível gerar o pacote no Odoo.",
+            ) from error
+
+        
+    ####################################
+    #  SELECIONAR TODOS (ACTION_SELECT_ALL)
+    ####################################
+    @staticmethod
+    def action_select_all(
+        client: OdooClient,
+        picking_ids: List[int],
+        move_line_ids: List[int],
+    ):
+        if not picking_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhum picking foi informado para selecionar todos.",
+            )
+
+        if not move_line_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma move line foi informada para selecionar todos.",
+            )
+
+        try:
+            wizard_id = client.execute(
+                "stock.picking.sale.wizard",
+                "create",
+                [{
+                    "picking_ids": [
+                        (6, 0, picking_ids)
+                    ],
+                    "move_line_ids": [
+                        (6, 0, move_line_ids)
+                    ],
+                }],
+            )
+
+            if isinstance(wizard_id, (list, tuple)):
+                wizard_id = wizard_id[0]
+
+            if not wizard_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="O Odoo não conseguiu criar o wizard para selecionar todos.",
+                )
+
+            try:
+                result = client.execute(
+                    "stock.picking.sale.wizard",
+                    "action_select_all",
+                    [wizard_id],
+                )
+
+            except xmlrpc.client.Fault as error:
+                error_message = str(error)
+
+                if "cannot marshal" in error_message:
+                    print(
+                        "AVISO: As move lines foram selecionadas, "
+                        "mas o Odoo não conseguiu serializar o retorno."
+                    )
+
+                    result = None
+
+                else:
+                    raise
+
+            return {
+                "success": True,
+                "wizard_id": wizard_id,
+                "picking_ids": picking_ids,
+                "move_line_ids": move_line_ids,
+                "result": result,
+            }
+
+        except HTTPException:
+            raise
+
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            print(
+                "Erro ao selecionar todos no Odoo:",
+                error,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível selecionar todos os pickings no Odoo.",
             ) from error        
 
     ####################################
