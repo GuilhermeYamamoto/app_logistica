@@ -720,6 +720,7 @@
                 const data = await response.json().catch(
                     () => ({}),
                 );
+                console.log("Resposta do servidor ao definir local:", data);
 
                 if (!response.ok) {
                     throw new Error(
@@ -728,16 +729,11 @@
                     );
                 }
 
-                const picking =
-                    inventory.getRecord(pickingId);
+                const picking =  inventory.getRecord(pickingId);
 
                 if (picking) {
-                    picking.local =
-                        data.local || location.name;
-
-                    picking.barcodeRegistered = Boolean(
-                        picking.local,
-                    );
+                    picking.local = data.local || location.name;
+                    picking.barcodeRegistered = Boolean(picking.local);
                 }
 
                 window.AppUI.closeModal(
