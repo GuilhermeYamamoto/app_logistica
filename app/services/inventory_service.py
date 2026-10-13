@@ -726,6 +726,8 @@ class InventoryService:
                 )
 
             # Executa action_finalizar no wizard.
+            result = None
+
             try:
                 result = client.execute(
                     "stock.picking.sale.wizard",
@@ -741,8 +743,9 @@ class InventoryService:
                         "AVISO: O picking foi finalizado, "
                         "mas o Odoo não conseguiu serializar o retorno."
                     )
-
                     result = None
+                else:
+                    raise
 
             return {
                 "wizard_id": wizard_id,
