@@ -779,30 +779,30 @@
                     originalText;
             }
         }
-
-        async function confirmLocationSelection() {
-            const pickingId = barcodeScannerPickingId;
-            const location = inventoryLocations.find(
-                (item) =>
-                    Number(item.id) === Number(selectedLocationId),
-            );
-
-            if (!pickingId || !location || inventory.isActionInProgress()) {
-                return;
-            }
-
-            const confirmed = await window.AppUI.confirmAction({
-                kicker: "DEFINIÇÃO DE LOCAL",
-                title: "CONFIRMAR LOCAL",
-                text: `Deseja definir o local "${location.name}" para este picking?`,
-                confirmLabel: "CONFIRMAR LOCAL",
-            });
-            if (confirmed) {
-                await saveLocationSelection();
-            }
-        }
     }
 
+    async function confirmLocationSelection() {
+        const pickingId = barcodeScannerPickingId;
+        const location = inventoryLocations.find(
+            (item) =>
+                Number(item.id) === Number(selectedLocationId),
+        );
+
+        if (!pickingId || !location || inventory.isActionInProgress()) {
+            return;
+        }
+
+        const confirmed = await window.AppUI.confirmAction({
+            kicker: "DEFINIÇÃO DE LOCAL",
+            title: "CONFIRMAR LOCAL",
+            text: `Deseja definir o local "${location.name}" para este picking?`,
+            confirmLabel: "CONFIRMAR LOCAL",
+        });
+        if (confirmed) {
+            await saveLocationSelection();
+        }
+    }
+    
     function resetLocationSelection() {
         selectedLocationId = null;
 
