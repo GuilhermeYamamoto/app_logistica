@@ -107,6 +107,50 @@
         modal.classList.add("hidden");
     }
 
+    let actionConfirmationResolve = null;
+
+    function confirmAction({
+        kicker = "CONFIRMAÇÃO",
+        title = "CONFIRMAR AÇÃO",
+        text = "Deseja realmente executar esta ação?",
+        confirmLabel = "CONFIRMAR",
+    } = {}) {
+        if (actionConfirmationResolve) {
+            return Promise.resolve(false);
+        }
+
+        const kickerElement = getElement("actionConfirmationKicker");
+        const titleElement = getElement("actionConfirmationTitle");
+        const textElement = getElement("actionConfirmationText");
+        const confirmButton = getElement("confirmActionConfirmation");
+
+        if (kickerElement) {
+            kickerElement.textContent = kicker;
+        }
+        if (titleElement) {
+            titleElement.textContent = title;
+        }
+        if (textElement) {
+            textElement.textContent = text;
+        }
+        if (confirmButton) {
+            confirmButton.textContent = confirmLabel;
+        }
+
+        openModal("actionConfirmationModal");
+
+        return new Promise((resolve) => {
+            actionConfirmationResolve = resolve;
+        });
+    }
+
+    function finishActionConfirmation(confirmed) {
+        const resolve = actionConfirmationResolve;
+        actionConfirmationResolve = null;
+        closeModal("actionConfirmationModal");
+        resolve?.(confirmed);
+    }
+
     function initializeModals() {
         document.querySelectorAll("[data-close]").forEach((button) => {
             if (button.dataset.modalInitialized === "true") {
@@ -125,6 +169,25 @@
                     closeModal(overlay.id);
                 }
             });
+        });
+
+        getElement("confirmActionConfirmation")?.addEventListener(
+            "click",
+            () => finishActionConfirmation(true),
+        );
+        getElement("cancelActionConfirmation")?.addEventListener(
+            "click",
+            () => finishActionConfirmation(false),
+        );
+        document.addEventListener("app:modal-close", (event) => {
+            if (
+                event.detail?.id === "actionConfirmationModal" &&
+                actionConfirmationResolve
+            ) {
+                const resolve = actionConfirmationResolve;
+                actionConfirmationResolve = null;
+                resolve(false);
+            }
         });
     }
 
@@ -307,6 +370,7 @@
         initializePullToRefresh,
         openModal,
         closeModal,
+        confirmAction,
         setGestureCaptured,
         setPullToRefreshHandler,
         showLoading,
