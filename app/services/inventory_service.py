@@ -166,7 +166,17 @@ class InventoryService:
             
             move_lines_by_id = {}
             if move_line_ids:
-                move_line_fields = ["id", "peso", "qty_done", "package_type_id", "lot_id", "product_uom_id", "referencia_interna", "gerar_pacote"]
+                move_line_fields = [
+                    "id",
+                    "picking_id",
+                    "peso",
+                    "qty_done",
+                    "package_type_id",
+                    "lot_id",
+                    "product_uom_id",
+                    "referencia_interna",
+                    "location_dest_id",
+                ]
                 move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
                 move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
             
@@ -175,7 +185,13 @@ class InventoryService:
             if move_ids:
                 move_fields = client.execute("stock.move", "fields_get")
                 received_quantity_field = next((field for field in ("quantity", "quantity_done") if field in move_fields), None)
-                fields = ["picking_id", "product_id", "product_uom_qty", "move_dest_ids"]
+                fields = [
+                    "picking_id",
+                    "product_id",
+                    "product_uom_qty",
+                    "move_dest_ids",
+                    "location_dest_id",
+                ]
                 if received_quantity_field is not None:
                     fields.append(received_quantity_field)
                 moves = client.execute("stock.move", "search_read", [("id", "in", move_ids)], fields=fields)
@@ -218,7 +234,22 @@ class InventoryService:
                     if local:
                         break
             else:
-                local = picking["x_studio_local_do_material"]    
+                for move_line_id in picking["move_line_ids_without_package"]:
+                    move_line = move_lines_by_id.get(move_line_id, {})
+                    location_dest = move_line.get("location_dest_id")
+                    if location_dest:
+                        if isinstance(location_dest, (list, tuple)):
+                            local = (
+                                location_dest[1]
+                                if len(location_dest) > 1
+                                else str(location_dest[0])
+                            )
+                        else:
+                            local = str(location_dest)
+                        break
+
+                if not local:
+                    local = picking["x_studio_local_do_material"]
 
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
@@ -1170,18 +1201,40 @@ class InventoryService:
                 updated_moves = client.execute("stock.move", "read", destination_move_ids, fields=["id", "location_dest_id"])
 
             elif picking_type_id == 139:
-                # Se for Conferência para Expedição (139), atualiza o local nos próprios movimentos do picking.
-                move_lines = client.execute("stock.move.line", "search_read", [("picking_id", "=", picking_id)], fields=["id"])
+                # A etapa 139 atualiza as próprias linhas de movimento.
+                move_lines = client.execute(
+                    "stock.move.line",
+                    "search_read",
+                    [("picking_id", "=", picking_id)],
+                    fields=["id"],
+                )
 
                 if not move_lines:
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
 
-                target_move_ids = list(dict.fromkeys(move_line["id"] for move_line in move_lines))
+                target_move_ids = list(
+                    dict.fromkeys(move_line["id"] for move_line in move_lines)
+                )
 
-                client.execute("stock.move.line", "write", target_move_ids, {"location_dest_id": location_id})
+                print("Target Move IDs:", target_move_ids)
+                print("Location ID:", location_id)
+
+                client.execute(
+                    "stock.move.line",
+                    "write",
+                    target_move_ids,
+                    {"location_dest_id": location_id},
+                )
 
                 # Verifica se a alteração foi realizada com sucesso
-                updated_moves = client.execute("stock.move.line", "read", target_move_ids, fields=["id", "location_dest_id"])
+                updated_moves = client.execute(
+                    "stock.move.line",
+                    "read",
+                    target_move_ids,
+                    fields=["id", "location_dest_id"],
+                )
+
+                print("Updated Moves:", updated_moves)
 
             local = None
 
@@ -1229,6 +1282,7 @@ class InventoryService:
         """
         try:
             updated_move_ids = []
+            updated_move_model = None
 
             location_records = client.execute("stock.location", "search_read", [("barcode", "=", barcode)], fields=["id", "name", "name"], limit=1)
             if not location_records:
@@ -1263,20 +1317,48 @@ class InventoryService:
                 client.execute("stock.move", "write", destination_move_ids, {"location_dest_id": location_id})
 
                 updated_move_ids = destination_move_ids
+                updated_move_model = "stock.move"
 
             elif picking_type_id == 139:
-                move_lines = client.execute("stock.move.line", "search_read", [("picking_id", "=", picking_id)], fields=["id"])
+                move_lines = client.execute(
+                    "stock.move.line",
+                    "search_read",
+                    [("picking_id", "=", picking_id)],
+                    fields=["id"],
+                )
 
                 if not move_lines:
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimentação não encontrada para este recebimento.")
 
-                target_move_ids = list(dict.fromkeys(move_line["id"] for move_line in move_lines))
+                target_move_ids = list(
+                    dict.fromkeys(move_line["id"] for move_line in move_lines)
+                )
 
-                client.execute("stock.move.line", "write", target_move_ids, {"location_dest_id": location_id})
+                client.execute(
+                    "stock.move.line",
+                    "write",
+                    target_move_ids,
+                    {"location_dest_id": location_id},
+                )
 
                 updated_move_ids = target_move_ids
+                updated_move_model = "stock.move.line"
 
-            updated_moves = client.execute("stock.move.line", "read", updated_move_ids, fields=["id", "location_dest_id"])
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"A etapa {picking_type_id} não possui uma regra "
+                        "de destino configurada."
+                    ),
+                )
+
+            updated_moves = client.execute(
+                updated_move_model,
+                "read",
+                updated_move_ids,
+                fields=["id", "location_dest_id"],
+            )
             local = None
             for move in updated_moves:
                 location_dest = move.get("location_dest_id")
