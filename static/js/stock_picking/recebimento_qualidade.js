@@ -432,15 +432,24 @@
 
         document
             .getElementById("chooseLocationButton")
-            ?.addEventListener("click", openLocationSelection);
+            ?.addEventListener(
+                "click",
+                openLocationSelection,
+            );
 
         document
             .getElementById("backToBarcodeButton")
-            ?.addEventListener("click", backToBarcodeScanner);
+            ?.addEventListener(
+                "click",
+                backToBarcodeScanner,
+            );
 
         document
             .getElementById("confirmLocationButton")
-            ?.addEventListener("click", confirmLocationButton);
+            ?.addEventListener(
+                "click",
+                confirmLocationSelection,
+            );
 
         document
             .getElementById("locationSearchInput")
