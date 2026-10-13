@@ -342,6 +342,15 @@ body {
     background: rgba(13, 22, 38, 0.66);
 }
 
+/*
+ * Confirmações podem ser abertas sobre outro modal, como o seletor
+ * manual de local. Mantém a transação original aberta enquanto o
+ * usuário confirma ou cancela a ação.
+ */
+#actionConfirmationModal {
+    z-index: 2000;
+}
+
 .modal {
     width: min(760px, 100%);
     max-height: 94vh;
