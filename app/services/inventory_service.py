@@ -134,9 +134,15 @@ class InventoryService:
             }
             total_counts_by_pv = defaultdict(int)
             conferido_counts_by_pv = defaultdict(int)
+            stage_counts_by_pv = defaultdict(int)
+
+            for picking in pickings:
+                pedido_venda = picking.get("pedido_venda_id")
+                if pedido_venda:
+                    stage_counts_by_pv[pedido_venda[0]] += 1
 
             if (
-                picking_type_id == 1200 and
+                picking_type_id in [1200, 139] and
                 pedido_venda_ids
             ):
                 total_pickings = client.execute(
@@ -157,7 +163,10 @@ class InventoryService:
                         pedido_venda_id = pedido_venda[0]
                         total_counts_by_pv[pedido_venda_id] += 1
 
-                        if 29 in total_picking.get("tag_ids", []):
+                        if (
+                            picking_type_id == 1200 and
+                            29 in total_picking.get("tag_ids", [])
+                        ):
                             conferido_counts_by_pv[pedido_venda_id] += 1
 
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
@@ -172,6 +181,7 @@ class InventoryService:
                     "peso",
                     "qty_done",
                     "package_type_id",
+                    "result_package_id",
                     "lot_id",
                     "product_uom_id",
                     "referencia_interna",
@@ -256,6 +266,38 @@ class InventoryService:
             cliente = picking["partner_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
+            picking_move_lines = [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id]
+
+            volume_ids = {package[0] for move_line in picking_move_lines if (package := move_line.get("result_package_id"))}
+            material_locations = []
+            material_location_ids = set()
+            total_weight = 0.0
+
+            for move_line in picking_move_lines:
+                try:
+                    total_weight += float(move_line.get("peso") or 0)
+                except (TypeError, ValueError):
+                    continue
+
+                location_dest = move_line.get("location_dest_id")
+                if not location_dest:
+                    continue
+
+                location_id = (
+                    location_dest[0]
+                    if isinstance(location_dest, (list, tuple))
+                    else location_dest
+                )
+                location_name = (
+                    location_dest[1]
+                    if isinstance(location_dest, (list, tuple)) and len(location_dest) > 1
+                    else str(location_dest)
+                )
+
+                if location_id not in material_location_ids:
+                    material_location_ids.add(location_id)
+                    material_locations.append(location_name)
+
             photo_relation = picking.get("fotos_count") or []
             if isinstance(photo_relation, (list, tuple)):
                 photo_count = len(photo_relation)
@@ -305,7 +347,10 @@ class InventoryService:
                     else None
                 ),
                 "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
-                "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
+                "move_lines": picking_move_lines,
+                "volumeCount": len(volume_ids),
+                "totalWeight": total_weight,
+                "materialLocations": material_locations,
 
                 "waitingCount": (
                     waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
@@ -314,6 +359,11 @@ class InventoryService:
                 ),
                 "totalPickingCount": (
                     total_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "stagePickingCount": (
+                    stage_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
                     if picking.get("pedido_venda_id")
                     else 0
                 ),
