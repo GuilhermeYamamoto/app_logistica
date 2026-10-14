@@ -98,7 +98,7 @@ class InventoryService:
         try:
             pickings = None
             if picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")

@@ -163,6 +163,10 @@
         );
     }
 
+    function isPackedRecord(record) {
+        return normalizeTagIds(record).includes(33);
+    }
+
     function buildPVGroupsData(records) {
         const groupsById = new Map();
 
@@ -199,7 +203,20 @@
 
         setTimeout(() => {
             try {
-                renderPVGroupsDOM();
+                const isReadyToPrintView =
+                    document.querySelector(
+                        ".dashboard-card.ready-to-print.active",
+                    ) !== null;
+                const groupsToRender = isReadyToPrintView
+                    ? buildPVGroupsData(
+                        records.filter(isReadyToPrintRecord),
+                    )
+                    : pvGroups;
+
+                renderPVGroupsDOM(
+                    groupsToRender,
+                    isReadyToPrintView,
+                );
             } catch (error) {
                 console.error(
                     "Erro ao renderizar grupos de PV no empacotamento:",
@@ -359,9 +376,7 @@
     }
 
     function getPickingPackageIds(picking) {
-        const packageIds = Array.isArray(picking?.packageIds)
-            ? picking.packageIds
-            : [picking?.packageId];
+        const packageIds = [picking?.packageId];
 
         return packageIds
             .map((packageId) => Number(packageId))
@@ -1449,8 +1464,10 @@
 
                 try {
                     const result =
-                        await gerarPacote(
-                            packagePayload
+                        await inventory.runAction(
+                            () => gerarPacote(
+                                packagePayload,
+                            ),
                         );
 
                     console.log(
@@ -1856,8 +1873,13 @@
                 const pickingItem =
                     document.createElement("div");
 
-                pickingItem.className =
-                    "emp-picking-item";
+                const isPacked = !isReadyToPrintView &&
+                    isPackedRecord(picking);
+
+                pickingItem.className = [
+                    "emp-picking-item",
+                    isPacked ? "emp-picking-packed" : "",
+                ].filter(Boolean).join(" ");
 
                 pickingItem.dataset.pickingId =
                     String(picking.id);
@@ -1879,7 +1901,9 @@
                     "emp-picking-checkbox";
 
                 checkbox.checked =
+                    !isPacked &&
                     Boolean(moveLine?.gerar_pacote === true);
+                checkbox.disabled = isPacked;
 
                 checkbox.setAttribute(
                     "aria-label",
@@ -2201,8 +2225,10 @@
 
                     try {
                         const result =
-                            await selecionarTodos(
-                                selectAllPayload
+                            await inventory.runAction(
+                                () => selecionarTodos(
+                                    selectAllPayload,
+                                ),
                             );
 
                         console.log(
