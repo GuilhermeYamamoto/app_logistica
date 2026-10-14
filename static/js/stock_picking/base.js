@@ -49,6 +49,10 @@
         isInProgress: (record) => Boolean(record.inProgress),
         isPending: (record) => !record.validated,
         matchesRecord: () => true,
+        isReadyToPrint: () => false,
+        getReadyToPrintCount: (records) => records.filter(
+            (record) => options.isReadyToPrint(record),
+        ).length,
         normalizeRecord: (record) => record,
         onInitialized: () => {},
         onOpenValidation: () => {},
@@ -117,47 +121,13 @@
         return records;
     }
 
-    function normalizeTagIds(record) {
-        const rawTagIds = Array.isArray(record.tagIds)
-            ? record.tagIds
-            : Array.isArray(record.tag_ids)
-                ? record.tag_ids
-                : [];
-
-        return rawTagIds.map((tag) => {
-            if (Array.isArray(tag)) {
-                return Number(tag[0]);
-            }
-
-            if (tag && typeof tag === "object") {
-                return Number(tag.id);
-            }
-
-            return Number(tag);
-        }).filter((tagId) => Number.isFinite(tagId));
-    }
-
-    function isReadyToPrintRecord(record) {
-        const tagIds = normalizeTagIds(record);
-
-        return Boolean(
-            record.readyToPrint ||
-            record.status === "ready_to_print" ||
-            record.pronto_para_imprimir === true ||
-            (
-                record.state === "done" &&
-                tagIds.includes(33)
-            )
-        );
-    }
-
     function recordMatchesFilter(record) {
         if (filter === "andamento") {
             return !record.validated && options.isInProgress(record);
         }
 
         if (filter === "pronto-para-imprimir") {
-            return isReadyToPrintRecord(record);
+            return options.isReadyToPrint(record);
         }
 
         return options.isPending(record);
@@ -497,9 +467,8 @@
             elements.readyToPrintCount;
 
         if (readyToPrintCounter) {
-            const readyToPrintCount = records.filter((record) =>
-                isReadyToPrintRecord(record),
-            ).length;
+            const readyToPrintCount =
+                options.getReadyToPrintCount(records);
 
             readyToPrintCounter.textContent = formatCount(
                 readyToPrintCount,

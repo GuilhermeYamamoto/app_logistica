@@ -91,6 +91,12 @@ async def stage_page(
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client, stage["picking_type_id"])
+    if stage_key == "empacotamento":
+        ready_records = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+        records["records"].extend(ready_records["records"])
     return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
 
@@ -110,6 +116,17 @@ async def stage_page(
 @router.post("/api/inventario/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report(client, picking_id)
+
+
+@router.post("/api/inventario/imprimir-pacote")
+def imprimir_pacote(data: Dict[str, Any] = Body(...), client=Depends(get_odoo_client)):
+    package_id = data.get("package_id")
+    if not isinstance(package_id, int) or package_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Identificador de pacote inválido.",
+        )
+    return InventoryService.print_report_empacotamento(client, package_id)
 
 
 
@@ -517,6 +534,12 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client,stage["picking_type_id"],)
+    if stage_key == "empacotamento":
+        ready_records = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+        records["records"].extend(ready_records["records"])
     return JSONResponse(
         content=records,
         headers={

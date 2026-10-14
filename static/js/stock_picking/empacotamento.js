@@ -32,7 +32,7 @@
         const existingCard = dashboard.querySelector(".dashboard-card.ready-to-print");
 
         if (existingCard) {
-            updateReadyToPrintCount(0);
+            window.AppInventory?.render();
             return;
         }
 
@@ -52,8 +52,6 @@
         if (typeof window.AppInventory?.render === "function") {
             window.AppInventory.render();
         }
-
-        updateReadyToPrintCount(0);
     }
 
     if (document.readyState === "loading") {
@@ -191,7 +189,9 @@
     }
 
     function buildPVGroups(records) {
-        pvGroups = buildPVGroupsData(records);
+        pvGroups = buildPVGroupsData(
+            (records || []).filter((record) => !isReadyToPrintRecord(record)),
+        );
     }
 
     function onRecordsReplaced(records) {
@@ -313,6 +313,96 @@
         }
 
         replaceRecords(data.records);
+    }
+
+    async function printPackageLabel(picking) {
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    "/api/inventario/imprimir-pacote",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            package_id: picking.packageId,
+                        }),
+                    },
+                );
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível imprimir o pacote.",
+                    );
+                }
+
+                inventory.showToast(
+                    `PACOTE DO ${picking.pv} ENVIADO PARA IMPRESSÃO`,
+                );
+
+                await refreshRecords({
+                    replaceRecords: inventory.replaceRecords,
+                });
+                window.AppInventory.render();
+            });
+
+        } catch (error) {
+            console.error("Erro ao imprimir pacote:", error);
+            inventory.showToast(
+                error.message || "Não foi possível imprimir o pacote.",
+                "!",
+            );
+        }
+    }
+
+    function getPickingPackageIds(picking) {
+        const packageIds = Array.isArray(picking?.packageIds)
+            ? picking.packageIds
+            : [picking?.packageId];
+
+        return packageIds
+            .map((packageId) => Number(packageId))
+            .filter((packageId) => Number.isInteger(packageId) && packageId > 0);
+    }
+
+    async function printGroupPackages(group) {
+        const uniquePackageIds = new Set(
+            (group.pickings || []).flatMap(getPickingPackageIds),
+        );
+
+        for (const packageId of uniquePackageIds) {
+            await printPackageLabel({
+                packageId,
+                pv: group.pedido_venda_name || "PV",
+            });
+        }
+    }
+
+    function hasPackageId(picking) {
+        return getPickingPackageIds(picking).length > 0;
+    }
+
+    function getReadyToPrintPackageCount(records) {
+        return new Set(
+            (records || [])
+                .filter(isReadyToPrintRecord)
+                .flatMap(getPickingPackageIds),
+        ).size;
+    }
+
+    function isFirstPickingForPackage(picking, packageIdsAlreadyRendered) {
+        const packageIds = getPickingPackageIds(picking);
+        const packageId = packageIds[0];
+
+        if (!packageId || packageIdsAlreadyRendered.has(packageId)) {
+            return false;
+        }
+
+        packageIdsAlreadyRendered.add(packageId);
+        return true;
     }
 
     async function marcarMoveLinesParaPacote(
@@ -1422,7 +1512,10 @@
         );
     }
 
-    function renderPVGroupsDOM(groupsToRender = pvGroups) {
+    function renderPVGroupsDOM(
+        groupsToRender = pvGroups,
+        readyToPrintView = false,
+    ) {
         const container =
             document.getElementById("pickingsContainer");
 
@@ -1439,6 +1532,7 @@
         for (const group of groupsToRender || []) {
             const pvCard = document.createElement("section");
             pvCard.className = "pv-card";
+            const isReadyToPrintView = readyToPrintView;
 
             const pvKey =
                 group.pedido_venda_id === null
@@ -1665,10 +1759,36 @@
                 }
             );
 
-            pvActions.append(
-                packageButton,
-                finishButton,
+            const printPackagesButton = document.createElement("button");
+            printPackagesButton.type = "button";
+            printPackagesButton.className =
+                "pv-action-button pv-print-packages-button";
+            printPackagesButton.setAttribute(
+                "aria-label",
+                "Imprimir pacotes",
             );
+            printPackagesButton.innerHTML = `
+                <span class="pv-action-icon">🖨️</span>
+                <span>IMPRIMIR PACOTES</span>
+            `;
+            printPackagesButton.disabled =
+                !group.pickings.some(hasPackageId);
+            printPackagesButton.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+                    printGroupPackages(group);
+                },
+            );
+
+            if (isReadyToPrintView) {
+                pvActions.append(printPackagesButton);
+            } else {
+                pvActions.append(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             header.append(
                 left,
@@ -1683,6 +1803,7 @@
 
             const pickingsList =
                 document.createElement("div");
+            const packageIdsAlreadyRendered = new Set();
 
             pickingsList.className =
                 shouldRestoreOpen
@@ -1882,10 +2003,45 @@
                     secondRow
                 );
 
-                pickingItem.append(
-                    checkbox,
-                    info
-                );
+                if (isReadyToPrintView) {
+                    const printPackageButton =
+                        document.createElement("button");
+
+                    printPackageButton.type = "button";
+                    printPackageButton.className =
+                        "secondary-action print-action emp-package-print-button";
+                    printPackageButton.innerHTML =
+                        '<span class="action-icon-small">🖨️</span>Imprimir Pacote';
+                    const shouldRenderPackageButton =
+                        isFirstPickingForPackage(
+                            picking,
+                            packageIdsAlreadyRendered,
+                        );
+
+                    printPackageButton.disabled = !hasPackageId(picking);
+                    printPackageButton.hidden =
+                        hasPackageId(picking) && !shouldRenderPackageButton;
+                    printPackageButton.title = hasPackageId(picking)
+                        ? "Imprimir etiqueta do pacote"
+                        : "Nenhum pacote encontrado para este picking";
+                    printPackageButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+                            printPackageLabel(picking);
+                        },
+                    );
+
+                    pickingItem.append(
+                        info,
+                        printPackageButton,
+                    );
+                } else {
+                    pickingItem.append(
+                        checkbox,
+                        info,
+                    );
+                }
 
                 pickingsList.appendChild(
                     pickingItem
@@ -2080,9 +2236,11 @@
                 selectAllLabel
             );
 
-            pickingsList.prepend(
-                selectAllContainer
-            );
+            if (!isReadyToPrintView) {
+                pickingsList.prepend(
+                    selectAllContainer
+                );
+            }
 
             pvCard.appendChild(pickingsList);
 
@@ -2165,7 +2323,7 @@
                 : pvGroups;
 
             buildPVGroups(records);
-            renderPVGroupsDOM(groupsToRender);
+            renderPVGroupsDOM(groupsToRender, isReadyToPrintView);
         } catch (error) {
             console.error(
                 "Erro ao processar renderização dos PVs no empacotamento:",
@@ -2178,6 +2336,8 @@
         onRecordsReplaced,
         onAfterRender: handleAfterRender,
         enhanceCard,
+        isReadyToPrint: isReadyToPrintRecord,
+        getReadyToPrintCount: getReadyToPrintPackageCount,
         refreshRecords,
     });
 }());

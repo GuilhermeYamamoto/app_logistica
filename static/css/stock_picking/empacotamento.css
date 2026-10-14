@@ -149,6 +149,10 @@
     border-color: var(--blue);
 }
 
+.pv-print-packages-button {
+    width: 240px;
+}
+
 .pv-generate-package-button {
     width: 320px;
 }
