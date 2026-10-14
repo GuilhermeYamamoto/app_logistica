@@ -405,6 +405,36 @@
         return true;
     }
 
+    function getSelectedPickings(group, pickingsList) {
+        const selectedMoveLineIds = new Set(
+            Array.from(
+                pickingsList.querySelectorAll(
+                    ".emp-picking-checkbox:checked",
+                ),
+            ).flatMap((checkbox) => {
+                const item = checkbox.closest(".emp-picking-item");
+
+                try {
+                    return JSON.parse(item?.dataset.moveLineIds || "[]");
+                } catch (error) {
+                    return [];
+                }
+            }).map(Number),
+        );
+
+        return group.pickings
+            .map((picking) => {
+                const moveLines = (picking.move_lines || []).filter(
+                    (moveLine) => selectedMoveLineIds.has(Number(moveLine.id)),
+                );
+
+                return moveLines.length
+                    ? { ...picking, move_lines: moveLines }
+                    : null;
+            })
+            .filter(Boolean);
+    }
+
     async function marcarMoveLinesParaPacote(
         moveLineIds
     ) {
@@ -589,7 +619,7 @@
                         );
 
                         inventory.showToast(
-                            "Picking adicionado ao pacote!"
+                            "Linha adicionada ao pacote!"
                         );
 
                         console.log(
@@ -602,7 +632,7 @@
                         );
 
                         inventory.showToast(
-                            "Picking removido do pacote!"
+                            "Linha removida do pacote!"
                         );
 
                         console.log(
@@ -652,11 +682,11 @@
         pickingsList,
         selectedPickings
     ) {
-        const selectedPickingIds =
+        const selectedMoveLineIds =
             new Set(
-                selectedPickings.map(
-                    (picking) => String(picking.id)
-                )
+                selectedPickings
+                    .flatMap((picking) => picking.move_lines || [])
+                    .map((moveLine) => String(moveLine.id)),
             );
 
         const pickingItems =
@@ -666,14 +696,21 @@
 
         pickingItems.forEach(
             (pickingItem) => {
-                const pickingId =
-                    pickingItem.dataset.pickingId;
+                let moveLineIds = [];
 
-                if (
-                    !selectedPickingIds.has(
-                        String(pickingId)
-                    )
-                ) {
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]",
+                    ).map(String);
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do item:",
+                        error,
+                    );
+                    return;
+                }
+
+                if (!moveLineIds.some((id) => selectedMoveLineIds.has(id))) {
                     return;
                 }
 
@@ -1701,20 +1738,9 @@
                             event.stopPropagation();
 
                             const selectedPickings =
-                                group.pickings.filter(
-                                    (picking, index) => {
-                                        const pickingItems =
-                                            pickingsList.querySelectorAll(
-                                                ".emp-picking-item"
-                                            );
-
-                                        const checkbox =
-                                            pickingItems[index]?.querySelector(
-                                                ".emp-picking-checkbox"
-                                            );
-
-                                        return checkbox?.checked;
-                                    }
+                                getSelectedPickings(
+                                    group,
+                                    pickingsList,
                                 );
 
                             openPackageModal(
@@ -1810,10 +1836,23 @@
                     ? "pv-pickings"
                     : "pv-pickings hidden";
 
+            const pickingEntries = isReadyToPrintView
+                ? group.pickings.map((picking) => ({
+                    picking,
+                    moveLine: null,
+                }))
+                : group.pickings.flatMap((picking) =>
+                    (picking.move_lines || []).map((moveLine) => ({
+                        picking,
+                        moveLine,
+                    })),
+                );
+
             for (
-                const [index, picking]
-                of group.pickings.entries()
+                const [index, entry]
+                of pickingEntries.entries()
             ) {
+                const { picking, moveLine } = entry;
                 const pickingItem =
                     document.createElement("div");
 
@@ -1825,9 +1864,11 @@
 
                 pickingItem.dataset.moveLineIds =
                     JSON.stringify(
-                        (picking.move_lines || [])
-                            .map((moveLine) => moveLine.id)
-                            .filter(Boolean)
+                        moveLine
+                            ? [moveLine.id].filter(Boolean)
+                            : (picking.move_lines || [])
+                                .map((line) => line.id)
+                                .filter(Boolean)
                     );
 
                 const checkbox =
@@ -1838,15 +1879,11 @@
                     "emp-picking-checkbox";
 
                 checkbox.checked =
-                    (picking.move_lines || []).length > 0 &&
-                    (picking.move_lines || []).every(
-                        (moveLine) =>
-                            moveLine.gerar_pacote === true
-                    );
+                    Boolean(moveLine?.gerar_pacote === true);
 
                 checkbox.setAttribute(
                     "aria-label",
-                    `Selecionar picking ${index + 1}`
+                    `Selecionar linha ${index + 1}`
                 );
 
                 const info =
@@ -1885,7 +1922,7 @@
                     "emp-picking-value";
 
                 productValue.textContent =
-                    picking.move_lines?.[0]?.referencia_interna ||
+                    moveLine?.referencia_interna ||
                     "Sem produto";
 
                 product.append(
@@ -1915,7 +1952,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    (picking.move_lines?.[0]?.peso ?? "0") + " Kg";
+                    (moveLine?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,
@@ -1957,7 +1994,7 @@
                     "emp-picking-value";
 
                 lotValue.textContent =
-                    picking.move_lines?.[0]?.lot_id?.[1] ?? "Sem lote";
+                    moveLine?.lot_id?.[1] ?? "Sem lote";
 
                 lot.append(
                     lotLabel,
@@ -1986,7 +2023,7 @@
                     "emp-picking-value";
 
                 quantityValue.textContent =
-                    picking.move_lines?.[0]?.qty_done ?? "0";
+                    moveLine?.qty_done ?? "0";
 
                 quantity.append(
                     quantityLabel,
