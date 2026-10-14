@@ -176,6 +176,7 @@ class InventoryService:
                     "product_uom_id",
                     "referencia_interna",
                     "location_dest_id",
+                    "gerar_pacote",
                 ]
                 move_lines = client.execute("stock.move.line", "search_read", [("id", "in", move_line_ids)], fields=move_line_fields)
                 move_lines_by_id = {move_line["id"]: move_line for move_line in move_lines}
@@ -726,6 +727,8 @@ class InventoryService:
                 )
 
             # Executa action_finalizar no wizard.
+            result = None
+
             try:
                 result = client.execute(
                     "stock.picking.sale.wizard",
@@ -741,8 +744,9 @@ class InventoryService:
                         "AVISO: O picking foi finalizado, "
                         "mas o Odoo não conseguiu serializar o retorno."
                     )
-
                     result = None
+                else:
+                    raise
 
             return {
                 "wizard_id": wizard_id,
