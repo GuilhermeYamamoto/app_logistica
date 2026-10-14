@@ -102,6 +102,20 @@ class InventoryService:
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1390: # Etapa criada apenas para diferenciar a conferencia da expedicao da armazenagem, que no Odoo são realizadas no mesmo picking_type_id (139)
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 139), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", False)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+            ready_to_print_pickings = []
+            if picking_type_id == 148:
+                ready_to_print_pickings = client.execute(
+                    "stock.picking",
+                    "search_read",
+                    [
+                        ("picking_type_id", "=", 148),
+                        ("state", "=", "done"),
+                        ("tag_ids", "ilike", 33),
+                    ],
+                    fields=["id", "name", "state", "tag_ids", "pedido_venda_id"],
+                    order="id asc",
+                )
+
             # Busca os pickings que estão aguardando para entrar na etapa
             waiting_picking_type_id = (
                 120 if picking_type_id == 1200 else picking_type_id
@@ -215,6 +229,12 @@ class InventoryService:
             destination_moves_by_id = {move["id"]: move for move in destination_moves}
     
         records = []
+        ready_to_print_ids = {
+            picking["id"]
+            for picking in ready_to_print_pickings
+            if picking.get("id")
+        }
+
         for picking in pickings:
             moves = moves_by_picking[picking["id"]]
             product_names = [move["product_id"][1] for move in moves if move["product_id"]]
@@ -339,6 +359,40 @@ class InventoryService:
                             break
 
             records.append(record)
+
+        if picking_type_id == 148:
+            ready_to_print_seen = {
+                record["id"]
+                for record in records
+                if record.get("id")
+            }
+
+            for ready_picking in ready_to_print_pickings:
+                ready_picking_id = ready_picking.get("id")
+                if not ready_picking_id or ready_picking_id in ready_to_print_seen:
+                    continue
+
+                records.append({
+                    "id": ready_picking_id,
+                    "pv": ready_picking.get("name") or f"PV-{ready_picking_id}",
+                    "reference": ready_picking.get("name") or f"PV-{ready_picking_id}",
+                    "validated": True,
+                    "state": "done",
+                    "readyToPrint": True,
+                    "status": "ready_to_print",
+                    "pronto_para_imprimir": True,
+                    "tagIds": ready_picking.get("tag_ids", []),
+                    "pedido_venda_id": (
+                        ready_picking["pedido_venda_id"][0]
+                        if ready_picking.get("pedido_venda_id")
+                        else None
+                    ),
+                    "pedido_venda_name": (
+                        ready_picking["pedido_venda_id"][1]
+                        if ready_picking.get("pedido_venda_id")
+                        else None
+                    ),
+                })
 
         return {"picking_type_id": picking_type_id, "records": records}
 

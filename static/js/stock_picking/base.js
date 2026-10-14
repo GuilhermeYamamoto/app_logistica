@@ -9,6 +9,7 @@
         resultCount: document.getElementById("resultCount"),
         pendingCount: document.getElementById("pendingCount"),
         progressCount: document.getElementById("progressCount"),
+        readyToPrintCount: document.getElementById("readyToPrintCount"),
         validationText: document.getElementById("validationText"),
         validationButton: document.getElementById("confirmValidation"),
         chatPanel: document.getElementById("chatPanel"),
@@ -29,9 +30,17 @@
     const options = {
         beforeValidate: async () => true,
         enhanceCard: () => {},
-        getSectionTitle: (filter) => filter === "andamento"
-            ? "REGISTROS EM ANDAMENTO"
-            : "REGISTROS PENDENTES",
+        getSectionTitle: (filter) => {
+            if (filter === "andamento") {
+                return "REGISTROS EM ANDAMENTO";
+            }
+
+            if (filter === "pronto-para-imprimir") {
+                return "REGISTROS PRONTOS PARA IMPRIMIR";
+            }
+
+            return "REGISTROS PENDENTES";
+        },
         getStatus: (record) => record.validated
             ? { label: "CONCLUÍDO", className: "status-completed" }
             : record.inProgress
@@ -108,9 +117,47 @@
         return records;
     }
 
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record.tagIds)
+            ? record.tagIds
+            : Array.isArray(record.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function isReadyToPrintRecord(record) {
+        const tagIds = normalizeTagIds(record);
+
+        return Boolean(
+            record.readyToPrint ||
+            record.status === "ready_to_print" ||
+            record.pronto_para_imprimir === true ||
+            (
+                record.state === "done" &&
+                tagIds.includes(33)
+            )
+        );
+    }
+
     function recordMatchesFilter(record) {
         if (filter === "andamento") {
             return !record.validated && options.isInProgress(record);
+        }
+
+        if (filter === "pronto-para-imprimir") {
+            return isReadyToPrintRecord(record);
         }
 
         return options.isPending(record);
@@ -442,6 +489,20 @@
                         !record.validated &&
                         options.isInProgress(record),
                 ).length,
+            );
+        }
+
+        const readyToPrintCounter =
+            document.getElementById("readyToPrintCount") ||
+            elements.readyToPrintCount;
+
+        if (readyToPrintCounter) {
+            const readyToPrintCount = records.filter((record) =>
+                isReadyToPrintRecord(record),
+            ).length;
+
+            readyToPrintCounter.textContent = formatCount(
+                readyToPrintCount,
             );
         }
 
@@ -1372,34 +1433,32 @@
             );
         }
 
-        document
-            .querySelectorAll(".dashboard-card")
-            .forEach((button) => {
-                button.addEventListener(
-                    "click",
-                    () => {
-                        if (actionInProgress) {
-                            return;
-                        }
+        const handleDashboardCardClick = (event) => {
+            const button =
+                event.target.closest(".dashboard-card");
 
-                        filter =
-                            button.dataset.filter;
+            if (!button || actionInProgress) {
+                return;
+            }
 
-                        document
-                            .querySelectorAll(
-                                ".dashboard-card",
-                            )
-                            .forEach((card) => {
-                                card.classList.toggle(
-                                    "active",
-                                    card === button,
-                                );
-                            });
+            filter = button.dataset.filter || filter;
 
-                        render();
-                    },
-                );
-            });
+            document
+                .querySelectorAll(".dashboard-card")
+                .forEach((card) => {
+                    card.classList.toggle(
+                        "active",
+                        card === button,
+                    );
+                });
+
+            render();
+        };
+
+        document.addEventListener(
+            "click",
+            handleDashboardCardClick,
+        );
 
         elements.validationButton?.addEventListener(
             "click",

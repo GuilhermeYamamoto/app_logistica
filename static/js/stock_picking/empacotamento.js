@@ -1,6 +1,71 @@
 (function () {
     "use strict";
 
+    function formatCompactCount(value) {
+        return new Intl.NumberFormat("pt-BR", {
+            notation: "compact",
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+
+    function updateReadyToPrintCount(value) {
+        const readyToPrintCount = document.getElementById("readyToPrintCount");
+
+        if (!readyToPrintCount) {
+            return;
+        }
+
+        readyToPrintCount.textContent = formatCompactCount(
+            Number.isFinite(value) ? Number(value) : 0,
+        );
+    }
+
+    window.updateReadyToPrintCount = updateReadyToPrintCount;
+
+    function ensureReadyToPrintCard() {
+        const dashboard = document.querySelector(".dashboard");
+
+        if (!dashboard) {
+            return;
+        }
+
+        const existingCard = dashboard.querySelector(".dashboard-card.ready-to-print");
+
+        if (existingCard) {
+            updateReadyToPrintCount(0);
+            return;
+        }
+
+        const readyCard = document.createElement("button");
+        readyCard.type = "button";
+        readyCard.className = "dashboard-card ready-to-print";
+        readyCard.dataset.filter = "pronto-para-imprimir";
+        readyCard.setAttribute(
+            "aria-label",
+            "PRONTO PARA IMPRIMIR"
+        );
+        readyCard.innerHTML =
+            '<span class="dashboard-label">PRONTO PARA IMPRIMIR</span><strong id="readyToPrintCount">0</strong>';
+
+        dashboard.appendChild(readyCard);
+
+        if (typeof window.AppInventory?.render === "function") {
+            window.AppInventory.render();
+        }
+
+        updateReadyToPrintCount(0);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            ensureReadyToPrintCard,
+            { once: true }
+        );
+    } else {
+        ensureReadyToPrintCard();
+    }
+
     const inventory = window.AppInventory;
 
     if (!inventory) {
@@ -66,7 +131,41 @@
         });
     }
 
-    function buildPVGroups(records) {
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function isReadyToPrintRecord(record) {
+        const tagIds = normalizeTagIds(record);
+
+        return Boolean(
+            record?.readyToPrint ||
+            record?.status === "ready_to_print" ||
+            record?.pronto_para_imprimir === true ||
+            (
+                record?.state === "done" &&
+                tagIds.includes(33)
+            )
+        );
+    }
+
+    function buildPVGroupsData(records) {
         const groupsById = new Map();
 
         for (const record of records || []) {
@@ -88,7 +187,11 @@
             groupsById.get(key).pickings.push(record);
         }
 
-        pvGroups = Array.from(groupsById.values());
+        return Array.from(groupsById.values());
+    }
+
+    function buildPVGroups(records) {
+        pvGroups = buildPVGroupsData(records);
     }
 
     function onRecordsReplaced(records) {
@@ -1319,7 +1422,7 @@
         );
     }
 
-    function renderPVGroupsDOM() {
+    function renderPVGroupsDOM(groupsToRender = pvGroups) {
         const container =
             document.getElementById("pickingsContainer");
 
@@ -1327,16 +1430,13 @@
             return;
         }
 
-        // Guarda qual PV estava aberto antes do render.
         const activePVKey =
             activePVCard?.dataset?.pvId || null;
 
         activePVCard = null;
-
-        // Limpa o container para reconstruir a estrutura por PV.
         container.replaceChildren();
 
-        for (const group of pvGroups) {
+        for (const group of groupsToRender || []) {
             const pvCard = document.createElement("section");
             pvCard.className = "pv-card";
 
@@ -2055,8 +2155,17 @@
                     ? window.AppInventory.getRecords()
                     : [];
 
+            const isReadyToPrintView =
+                document.querySelector(".dashboard-card.ready-to-print.active") !== null;
+
+            const groupsToRender = isReadyToPrintView
+                ? buildPVGroupsData(
+                    records.filter((record) => isReadyToPrintRecord(record)),
+                )
+                : pvGroups;
+
             buildPVGroups(records);
-            renderPVGroupsDOM();
+            renderPVGroupsDOM(groupsToRender);
         } catch (error) {
             console.error(
                 "Erro ao processar renderização dos PVs no empacotamento:",
