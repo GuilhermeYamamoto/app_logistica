@@ -9,6 +9,7 @@
         resultCount: document.getElementById("resultCount"),
         pendingCount: document.getElementById("pendingCount"),
         progressCount: document.getElementById("progressCount"),
+        readyToPrintCount: document.getElementById("readyToPrintCount"),
         validationText: document.getElementById("validationText"),
         validationButton: document.getElementById("confirmValidation"),
         chatPanel: document.getElementById("chatPanel"),
@@ -29,9 +30,17 @@
     const options = {
         beforeValidate: async () => true,
         enhanceCard: () => {},
-        getSectionTitle: (filter) => filter === "andamento"
-            ? "REGISTROS EM ANDAMENTO"
-            : "REGISTROS PENDENTES",
+        getSectionTitle: (filter) => {
+            if (filter === "andamento") {
+                return "REGISTROS EM ANDAMENTO";
+            }
+
+            if (filter === "pronto-para-imprimir") {
+                return "REGISTROS PRONTOS PARA IMPRIMIR";
+            }
+
+            return "REGISTROS PENDENTES";
+        },
         getStatus: (record) => record.validated
             ? { label: "CONCLUÍDO", className: "status-completed" }
             : record.inProgress
@@ -40,6 +49,10 @@
         isInProgress: (record) => Boolean(record.inProgress),
         isPending: (record) => !record.validated,
         matchesRecord: () => true,
+        isReadyToPrint: () => false,
+        getReadyToPrintCount: (records) => records.filter(
+            (record) => options.isReadyToPrint(record),
+        ).length,
         normalizeRecord: (record) => record,
         onInitialized: () => {},
         onOpenValidation: () => {},
@@ -113,6 +126,10 @@
             return !record.validated && options.isInProgress(record);
         }
 
+        if (filter === "pronto-para-imprimir") {
+            return options.isReadyToPrint(record);
+        }
+
         return options.isPending(record);
     }
 
@@ -167,18 +184,29 @@
         return button;
     }
 
+    function updateValidationButtonsState(card, record) {
+        const shouldDisable = Number(record.receivedQuantity) <= 0;
+
+        card?.querySelectorAll(".validation-action").forEach((button) => {
+            const baseDisabled = button.dataset.baseDisabled === "true";
+            button.disabled = baseDisabled || shouldDisable;
+        });
+    }
+
     function createValidationAction(
         record,
         className = "main-action validation-action",
         disabled = false,
     ) {
-        return createAction({
+        const button = createAction({
             className,
             label: "CONCLUÍDO",
             icon: "✓",
             disabled,
             onClick: () => openValidation(record),
         });
+        button.dataset.baseDisabled = String(disabled);
+        return button;
     }
 
     function createQualityAction(
@@ -241,7 +269,17 @@
         const quantityInput = createElement("input", "quantity-input");
         quantityInput.type = "number";
         quantityInput.value = record.receivedQuantity;
-        quantityInput.min = 0.0; 
+        quantityInput.min = 0.0;
+        quantityInput.addEventListener("input", () => {
+            const value = Number(quantityInput.value);
+            if (Number.isNaN(value) || value < 0) {
+                quantityInput.value = record.receivedQuantity;
+                return;
+            }
+
+            record.receivedQuantity = value;
+            updateValidationButtonsState(card, record);
+        });
         quantityInput.addEventListener("change", () => updateReceivedQuantity(record, quantityInput));
         quantityInput.disabled = !options.canEditQuantity;
 
@@ -344,6 +382,7 @@
             record,
             context,
         );
+        updateValidationButtonsState(card, record);
 
         card.append(
             chatTab,
@@ -379,6 +418,9 @@
 
         const previousValue = record.receivedQuantity;
         record.receivedQuantity = value;
+        const card = document.querySelector(`[data-record-id="${String(record.id)}"]`);
+        updateValidationButtonsState(card, record);
+
         try {
             await AppInventory.runAction(async () => {
                 const response = await fetch("/api/received_quantity", {
@@ -394,11 +436,15 @@
                 if (!response.ok) {
                     throw new Error(data.detail || "Erro ao atualizar quantidade.");
                 }
+
+                render();
                 AppInventory.showToast("Quantidade atualizada.");
             });
         } catch (error) {
             console.error("Erro ao atualizar quantidade:", error);
             record.receivedQuantity = previousValue;
+            input.value = previousValue;
+            updateValidationButtonsState(card, record);
             AppInventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
         }
     }
@@ -442,6 +488,19 @@
                         !record.validated &&
                         options.isInProgress(record),
                 ).length,
+            );
+        }
+
+        const readyToPrintCounter =
+            document.getElementById("readyToPrintCount") ||
+            elements.readyToPrintCount;
+
+        if (readyToPrintCounter) {
+            const readyToPrintCount =
+                options.getReadyToPrintCount(records);
+
+            readyToPrintCounter.textContent = formatCount(
+                readyToPrintCount,
             );
         }
 
@@ -505,21 +564,104 @@
         );
     }
 
+    
     function initializeSearch() {
         const searchInput = document.getElementById("searchInput");
         const searchButton = document.getElementById("searchButton");
         const clearSearch = document.getElementById("clearSearch");
+        const searchArea = searchInput?.closest(".search-area");
 
-        if (!searchInput || !clearSearch) {
+        if (!searchInput || !clearSearch || !searchArea) {
+            console.error("Pesquisa: elementos HTML não encontrados.");
             return;
         }
 
-        const updateClearButton = () => {
-            clearSearch.style.display =
-                searchInput.value.trim() ? "block" : "none";
+        const currentStage = window.location.pathname
+            .split("/")
+            .filter(Boolean)
+            .pop();
+
+        const isReceivingStage = [
+            "recebimento-fiscal",
+            "recebimento-qualidade",
+        ].includes(currentStage);
+
+        const searchOptions = isReceivingStage
+            ? [
+                { label: "Nota fiscal", field: "nota_fiscal" },
+                { label: "Fornecedor", field: "fornecedor" },
+                { label: "Pedido de Compra", field: "pedido_compra" },
+            ]
+            : [
+                { label: "Pedido de Venda", field: "pedido_venda" },
+                { label: "Cliente", field: "cliente" },
+            ];
+
+        // Guarda os registros originais para permitir limpar a pesquisa.
+        const originalRecords = records.map((record) => ({ ...record }));
+
+        // Cria ou reutiliza o contêiner da pesquisa.
+        let searchWrapper = searchArea.parentElement?.classList.contains(
+            "search-options-wrapper"
+        )
+            ? searchArea.parentElement
+            : null;
+
+        if (!searchWrapper) {
+            searchWrapper = document.createElement("div");
+            searchWrapper.className = "search-options-wrapper";
+
+            searchArea.parentNode.insertBefore(searchWrapper, searchArea);
+            searchWrapper.appendChild(searchArea);
+        }
+
+        // Cria ou reutiliza o painel e sempre reconstrói seus botões.
+        let optionsPanel = document.getElementById("searchOptionsPanel");
+
+        if (!optionsPanel) {
+            optionsPanel = document.createElement("div");
+            optionsPanel.id = "searchOptionsPanel";
+            optionsPanel.className = "search-options-panel";
+            optionsPanel.setAttribute("aria-label", "Opções de pesquisa");
+            searchWrapper.appendChild(optionsPanel);
+        } else if (optionsPanel.parentElement !== searchWrapper) {
+            searchWrapper.appendChild(optionsPanel);
+        }
+
+        const optionsTitle = document.createElement("p");
+        optionsTitle.className = "search-options-title";
+        optionsTitle.textContent = "Pesquisar por:";
+
+        const optionsList = document.createElement("div");
+        optionsList.className = "search-options-list";
+
+        let selectedSearchField = null;
+
+        const updateSelectedOption = () => {
+            optionsList.querySelectorAll(".search-option").forEach((button) => {
+                const selected = button.dataset.field === selectedSearchField;
+
+                button.classList.toggle("selected", selected);
+                button.setAttribute("aria-pressed", String(selected));
+            });
         };
 
-        const search = () => {
+        const updateClearButton = () => {
+            clearSearch.style.display = searchInput.value.trim()
+                ? "block"
+                : "none";
+        };
+
+        const updateSearchOptions = () => {
+            optionsPanel.classList.toggle(
+                "is-visible",
+                Boolean(searchInput.value.trim())
+            );
+
+            updateClearButton();
+        };
+
+        const search = async () => {
             if (actionInProgress) {
                 return;
             }
@@ -527,14 +669,97 @@
             const term = searchInput.value.trim();
 
             if (!term) {
-                options.search.onClear?.();
-                updateClearButton();
+                showToast("Digite um termo para pesquisar.", "!");
+                searchInput.focus();
                 return;
             }
 
-            updateClearButton();
-            options.search.onSearch?.(term);
+            if (!selectedSearchField) {
+                showToast("Selecione um campo para pesquisar.", "!");
+                return;
+            }
+
+            const params = new URLSearchParams({
+                campo: selectedSearchField,
+                termo: term,
+            });
+
+            try {
+                await runAction(async () => {
+                    const url =
+                        `/api/inventario/buscar/${encodeURIComponent(currentStage)}` +
+                        `?${params.toString()}`;
+
+                    const response = await fetch(url, {
+                        headers: {
+                            Accept: "application/json",
+                        },
+                        cache: "no-store",
+                    });
+
+                    const data = await response.json().catch(() => null);
+
+                    if (!response.ok) {
+                        throw new Error(
+                            data?.detail ||
+                            `Erro ao pesquisar registros (HTTP ${response.status}).`
+                        );
+                    }
+
+                    if (!data || !Array.isArray(data.records)) {
+                        throw new Error(
+                            "A resposta da pesquisa não contém uma lista válida em 'records'."
+                        );
+                    }
+
+                    replaceRecords(data.records);
+
+                    // Mantém o campo selecionado e fecha a caixa de filtros.
+                    updateSelectedOption();
+                    optionsPanel.classList.remove("is-visible");
+
+                    if (data.records.length === 0) {
+                        showToast("Nenhum picking encontrado para essa pesquisa.", "!");
+                    }
+                });
+            } catch (error) {
+                console.error("Erro ao pesquisar registros:", error);
+
+                showToast(
+                    error.message || "Não foi possível buscar os registros.",
+                    "!"
+                );
+            }
         };
+
+        // Constrói os botões independentemente de o painel já existir no HTML.
+        searchOptions.forEach(({ label, field }) => {
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.className = "search-option";
+            button.textContent = label;
+            button.dataset.field = field;
+            button.setAttribute("aria-pressed", "false");
+
+            button.addEventListener("click", () => {
+                selectedSearchField = field;
+                updateSelectedOption();
+
+                // Ao clicar no campo, pesquisa imediatamente se já há texto.
+                if (searchInput.value.trim()) {
+                    search();
+                } else {
+                    searchInput.focus();
+                }
+            });
+
+            optionsList.appendChild(button);
+        });
+
+        optionsPanel.replaceChildren(optionsTitle, optionsList);
+
+        searchInput.addEventListener("input", updateSearchOptions);
 
         searchInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
@@ -551,13 +776,21 @@
             }
 
             searchInput.value = "";
-            updateClearButton();
+            selectedSearchField = null;
+
+            updateSelectedOption();
+            updateSearchOptions();
+
+            // Restaura os registros carregados antes da pesquisa.
+            replaceRecords(originalRecords.map((record) => ({ ...record })));
+
             options.search.onClear?.();
             searchInput.focus();
         });
 
-        updateClearButton();
+        updateSearchOptions();
     }
+
 
     async function runAction(operation) {
         if (actionInProgress) {
@@ -1372,34 +1605,32 @@
             );
         }
 
-        document
-            .querySelectorAll(".dashboard-card")
-            .forEach((button) => {
-                button.addEventListener(
-                    "click",
-                    () => {
-                        if (actionInProgress) {
-                            return;
-                        }
+        const handleDashboardCardClick = (event) => {
+            const button =
+                event.target.closest(".dashboard-card");
 
-                        filter =
-                            button.dataset.filter;
+            if (!button || actionInProgress) {
+                return;
+            }
 
-                        document
-                            .querySelectorAll(
-                                ".dashboard-card",
-                            )
-                            .forEach((card) => {
-                                card.classList.toggle(
-                                    "active",
-                                    card === button,
-                                );
-                            });
+            filter = button.dataset.filter || filter;
 
-                        render();
-                    },
-                );
-            });
+            document
+                .querySelectorAll(".dashboard-card")
+                .forEach((card) => {
+                    card.classList.toggle(
+                        "active",
+                        card === button,
+                    );
+                });
+
+            render();
+        };
+
+        document.addEventListener(
+            "click",
+            handleDashboardCardClick,
+        );
 
         elements.validationButton?.addEventListener(
             "click",

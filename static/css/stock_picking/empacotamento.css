@@ -5,6 +5,25 @@
 
 /* PV CARD */
 
+.dashboard-card.ready-to-print {
+    grid-column: 1 / -1;
+    min-height: 92px;
+    background: linear-gradient(135deg, var(--green), #1fa267);
+    color: #fff;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: var(--app-shadow);
+    justify-content: center;
+    text-align: center;
+}
+
+.dashboard-card.ready-to-print .dashboard-label {
+    font-size: 18px;
+    line-height: 1.2;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
 .pv-card {
     background: transparent;
     border: 2px solid var(--blue);
@@ -128,6 +147,10 @@
 
 .pv-finish-button {
     border-color: var(--blue);
+}
+
+.pv-print-packages-button {
+    width: 240px;
 }
 
 .pv-generate-package-button {

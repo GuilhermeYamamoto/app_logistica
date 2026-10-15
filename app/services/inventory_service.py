@@ -8,11 +8,14 @@ from app.core.auth import OdooClient
 import json
 import uuid
 import re
+import requests
 from html import unescape
 
 
 class InventoryService:
     """Serviço responsável por lógica de inventário."""
+
+    READY_TO_PRINT_STAGE_ID = 1480
 
     @staticmethod
     def get_inventory_stages() -> List[Dict[str, Any]]:
@@ -89,10 +92,13 @@ class InventoryService:
     ####################################
     @staticmethod
     def list_stage_records(client: OdooClient, picking_type_id: int) -> Dict[str, Any]:
+        if picking_type_id == InventoryService.READY_TO_PRINT_STAGE_ID:
+            return InventoryService.list_ready_to_print_records(client)
+
         try:
             pickings = None
             if picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
@@ -342,6 +348,79 @@ class InventoryService:
 
         return {"picking_type_id": picking_type_id, "records": records}
 
+    @staticmethod
+    def list_ready_to_print_records(client: OdooClient) -> Dict[str, Any]:
+        """Lista os pickings concluídos da etapa de empacotamento para impressão."""
+        try:
+            pickings = client.execute(
+                "stock.picking",
+                "search_read",
+                [
+                    ("picking_type_id", "=", 148),
+                    ("state", "=", "done"),
+                    ("tag_ids", "ilike", 33),
+                ],
+                fields=[
+                    "id",
+                    "name",
+                    "state",
+                    "tag_ids",
+                    "pedido_venda_id",
+                    "move_line_ids",
+                ],
+                order="id asc",
+            )
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível consultar os registros prontos para imprimir",
+            ) from error
+
+        move_line_ids = [
+            move_line_id
+            for picking in pickings
+            for move_line_id in picking.get("move_line_ids", [])
+        ]
+        package_ids_by_picking = defaultdict(list)
+
+        if move_line_ids:
+            move_lines = client.execute(
+                "stock.move.line",
+                "search_read",
+                [("id", "in", move_line_ids)],
+                fields=["picking_id", "result_package_id"],
+            )
+            for move_line in move_lines:
+                package = move_line.get("result_package_id")
+                picking = move_line.get("picking_id")
+                if package and picking:
+                    package_ids_by_picking[picking[0]].append(package[0])
+
+        records = []
+        for picking in pickings:
+            pedido_venda = picking.get("pedido_venda_id")
+            package_ids = package_ids_by_picking.get(picking["id"], [])
+            records.append({
+                "id": picking["id"],
+                "pv": picking.get("name") or f"PV-{picking['id']}",
+                "reference": picking.get("name") or f"PV-{picking['id']}",
+                "validated": True,
+                "state": "done",
+                "readyToPrint": True,
+                "status": "ready_to_print",
+                "pronto_para_imprimir": True,
+                "tagIds": picking.get("tag_ids", []),
+                "pedido_venda_id": pedido_venda[0] if pedido_venda else None,
+                "pedido_venda_name": pedido_venda[1] if pedido_venda else None,
+                "packageId": package_ids[0] if package_ids else None,
+                "packageIds": package_ids,
+            })
+
+        return {
+            "picking_type_id": InventoryService.READY_TO_PRINT_STAGE_ID,
+            "records": records,
+        }
+
         ####################################
     #  LISTAR EMBALAGENS DISPONÍVEIS
     ####################################
@@ -586,6 +665,140 @@ class InventoryService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Não foi possível gerar o pacote no Odoo.",
             ) from error
+
+    ####################################
+    # IMPRESSÃO DA ETIQUETA DO EMPACOTAMENTO
+    ####################################
+    #
+    # Solicita ao Odoo a geração do documento da etiqueta de qualidade/separacao
+    # para o picking informado.
+    #
+    # Após receber os dados do documento e da impressora, retorna os
+    # dados para que o navegador envie o arquivo ao dispositivo IoT.
+    #
+    ####################################
+    def print_report_empacotamento(client, pacote):
+        try:
+            print("==========================================")
+            print("INÍCIO DA IMPRESSÃO")
+            print("Pacote ID:", pacote)
+            print("Client:", type(client))
+            # ========================================================
+            # CHAMA O IOT_RENDER DO ODOO
+            # ========================================================
+            print("Chamando ir.actions.report.iot_render...")
+            package_id = client.execute("stock.quant.package", "search_read", [("id", "=", pacote)], fields=["name"], limit=1)
+            id_etiqueta = 1859 # Etiqueta de Empacotamento
+            print("Etiqueta ID:", id_etiqueta)
+            #package_id = stock_move_line[0].get("result_package_id")[0]
+            package_id = pacote
+            resultado = client.execute("ir.actions.report", "iot_render", id_etiqueta, [package_id], {"device_id": "Qualidade - Argox OS-214EX PPLA"})
+            print("Resultado recebido do Odoo:")
+            print(resultado)
+            # ========================================================
+            # VALIDA RETORNO DO ODOO
+            # ========================================================
+            if not resultado:
+                raise HTTPException(status_code=500, detail="O Odoo não retornou dados para impressão.")
+            if not isinstance(resultado, (list, tuple)):
+                raise HTTPException(status_code=500, detail=(f"Resposta inesperada do Odoo: " f"{type(resultado).__name__}"))
+            if len(resultado) < 3:
+                raise HTTPException(status_code=500, detail=(f"Resposta inválida do Odoo. " f"Esperado pelo menos 3 valores, " f"recebido: {len(resultado)}"))
+            # ========================================================
+            # SEPARA RETORNO DO IOT_RENDER
+            # ========================================================
+            iot_host = resultado[0]
+            device_identifier = resultado[1]
+            pdf_base64 = resultado[2]
+            print("IoT Host:", iot_host)
+            print("Device:", device_identifier)
+            print("Documento recebido:", bool(pdf_base64))
+            if not iot_host:
+                raise HTTPException(status_code=500, detail="O Odoo não retornou o endereço do IoT.")
+            if not device_identifier:
+                raise HTTPException(status_code=500, detail="O Odoo não retornou o identificador da impressora.")
+            if not pdf_base64:
+                raise HTTPException(status_code=500, detail="O Odoo não retornou o documento para impressão.")
+            # ========================================================
+            # MONTA REQUISIÇÃO PARA O IOT
+            # ========================================================
+            session_id = str(uuid.uuid4())
+            payload = {
+                "params": {
+                    "data": json.dumps({
+                        "document": pdf_base64,
+                    }),
+                    "device_identifier": device_identifier,
+                    "session_id": session_id,
+                }
+            }
+
+            iot_url = f"https://{iot_host}/hw_drivers/action"
+
+            print("URL do IoT:", iot_url)
+            print("Device:", device_identifier)
+            print("Session ID:", session_id)
+
+            try:
+                resposta = requests.post(
+                    iot_url,
+                    json=payload,
+                    timeout=30,
+                    verify=False,
+                )
+
+                print("Status HTTP do IoT:", resposta.status_code)
+                print("Resposta do IoT:", resposta.text)
+
+                resposta.raise_for_status()
+
+                # Buscar os pickings que estao no pacote
+                pickins_empacotados = client.execute("stock.move.line", "search_read", [("result_package_id", "=", pacote)], fields=["picking_id"])
+                desmarcar_empacotamento = client.execute("stock.picking", "write", [picking["picking_id"][0] for picking in pickins_empacotados], {"tag_ids": [(3, 33)]}) # Remove a tag de pronto para imprimir)
+
+                return {
+                    "success": True,
+                    "message": "Etiqueta enviada ao IoT para impressão.",
+                    "package_id": pacote,
+                    "session_id": session_id,
+                    "iot_url": iot_url,
+                }
+
+            except requests.RequestException as error:
+                print("ERRO AO ENVIAR ETIQUETA AO IOT:", str(error))
+
+                return {
+                    "success": False,
+                    "message": f"Falha ao enviar etiqueta ao IoT: {error}",
+                    "package_id": pacote,
+                    "session_id": session_id,
+                    "iot_url": iot_url,
+                }
+
+        # ============================================================
+        # ERRO DO ODOO
+        # ============================================================
+        except xmlrpc.client.Fault as e:
+            print("==========================================")
+            print("ERRO XML-RPC DO ODOO")
+            print(e)
+            print("==========================================")
+            raise HTTPException(status_code=502, detail=f"Erro ao executar impressão no Odoo: {str(e)}")
+        # ============================================================
+        # HTTP EXCEPTION
+        # ============================================================
+        except HTTPException:
+            raise
+        # ============================================================
+        # ERRO GERAL
+        # ============================================================
+        except Exception as e:
+            print("==========================================")
+            print("ERRO GERAL AO IMPRIMIR")
+            print(repr(e))
+            print("==========================================")
+            raise HTTPException(status_code=500, detail=f"Erro ao imprimir etiqueta: {str(e)}")
+
 
         
     ####################################

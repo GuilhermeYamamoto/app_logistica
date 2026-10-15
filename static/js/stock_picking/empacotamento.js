@@ -1,6 +1,69 @@
 (function () {
     "use strict";
 
+    function formatCompactCount(value) {
+        return new Intl.NumberFormat("pt-BR", {
+            notation: "compact",
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+
+    function updateReadyToPrintCount(value) {
+        const readyToPrintCount = document.getElementById("readyToPrintCount");
+
+        if (!readyToPrintCount) {
+            return;
+        }
+
+        readyToPrintCount.textContent = formatCompactCount(
+            Number.isFinite(value) ? Number(value) : 0,
+        );
+    }
+
+    window.updateReadyToPrintCount = updateReadyToPrintCount;
+
+    function ensureReadyToPrintCard() {
+        const dashboard = document.querySelector(".dashboard");
+
+        if (!dashboard) {
+            return;
+        }
+
+        const existingCard = dashboard.querySelector(".dashboard-card.ready-to-print");
+
+        if (existingCard) {
+            window.AppInventory?.render();
+            return;
+        }
+
+        const readyCard = document.createElement("button");
+        readyCard.type = "button";
+        readyCard.className = "dashboard-card ready-to-print";
+        readyCard.dataset.filter = "pronto-para-imprimir";
+        readyCard.setAttribute(
+            "aria-label",
+            "PRONTO PARA IMPRIMIR"
+        );
+        readyCard.innerHTML =
+            '<span class="dashboard-label">PRONTO PARA IMPRIMIR</span><strong id="readyToPrintCount">0</strong>';
+
+        dashboard.appendChild(readyCard);
+
+        if (typeof window.AppInventory?.render === "function") {
+            window.AppInventory.render();
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            ensureReadyToPrintCard,
+            { once: true }
+        );
+    } else {
+        ensureReadyToPrintCard();
+    }
+
     const inventory = window.AppInventory;
 
     if (!inventory) {
@@ -66,7 +129,45 @@
         });
     }
 
-    function buildPVGroups(records) {
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function isReadyToPrintRecord(record) {
+        const tagIds = normalizeTagIds(record);
+
+        return Boolean(
+            record?.readyToPrint ||
+            record?.status === "ready_to_print" ||
+            record?.pronto_para_imprimir === true ||
+            (
+                record?.state === "done" &&
+                tagIds.includes(33)
+            )
+        );
+    }
+
+    function isPackedRecord(record) {
+        return normalizeTagIds(record).includes(33);
+    }
+
+    function buildPVGroupsData(records) {
         const groupsById = new Map();
 
         for (const record of records || []) {
@@ -88,7 +189,13 @@
             groupsById.get(key).pickings.push(record);
         }
 
-        pvGroups = Array.from(groupsById.values());
+        return Array.from(groupsById.values());
+    }
+
+    function buildPVGroups(records) {
+        pvGroups = buildPVGroupsData(
+            (records || []).filter((record) => !isReadyToPrintRecord(record)),
+        );
     }
 
     function onRecordsReplaced(records) {
@@ -96,7 +203,20 @@
 
         setTimeout(() => {
             try {
-                renderPVGroupsDOM();
+                const isReadyToPrintView =
+                    document.querySelector(
+                        ".dashboard-card.ready-to-print.active",
+                    ) !== null;
+                const groupsToRender = isReadyToPrintView
+                    ? buildPVGroupsData(
+                        records.filter(isReadyToPrintRecord),
+                    )
+                    : pvGroups;
+
+                renderPVGroupsDOM(
+                    groupsToRender,
+                    isReadyToPrintView,
+                );
             } catch (error) {
                 console.error(
                     "Erro ao renderizar grupos de PV no empacotamento:",
@@ -210,6 +330,124 @@
         }
 
         replaceRecords(data.records);
+    }
+
+    async function printPackageLabel(picking) {
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    "/api/inventario/imprimir-pacote",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            package_id: picking.packageId,
+                        }),
+                    },
+                );
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível imprimir o pacote.",
+                    );
+                }
+
+                inventory.showToast(
+                    `PACOTE DO ${picking.pv} ENVIADO PARA IMPRESSÃO`,
+                );
+
+                await refreshRecords({
+                    replaceRecords: inventory.replaceRecords,
+                });
+                window.AppInventory.render();
+            });
+
+        } catch (error) {
+            console.error("Erro ao imprimir pacote:", error);
+            inventory.showToast(
+                error.message || "Não foi possível imprimir o pacote.",
+                "!",
+            );
+        }
+    }
+
+    function getPickingPackageIds(picking) {
+        const packageIds = [picking?.packageId];
+
+        return packageIds
+            .map((packageId) => Number(packageId))
+            .filter((packageId) => Number.isInteger(packageId) && packageId > 0);
+    }
+
+    async function printGroupPackages(group) {
+        const uniquePackageIds = new Set(
+            (group.pickings || []).flatMap(getPickingPackageIds),
+        );
+
+        for (const packageId of uniquePackageIds) {
+            await printPackageLabel({
+                packageId,
+                pv: group.pedido_venda_name || "PV",
+            });
+        }
+    }
+
+    function hasPackageId(picking) {
+        return getPickingPackageIds(picking).length > 0;
+    }
+
+    function getReadyToPrintPackageCount(records) {
+        return new Set(
+            (records || [])
+                .filter(isReadyToPrintRecord)
+                .flatMap(getPickingPackageIds),
+        ).size;
+    }
+
+    function isFirstPickingForPackage(picking, packageIdsAlreadyRendered) {
+        const packageIds = getPickingPackageIds(picking);
+        const packageId = packageIds[0];
+
+        if (!packageId || packageIdsAlreadyRendered.has(packageId)) {
+            return false;
+        }
+
+        packageIdsAlreadyRendered.add(packageId);
+        return true;
+    }
+
+    function getSelectedPickings(group, pickingsList) {
+        const selectedMoveLineIds = new Set(
+            Array.from(
+                pickingsList.querySelectorAll(
+                    ".emp-picking-checkbox:checked",
+                ),
+            ).flatMap((checkbox) => {
+                const item = checkbox.closest(".emp-picking-item");
+
+                try {
+                    return JSON.parse(item?.dataset.moveLineIds || "[]");
+                } catch (error) {
+                    return [];
+                }
+            }).map(Number),
+        );
+
+        return group.pickings
+            .map((picking) => {
+                const moveLines = (picking.move_lines || []).filter(
+                    (moveLine) => selectedMoveLineIds.has(Number(moveLine.id)),
+                );
+
+                return moveLines.length
+                    ? { ...picking, move_lines: moveLines }
+                    : null;
+            })
+            .filter(Boolean);
     }
 
     async function marcarMoveLinesParaPacote(
@@ -396,7 +634,7 @@
                         );
 
                         inventory.showToast(
-                            "Picking adicionado ao pacote!"
+                            "Linha adicionada ao pacote!"
                         );
 
                         console.log(
@@ -409,7 +647,7 @@
                         );
 
                         inventory.showToast(
-                            "Picking removido do pacote!"
+                            "Linha removida do pacote!"
                         );
 
                         console.log(
@@ -459,11 +697,11 @@
         pickingsList,
         selectedPickings
     ) {
-        const selectedPickingIds =
+        const selectedMoveLineIds =
             new Set(
-                selectedPickings.map(
-                    (picking) => String(picking.id)
-                )
+                selectedPickings
+                    .flatMap((picking) => picking.move_lines || [])
+                    .map((moveLine) => String(moveLine.id)),
             );
 
         const pickingItems =
@@ -473,14 +711,21 @@
 
         pickingItems.forEach(
             (pickingItem) => {
-                const pickingId =
-                    pickingItem.dataset.pickingId;
+                let moveLineIds = [];
 
-                if (
-                    !selectedPickingIds.has(
-                        String(pickingId)
-                    )
-                ) {
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]",
+                    ).map(String);
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do item:",
+                        error,
+                    );
+                    return;
+                }
+
+                if (!moveLineIds.some((id) => selectedMoveLineIds.has(id))) {
                     return;
                 }
 
@@ -1219,8 +1464,10 @@
 
                 try {
                     const result =
-                        await gerarPacote(
-                            packagePayload
+                        await inventory.runAction(
+                            () => gerarPacote(
+                                packagePayload,
+                            ),
                         );
 
                     console.log(
@@ -1319,7 +1566,10 @@
         );
     }
 
-    function renderPVGroupsDOM() {
+    function renderPVGroupsDOM(
+        groupsToRender = pvGroups,
+        readyToPrintView = false,
+    ) {
         const container =
             document.getElementById("pickingsContainer");
 
@@ -1327,18 +1577,16 @@
             return;
         }
 
-        // Guarda qual PV estava aberto antes do render.
         const activePVKey =
             activePVCard?.dataset?.pvId || null;
 
         activePVCard = null;
-
-        // Limpa o container para reconstruir a estrutura por PV.
         container.replaceChildren();
 
-        for (const group of pvGroups) {
+        for (const group of groupsToRender || []) {
             const pvCard = document.createElement("section");
             pvCard.className = "pv-card";
+            const isReadyToPrintView = readyToPrintView;
 
             const pvKey =
                 group.pedido_venda_id === null
@@ -1507,20 +1755,9 @@
                             event.stopPropagation();
 
                             const selectedPickings =
-                                group.pickings.filter(
-                                    (picking, index) => {
-                                        const pickingItems =
-                                            pickingsList.querySelectorAll(
-                                                ".emp-picking-item"
-                                            );
-
-                                        const checkbox =
-                                            pickingItems[index]?.querySelector(
-                                                ".emp-picking-checkbox"
-                                            );
-
-                                        return checkbox?.checked;
-                                    }
+                                getSelectedPickings(
+                                    group,
+                                    pickingsList,
                                 );
 
                             openPackageModal(
@@ -1565,10 +1802,36 @@
                 }
             );
 
-            pvActions.append(
-                packageButton,
-                finishButton,
+            const printPackagesButton = document.createElement("button");
+            printPackagesButton.type = "button";
+            printPackagesButton.className =
+                "pv-action-button pv-print-packages-button";
+            printPackagesButton.setAttribute(
+                "aria-label",
+                "Imprimir pacotes",
             );
+            printPackagesButton.innerHTML = `
+                <span class="pv-action-icon">🖨️</span>
+                <span>IMPRIMIR PACOTES</span>
+            `;
+            printPackagesButton.disabled =
+                !group.pickings.some(hasPackageId);
+            printPackagesButton.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+                    printGroupPackages(group);
+                },
+            );
+
+            if (isReadyToPrintView) {
+                pvActions.append(printPackagesButton);
+            } else {
+                pvActions.append(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             header.append(
                 left,
@@ -1583,30 +1846,51 @@
 
             const pickingsList =
                 document.createElement("div");
+            const packageIdsAlreadyRendered = new Set();
 
             pickingsList.className =
                 shouldRestoreOpen
                     ? "pv-pickings"
                     : "pv-pickings hidden";
 
+            const pickingEntries = isReadyToPrintView
+                ? group.pickings.map((picking) => ({
+                    picking,
+                    moveLine: null,
+                }))
+                : group.pickings.flatMap((picking) =>
+                    (picking.move_lines || []).map((moveLine) => ({
+                        picking,
+                        moveLine,
+                    })),
+                );
+
             for (
-                const [index, picking]
-                of group.pickings.entries()
+                const [index, entry]
+                of pickingEntries.entries()
             ) {
+                const { picking, moveLine } = entry;
                 const pickingItem =
                     document.createElement("div");
 
-                pickingItem.className =
-                    "emp-picking-item";
+                const isPacked = !isReadyToPrintView &&
+                    isPackedRecord(picking);
+
+                pickingItem.className = [
+                    "emp-picking-item",
+                    isPacked ? "emp-picking-packed" : "",
+                ].filter(Boolean).join(" ");
 
                 pickingItem.dataset.pickingId =
                     String(picking.id);
 
                 pickingItem.dataset.moveLineIds =
                     JSON.stringify(
-                        (picking.move_lines || [])
-                            .map((moveLine) => moveLine.id)
-                            .filter(Boolean)
+                        moveLine
+                            ? [moveLine.id].filter(Boolean)
+                            : (picking.move_lines || [])
+                                .map((line) => line.id)
+                                .filter(Boolean)
                     );
 
                 const checkbox =
@@ -1617,15 +1901,13 @@
                     "emp-picking-checkbox";
 
                 checkbox.checked =
-                    (picking.move_lines || []).length > 0 &&
-                    (picking.move_lines || []).every(
-                        (moveLine) =>
-                            moveLine.gerar_pacote === true
-                    );
+                    !isPacked &&
+                    Boolean(moveLine?.gerar_pacote === true);
+                checkbox.disabled = isPacked;
 
                 checkbox.setAttribute(
                     "aria-label",
-                    `Selecionar picking ${index + 1}`
+                    `Selecionar linha ${index + 1}`
                 );
 
                 const info =
@@ -1664,7 +1946,7 @@
                     "emp-picking-value";
 
                 productValue.textContent =
-                    picking.move_lines?.[0]?.referencia_interna ||
+                    moveLine?.referencia_interna ||
                     "Sem produto";
 
                 product.append(
@@ -1694,7 +1976,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    (picking.move_lines?.[0]?.peso ?? "0") + " Kg";
+                    (moveLine?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,
@@ -1736,7 +2018,7 @@
                     "emp-picking-value";
 
                 lotValue.textContent =
-                    picking.move_lines?.[0]?.lot_id?.[1] ?? "Sem lote";
+                    moveLine?.lot_id?.[1] ?? "Sem lote";
 
                 lot.append(
                     lotLabel,
@@ -1765,7 +2047,7 @@
                     "emp-picking-value";
 
                 quantityValue.textContent =
-                    picking.move_lines?.[0]?.qty_done ?? "0";
+                    moveLine?.qty_done ?? "0";
 
                 quantity.append(
                     quantityLabel,
@@ -1782,10 +2064,45 @@
                     secondRow
                 );
 
-                pickingItem.append(
-                    checkbox,
-                    info
-                );
+                if (isReadyToPrintView) {
+                    const printPackageButton =
+                        document.createElement("button");
+
+                    printPackageButton.type = "button";
+                    printPackageButton.className =
+                        "secondary-action print-action emp-package-print-button";
+                    printPackageButton.innerHTML =
+                        '<span class="action-icon-small">🖨️</span>Imprimir Pacote';
+                    const shouldRenderPackageButton =
+                        isFirstPickingForPackage(
+                            picking,
+                            packageIdsAlreadyRendered,
+                        );
+
+                    printPackageButton.disabled = !hasPackageId(picking);
+                    printPackageButton.hidden =
+                        hasPackageId(picking) && !shouldRenderPackageButton;
+                    printPackageButton.title = hasPackageId(picking)
+                        ? "Imprimir etiqueta do pacote"
+                        : "Nenhum pacote encontrado para este picking";
+                    printPackageButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+                            printPackageLabel(picking);
+                        },
+                    );
+
+                    pickingItem.append(
+                        info,
+                        printPackageButton,
+                    );
+                } else {
+                    pickingItem.append(
+                        checkbox,
+                        info,
+                    );
+                }
 
                 pickingsList.appendChild(
                     pickingItem
@@ -1908,8 +2225,10 @@
 
                     try {
                         const result =
-                            await selecionarTodos(
-                                selectAllPayload
+                            await inventory.runAction(
+                                () => selecionarTodos(
+                                    selectAllPayload,
+                                ),
                             );
 
                         console.log(
@@ -1980,9 +2299,11 @@
                 selectAllLabel
             );
 
-            pickingsList.prepend(
-                selectAllContainer
-            );
+            if (!isReadyToPrintView) {
+                pickingsList.prepend(
+                    selectAllContainer
+                );
+            }
 
             pvCard.appendChild(pickingsList);
 
@@ -2055,8 +2376,17 @@
                     ? window.AppInventory.getRecords()
                     : [];
 
+            const isReadyToPrintView =
+                document.querySelector(".dashboard-card.ready-to-print.active") !== null;
+
+            const groupsToRender = isReadyToPrintView
+                ? buildPVGroupsData(
+                    records.filter((record) => isReadyToPrintRecord(record)),
+                )
+                : pvGroups;
+
             buildPVGroups(records);
-            renderPVGroupsDOM();
+            renderPVGroupsDOM(groupsToRender, isReadyToPrintView);
         } catch (error) {
             console.error(
                 "Erro ao processar renderização dos PVs no empacotamento:",
@@ -2069,6 +2399,8 @@
         onRecordsReplaced,
         onAfterRender: handleAfterRender,
         enhanceCard,
+        isReadyToPrint: isReadyToPrintRecord,
+        getReadyToPrintCount: getReadyToPrintPackageCount,
         refreshRecords,
     });
 }());

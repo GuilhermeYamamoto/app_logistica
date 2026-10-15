@@ -2293,3 +2293,113 @@ body {
             max(10px, env(safe-area-inset-bottom, 0px));
     }
 }
+
+
+/* Contêiner da barra de pesquisa */
+.search-options-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 310px;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 1 310px;
+    gap: 0;
+    z-index: 1000;
+}
+
+.search-options-wrapper .search-area {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Painel sobreposto: não aumenta a altura do cabeçalho */
+.search-options-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    background: #ffffff;
+    border: 1px solid #e1e5eb;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+    z-index: 1001;
+}
+
+/* Exibe o painel quando a pesquisa contém texto */
+.search-options-panel.is-visible {
+    display: block;
+}
+
+.search-options-title {
+    margin: 0 0 10px;
+    color: #596273;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+.search-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.search-option {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+
+    color: #273449;
+    background: #f7f9fc;
+    border: 1px solid #e5eaf1;
+    border-radius: 7px;
+
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: left;
+
+    cursor: pointer;
+    transition: background-color 0.15s ease,
+                border-color 0.15s ease;
+}
+
+.search-option:hover {
+    background: #edf2f8;
+    border-color: #cbd5e1;
+}
+
+.search-option.selected {
+    color: #703568;
+    background: #f8eaf4;
+    border-color: #A44389;
+    font-weight: 700;
+}
+
+.search-option:focus-visible {
+    outline: 2px solid #A44389;
+    outline-offset: 2px;
+}
+
+/* Ajustes para telas menores */
+@media (max-width: 768px) {
+    .search-options-wrapper {
+        width: 100%;
+        flex-basis: 100%;
+    }
+
+    .search-options-wrapper .search-area {
+        width: 100%;
+    }
+
+    .search-options-wrapper .search-area input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
