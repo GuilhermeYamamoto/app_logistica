@@ -7,13 +7,25 @@
 {% endblock %}
 
 {% block inventory_modals %}
-    <div id="conferenciaSeparacaoModal" class="modal-overlay hidden">
-        <div class="modal action-modal">
-            <span class="modal-kicker">CONFERÊNCIA</span>
-            <h2>CONFERIR SEPARAÇÃO</h2>
-            <p id="conferenciaSeparacaoText">
-                Deseja realmente solicitar a conferência desta separação?
-            </p>
+    <div id="conferenciaSeparacaoModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal action-modal conferencia-separacao-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">CONFERÊNCIA</span>
+                    <h2>CONFERIR SEPARAÇÃO</h2>
+                    <p id="conferenciaSeparacaoText">
+                        Deseja realmente solicitar a conferência desta separação?
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="close-modal"
+                    data-close="conferenciaSeparacaoModal"
+                    aria-label="Fechar modal"
+                >
+                    ×
+                </button>
+            </div>
             <div class="modal-footer">
                 <button
                     class="secondary-button"

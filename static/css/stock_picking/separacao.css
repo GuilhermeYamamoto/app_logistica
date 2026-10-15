@@ -288,6 +288,41 @@
 }
 
 /* =========================================================
+    MODAL DE CONFERÊNCIA DE SEPARAÇÃO
+========================================================= */
+
+.conferencia-separacao-modal {
+    width: min(520px, 100%);
+}
+
+.conferencia-separacao-modal .modal-header {
+    padding: 24px 26px 12px;
+    align-items: flex-start;
+}
+
+.conferencia-separacao-modal .modal-header > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.conferencia-separacao-modal .modal-header h2 {
+    margin: 0;
+    font-size: 27px;
+    line-height: 1.15;
+}
+
+.conferencia-separacao-modal .modal-header p {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.conferencia-separacao-modal .modal-footer {
+    padding-top: 8px;
+}
+
+/* =========================================================
     MODAL DE REPETIR PESO
 ========================================================= */
 
