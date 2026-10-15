@@ -568,14 +568,90 @@
         const searchInput = document.getElementById("searchInput");
         const searchButton = document.getElementById("searchButton");
         const clearSearch = document.getElementById("clearSearch");
+        const searchArea = searchInput?.closest(".search-area");
 
         if (!searchInput || !clearSearch) {
             return;
         }
 
+        // Identifica a etapa pela URL atual.
+        const currentStage = window.location.pathname
+            .split("/")
+            .filter(Boolean)
+            .pop();
+
+        const isReceivingStage = [
+            "recebimento-fiscal",
+            "recebimento-qualidade",
+        ].includes(currentStage);
+
+        const searchOptions = isReceivingStage
+            ? [
+                "Nota fiscal",
+                "Fornecedor",
+                "Pedido de Compra",
+            ]
+            : [
+                "Pedido de Venda",
+                "Cliente",
+            ];
+
+        // Cria um contêiner para manter as opções abaixo da barra.
+        let searchWrapper = searchArea?.parentElement?.classList.contains(
+            "search-options-wrapper"
+        )
+            ? searchArea.parentElement
+            : null;
+
+        if (searchArea && !searchWrapper) {
+            searchWrapper = document.createElement("div");
+            searchWrapper.className = "search-options-wrapper";
+
+            searchArea.parentNode.insertBefore(searchWrapper, searchArea);
+            searchWrapper.appendChild(searchArea);
+        }
+
+        // Cria o painel visual de opções.
+        let optionsPanel = document.getElementById("searchOptionsPanel");
+
+        if (!optionsPanel && searchWrapper) {
+            optionsPanel = document.createElement("div");
+            optionsPanel.id = "searchOptionsPanel";
+            optionsPanel.className = "search-options-panel";
+            optionsPanel.setAttribute("aria-label", "Opções de pesquisa");
+
+            const optionsTitle = document.createElement("p");
+            optionsTitle.className = "search-options-title";
+            optionsTitle.textContent = "Pesquisar por:";
+
+            const optionsList = document.createElement("div");
+            optionsList.className = "search-options-list";
+
+            searchOptions.forEach((label) => {
+                const option = document.createElement("div");
+                option.className = "search-option";
+                option.textContent = label;
+
+                optionsList.appendChild(option);
+            });
+
+            optionsPanel.append(optionsTitle, optionsList);
+            searchWrapper.appendChild(optionsPanel);
+        }
+
         const updateClearButton = () => {
             clearSearch.style.display =
                 searchInput.value.trim() ? "block" : "none";
+        };
+
+        const updateSearchOptions = () => {
+            const hasText = Boolean(searchInput.value.trim());
+
+            if (optionsPanel) {
+                optionsPanel.classList.toggle("is-visible", hasText);
+            }
+
+            updateClearButton();
         };
 
         const search = () => {
@@ -587,13 +663,16 @@
 
             if (!term) {
                 options.search.onClear?.();
-                updateClearButton();
+                updateSearchOptions();
                 return;
             }
 
-            updateClearButton();
+            updateSearchOptions();
             options.search.onSearch?.(term);
         };
+
+        // Exibe as opções enquanto o usuário digita.
+        searchInput.addEventListener("input", updateSearchOptions);
 
         searchInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
@@ -610,12 +689,12 @@
             }
 
             searchInput.value = "";
-            updateClearButton();
+            updateSearchOptions();
             options.search.onClear?.();
             searchInput.focus();
         });
 
-        updateClearButton();
+        updateSearchOptions();
     }
 
     async function runAction(operation) {
