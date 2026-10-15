@@ -286,3 +286,52 @@
 
     color: var(--text-muted);
 }
+
+/* =========================================================
+    MODAL DE REPETIR PESO
+========================================================= */
+
+.replicar-peso-modal {
+    width: min(620px, 100%);
+}
+
+#inputPesoForm {
+    padding: 0 26px;
+}
+
+#inputPesoForm .form-section {
+    margin-bottom: 0;
+}
+
+#inputPesoForm .form-group {
+    margin-bottom: 0;
+}
+
+#inputPesoForm .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text);
+}
+
+#pesoPacotes {
+    width: 100%;
+    min-height: 52px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    background: var(--input-background);
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 15px;
+    outline: none;
+}
+
+#pesoPacotes:focus {
+    border-color: var(--blue);
+}
+
+#inputPesoForm .modal-footer {
+    padding: 20px 0 25px;
+    margin-top: 18px;
+}

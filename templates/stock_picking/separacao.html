@@ -33,24 +33,34 @@
         </div>
     </div>
 
-    <div id="replicarPesoModal" class="modal-overlay hidden">
-        <div class="modal">
+    <div id="replicarPesoModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal quality-modal replicar-peso-modal">
             <div class="modal-header">
-                <span class="modal-kicker">Replicar Peso para Embalagens</span>
-                <button class="close-modal" data-close="replicarPesoModal">×</button>
+                <div>
+                    <span class="modal-kicker quality-kicker">ADICIONAR PESO PACOTES</span>
+                    <h2>REPLICAR PESO</h2>
+                    <p id="replicarPesoPickingInfo">PV</p>
+                </div>
+                <button type="button" class="close-modal" data-close="replicarPesoModal" aria-label="Fechar modal">×</button>
             </div>
             <form id="inputPesoForm">
                 <div class="form-section">
                     <div class="form-group">
-                        <h3>Digite o peso que deseja repetir para os pacotes</h3><br/>
-                        <input id="pesoPacotes" type="number" min="0.00" step="0.01" placeholder="Digite o peso para os pacotes">
+                        <label for="pesoPacotes">Peso a ser replicado (kg)</label>
+                        <input
+                            id="pesoPacotes"
+                            type="number"
+                            min="0.00"
+                            step="0.01"
+                            placeholder="Digite o peso para os pacotes"
+                        >
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="secondary-button" data-close="replicarPesoModal">
                         CANCELAR
                     </button>
-                    <button type="submit" class="quality-button">
+                    <button type="submit" class="primary-button">
                         REPLICAR PESO
                     </button>
                 </div>

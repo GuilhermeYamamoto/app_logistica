@@ -86,9 +86,16 @@
         const pesoInput = document
             .getElementById("replicarPesoModal")
             ?.querySelector("#pesoPacotes");
+        const pickingInfo = document.getElementById("replicarPesoPickingInfo");
+
         if (pesoInput) {
             pesoInput.value = "";
         }
+
+        if (pickingInfo) {
+            pickingInfo.textContent = `PV ${picking?.pv || picking?.reference || "-"}`;
+        }
+
         window.AppUI.openModal("replicarPesoModal");
     }
 
