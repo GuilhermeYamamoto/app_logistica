@@ -94,8 +94,25 @@
         toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 2800);
     }
 
+    function normalizeModalStack() {
+        const visibleModals = Array.from(
+            document.querySelectorAll(".modal-overlay:not(.hidden)"),
+        );
+
+        visibleModals.forEach((modal, index) => {
+            modal.style.zIndex = String(1000 + index);
+        });
+    }
+
     function openModal(id) {
-        getElement(id)?.classList.remove("hidden");
+        const modal = getElement(id);
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.remove("hidden");
+        modal.parentNode?.appendChild(modal);
+        normalizeModalStack();
     }
 
     function closeModal(id) {
@@ -105,6 +122,7 @@
         }
         document.dispatchEvent(new CustomEvent("app:modal-close", { detail: { id } }));
         modal.classList.add("hidden");
+        normalizeModalStack();
     }
 
     let actionConfirmationResolve = null;
