@@ -184,18 +184,29 @@
         return button;
     }
 
+    function updateValidationButtonsState(card, record) {
+        const shouldDisable = Number(record.receivedQuantity) <= 0;
+
+        card?.querySelectorAll(".validation-action").forEach((button) => {
+            const baseDisabled = button.dataset.baseDisabled === "true";
+            button.disabled = baseDisabled || shouldDisable;
+        });
+    }
+
     function createValidationAction(
         record,
         className = "main-action validation-action",
         disabled = false,
     ) {
-        return createAction({
+        const button = createAction({
             className,
             label: "CONCLUÍDO",
             icon: "✓",
             disabled,
             onClick: () => openValidation(record),
         });
+        button.dataset.baseDisabled = String(disabled);
+        return button;
     }
 
     function createQualityAction(
@@ -258,7 +269,17 @@
         const quantityInput = createElement("input", "quantity-input");
         quantityInput.type = "number";
         quantityInput.value = record.receivedQuantity;
-        quantityInput.min = 0.0; 
+        quantityInput.min = 0.0;
+        quantityInput.addEventListener("input", () => {
+            const value = Number(quantityInput.value);
+            if (Number.isNaN(value) || value < 0) {
+                quantityInput.value = record.receivedQuantity;
+                return;
+            }
+
+            record.receivedQuantity = value;
+            updateValidationButtonsState(card, record);
+        });
         quantityInput.addEventListener("change", () => updateReceivedQuantity(record, quantityInput));
         quantityInput.disabled = !options.canEditQuantity;
 
@@ -361,6 +382,7 @@
             record,
             context,
         );
+        updateValidationButtonsState(card, record);
 
         card.append(
             chatTab,
@@ -396,6 +418,9 @@
 
         const previousValue = record.receivedQuantity;
         record.receivedQuantity = value;
+        const card = document.querySelector(`[data-record-id="${String(record.id)}"]`);
+        updateValidationButtonsState(card, record);
+
         try {
             await AppInventory.runAction(async () => {
                 const response = await fetch("/api/received_quantity", {
@@ -411,11 +436,15 @@
                 if (!response.ok) {
                     throw new Error(data.detail || "Erro ao atualizar quantidade.");
                 }
+
+                render();
                 AppInventory.showToast("Quantidade atualizada.");
             });
         } catch (error) {
             console.error("Erro ao atualizar quantidade:", error);
             record.receivedQuantity = previousValue;
+            input.value = previousValue;
+            updateValidationButtonsState(card, record);
             AppInventory.showToast(error.message || "Erro ao atualizar quantidade.", "!");
         }
     }
