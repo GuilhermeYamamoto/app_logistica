@@ -99,7 +99,116 @@ async def stage_page(
         records["records"].extend(ready_records["records"])
     return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
+# FILTROS DA BUSCA DO INVENTÁRIO
 
+@router.get("/api/inventario/buscar/{stage_key}")
+def buscar_registros_inventario(
+    stage_key: str,
+    campo: str,
+    termo: str,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Filtra os registros de uma etapa do inventário pelo campo selecionado.
+    Os registros são obtidos pelo InventoryService e filtrados no backend.
+    """
+
+    stage = get_stage(stage_key)
+
+    termo = (termo or "").strip().casefold()
+
+    if not termo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe um termo para realizar a busca.",
+        )
+
+    campos_permitidos = {
+        "nota_fiscal",
+        "fornecedor",
+        "pedido_compra",
+        "pedido_venda",
+        "cliente",
+    }
+
+    if campo not in campos_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campo de busca inválido.",
+        )
+
+    # Obtém os registros da etapa selecionada.
+    resultado = InventoryService.list_stage_records(
+        client,
+        stage["picking_type_id"],
+    )
+
+    # A etapa de empacotamento também reúne os registros
+    # que estão prontos para impressão.
+    if stage_key == "empacotamento":
+        registros_prontos = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+
+        resultado["records"].extend(
+            registros_prontos["records"]
+        )
+
+    def corresponde(registro):
+        if campo == "nota_fiscal":
+            valor = registro.get("nf_number")
+
+        elif campo == "fornecedor":
+            # Exemplo: "PO2392 - BELENUS" -> "BELENUS"
+            pedido_compra = str(
+                registro.get("client") or ""
+            )
+
+            partes = pedido_compra.split(" - ", 1)
+
+            valor = (
+                partes[1]
+                if len(partes) > 1
+                else pedido_compra
+            )
+
+        elif campo == "pedido_compra":
+            # Exemplo: "PO2392 - BELENUS" -> "PO2392"
+            pedido_compra = str(
+                registro.get("client") or ""
+            )
+
+            partes = pedido_compra.split(" - ", 1)
+
+            valor = (
+                partes[0]
+                if len(partes) > 1
+                else pedido_compra
+            )
+
+        elif campo == "pedido_venda":
+            valor = registro.get("pedido_venda_name")
+
+        else:  # cliente
+            valor = (
+                registro.get("cliente")
+                or registro.get("partner")
+            )
+
+        return termo in str(valor or "").casefold()
+
+    registros_filtrados = [
+        registro
+        for registro in resultado["records"]
+        if corresponde(registro)
+    ]
+
+    return {
+        **resultado,
+        "records": registros_filtrados,
+        "total": len(registros_filtrados),
+    }
 
 ####################################
 #  IMPRESSÃO DA ETIQUETA

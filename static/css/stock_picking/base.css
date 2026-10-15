@@ -2341,6 +2341,7 @@ body {
     font-weight: 600;
 }
 
+
 .search-options-list {
     display: flex;
     flex-direction: column;
@@ -2349,15 +2350,41 @@ body {
 
 .search-option {
     box-sizing: border-box;
+    display: block;
     width: 100%;
     padding: 10px 12px;
+
     color: #273449;
     background: #f7f9fc;
     border: 1px solid #e5eaf1;
     border-radius: 7px;
+
+    font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     line-height: 1.4;
+    text-align: left;
+
+    cursor: pointer;
+    transition: background-color 0.15s ease,
+                border-color 0.15s ease;
+}
+
+.search-option:hover {
+    background: #edf2f8;
+    border-color: #cbd5e1;
+}
+
+.search-option.selected {
+    color: #703568;
+    background: #f8eaf4;
+    border-color: #A44389;
+    font-weight: 700;
+}
+
+.search-option:focus-visible {
+    outline: 2px solid #A44389;
+    outline-offset: 2px;
 }
 
 /* Ajustes para telas menores */
