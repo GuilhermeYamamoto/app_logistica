@@ -438,7 +438,7 @@
                 addPesoPacotes.classList.add("full-width-action");
             }
             addPesoPacotes.innerHTML =
-                '<span class="action-icon-small">⚖️</span>Adicionar Peso Pacotes';
+                '<span class="action-icon-small">⚖️</span>REPLICAR PESO';
 
             context.addSecondaryAction(addPesoPacotes);
 
@@ -459,7 +459,7 @@
                     "correction-action",
                 );
                 corrigirPesoDivergente.innerHTML =
-                    '<span class="action-icon-small">🛠️</span>Corrigir Peso Divergente';
+                    '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
 
                 context.addSecondaryAction(corrigirPesoDivergente);
 
@@ -539,7 +539,7 @@
                     "Preencha e corrija o peso antes de imprimir.";
             }
             imprimirEtqPacotes.innerHTML =
-                '<span class="action-icon-small">🖨️</span>Imprimir Etiqueta Embalagens';
+                '<span class="action-icon-small">🖨️</span>IMPRIMIR ETIQUETA';
             // Solicita a impressão das etiquetas das embalagens deste picking.
             imprimirEtqPacotes.addEventListener(
                 "click",
@@ -561,7 +561,7 @@
                     "Preencha e corrija o peso antes de conferir.";
             }
             conferirSeparacao.innerHTML =
-                '<span class="action-icon-small">✅</span>Conferir Separação';
+                '<span class="action-icon-small">✔</span>SOLICITAR CONFERÊNCIA';
 
             context.addSecondaryAction(conferirSeparacao);
 
