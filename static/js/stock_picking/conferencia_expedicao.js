@@ -121,23 +121,34 @@
 
         try {
             await inventory.runAction(async () => {
-                for (const record of pendingRecords) {
-                    const response = await fetch(
-                        `/api/inventario/pickings/${record.id}/validar`,
-                        {
-                            method: "POST",
-                        },
+                if (!group.salesOrderId) {
+                    throw new Error(
+                        "Este agrupamento não possui Pedido de Venda.",
                     );
-                    const data = await response.json().catch(() => ({}));
+                }
 
-                    if (!response.ok) {
-                        throw new Error(
-                            data.detail ||
-                            `Não foi possível validar o picking ${record.reference}.`,
-                        );
+                const response = await fetch(
+                    `/api/inventario/pedidos-venda/${group.salesOrderId}/validar`,
+                    {
+                        method: "POST",
+                    },
+                );
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível validar os pickings do Pedido de Venda.",
+                    );
+                }
+
+                const validatedPickingIds = new Set(
+                    (data.picking_ids || []).map(Number),
+                );
+                for (const record of pendingRecords) {
+                    if (validatedPickingIds.has(Number(record.id))) {
+                        record.validated = true;
                     }
-
-                    record.validated = true;
                 }
             });
 
@@ -269,9 +280,9 @@
             validateButton.type = "button";
             validateButton.className = "sales-order-validate";
             validateButton.textContent = "VALIDAR TODOS";
-            validateButton.disabled = !group.records.some(
-                (record) => !record.validated,
-            );
+            validateButton.disabled =
+                !group.salesOrderId ||
+                !group.records.some((record) => !record.validated);
 
             const arrow = document.createElement("span");
             arrow.className = "sales-order-toggle";

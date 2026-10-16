@@ -131,6 +131,19 @@ async def button_validate(picking_id: int,client=Depends(get_odoo_client)):
     """
     return InventoryService.button_validate(client, picking_id)
 
+@router.post("/api/inventario/pedidos-venda/{pedido_venda_id}/validar")
+async def button_validate_sales_order(
+    pedido_venda_id: int,
+    client=Depends(get_odoo_client),
+):
+    """
+    Valida de uma vez os pickings pendentes do Pedido de Venda.
+    """
+    return InventoryService.button_validate_sales_order(
+        client,
+        pedido_venda_id,
+    )
+
 ####################################
 #  CONSULTA DE PICKINGS POR NOTA FISCAL
 ####################################
@@ -424,4 +437,3 @@ def enviar_conferencia_expedicao(picking_data = Body(...),client: OdooClient = D
     Chama a ação no servidor que preenche o campo x_studio_local_definido.
     """
     return InventoryService.action_local_definido(client, picking_data)
-

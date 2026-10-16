@@ -526,6 +526,68 @@ class InventoryService:
         return {"success": True, "picking_id": picking_id, "result": result}
 
     ####################################
+    #  MÉTODO PARA VALIDAR PICKINGS DE UM PEDIDO
+    ####################################
+    #
+    #  Busca os pickings pendentes da Conferência para Expedição
+    #  pertencentes ao mesmo Pedido de Venda e chama a ação nativa
+    #  "Validar" do Odoo uma única vez com todo o recordset.
+    #
+    ####################################
+    @staticmethod
+    def button_validate_sales_order(client, pedido_venda_id):
+        try:
+            picking_ids = client.execute(
+                "stock.picking",
+                "search",
+                [
+                    ("picking_type_id", "=", 139),
+                    ("pedido_venda_id", "=", pedido_venda_id),
+                    ("state", "=", "assigned"),
+                    ("x_studio_local_definido", "=", True),
+                ],
+            )
+
+            if not picking_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Nenhum picking pendente foi encontrado para este Pedido de Venda.",
+                )
+
+            result = client.execute(
+                "stock.picking",
+                "button_validate",
+                picking_ids,
+            )
+        except HTTPException:
+            raise
+        except xmlrpc.client.Fault as error:
+            error_message = str(error)
+            if "cannot marshal" in error_message:
+                print(
+                    "AVISO: Os pickings foram validados, mas o Odoo "
+                    "não conseguiu serializar o retorno.",
+                )
+                result = None
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=error_message,
+                ) from error
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível validar os pickings do Pedido de Venda.",
+            ) from error
+
+        return {
+            "success": True,
+            "pedido_venda_id": pedido_venda_id,
+            "picking_ids": picking_ids,
+            "result": result,
+        }
+
+    ####################################
     #  MÉTODO PARA FILTRAR PICKING POR NF
     ####################################
     #
