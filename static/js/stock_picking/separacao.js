@@ -332,6 +332,7 @@
         const qtdEmbalagensLabel = document.createElement("div");
 
         const qtdEmbalagensStyle = document.createElement("strong");
+        qtdEmbalagensStyle.className = "qtd-embalagens-label";
         qtdEmbalagensStyle.textContent = "Quantidade Total Embalagens";
 
         qtdEmbalagensLabel.appendChild(qtdEmbalagensStyle);
@@ -376,7 +377,7 @@
 
         // ***** Campo tipo de pacote do Picking *****
         const tipoEmbalagemBox = document.createElement("div");
-        tipoEmbalagemBox.className = "secondary-info-box-1";
+        tipoEmbalagemBox.className = "secondary-info-box-1 tipo-embalagem-box";
 
         const tipoEmbalagemLabel = document.createElement("div");
         tipoEmbalagemLabel.className = "secondary-info-label";
@@ -559,7 +560,7 @@
                     "Preencha e corrija o peso antes de conferir.";
             }
             conferirSeparacao.innerHTML =
-                '<span class="action-icon-small">✔</span>SOLICITAR CONFERÊNCIA';
+                '<span class="action-icon-small">✓</span>SOLICITAR CONFERÊNCIA';
 
             context.addSecondaryAction(conferirSeparacao);
 
