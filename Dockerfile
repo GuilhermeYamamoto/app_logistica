@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copiar arquivo de requisitos
 COPY pyproject.toml .
+COPY app ./app
 
 # Instalar uv para build
 RUN pip install --no-cache-dir uv && \
