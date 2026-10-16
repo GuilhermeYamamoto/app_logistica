@@ -38,15 +38,33 @@
     grid-column: 1; /* Coluna 1 */
 }
 
+.secondary-info-box-3 {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+    width: 100%;
+    grid-column: 3;
+}
+
+.tipo-embalagem-box {
+    gap: 8px;
+}
+
 .secondary-info-label {
     display: block;
-    margin-bottom: 0;
+    margin: 0;
     color: var(--muted);
     text-transform: none;
+    line-height: 1.2;
+}
+
+.qtd-embalagens-label {
+    color: var(--muted);
 }
 
 .secondary-info-value {
-    margin-top: -7px;
+    margin-top: 0;
     width: 100%;
     height: 48px;
     min-height: 48px;
@@ -57,12 +75,6 @@
     font-size: 18px;
     font-weight: 680;
     line-height: 1.3;
-}
-
-.secondary-info-box-3 { /* Coluna 3 */
-    width: 100%;
-    min-width: 0;
-    grid-column: 3;
 }
 
 /* =========================================================
