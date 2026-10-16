@@ -7,6 +7,45 @@
     flex-direction: column;
    position: relative;
    overflow: hidden;
+   cursor: pointer;
+   transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.picking-card:hover {
+   transform: translateY(-1px);
+   box-shadow: 0 14px 28px rgba(0, 0, 0, .12);
+}
+
+.picking-card:focus-visible {
+   outline: 3px solid rgba(164, 67, 137, .35);
+   outline-offset: 3px;
+}
+
+.picking-details-hint {
+   margin-top: 12px;
+   margin-bottom: 24px;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   gap: 8px;
+   align-self: flex-start;
+   padding: 11px 18px;
+   border-radius: 999px;
+   background: rgba(220, 38, 38, .12);
+   color: #d62828;
+   font-size: 12px;
+   font-weight: 900;
+   letter-spacing: .08em;
+   text-transform: uppercase;
+   border: 1px solid rgba(214, 40, 40, .45);
+   box-shadow: 0 6px 18px rgba(214, 40, 40, .18);
+}
+
+[data-theme="dark"] .picking-details-hint {
+   background: rgba(255, 86, 86, .18);
+   color: #ff6b6b;
+   border-color: rgba(255, 107, 107, .55);
+   box-shadow: 0 8px 20px rgba(255, 107, 107, .18);
 }
 
 .picking-card.correction-requested {
@@ -133,7 +172,7 @@
 }
 
 .secondary-actions .conference-action {
-    background: var(--green);
+    background: var(--light-blue);
     grid-column: 1 / -1;
     order: 5;
 }
@@ -342,11 +381,151 @@
 }
 
 /* =========================================================
-    MODAL DE CONFERÊNCIA DE SEPARAÇÃO
+   MODAL DE DETALHES DO PICKING
+========================================================= */
+
+.picking-details-modal {
+   width: min(820px, 100%);
+   max-height: min(78vh, 760px);
+   display: flex;
+   flex-direction: column;
+}
+
+.picking-details-body {
+   padding: 0 26px 10px;
+   overflow: hidden;
+}
+
+.picking-details-summary {
+   display: grid;
+   grid-template-columns: repeat(3, minmax(0, 1fr));
+   gap: 12px;
+   margin-bottom: 18px;
+}
+
+.picking-details-stat {
+   display: flex;
+   flex-direction: column;
+   gap: 6px;
+   padding: 16px;
+   border-radius: 12px;
+   background: var(--app-surface-secondary);
+   border: 1px solid var(--border);
+}
+
+.picking-details-stat span {
+   color: var(--muted);
+   font-size: 11px;
+   font-weight: 900;
+   letter-spacing: .08em;
+   text-transform: uppercase;
+}
+
+.picking-details-stat strong {
+   font-size: 24px;
+   line-height: 1.1;
+}
+
+.picking-details-table {
+   border: 1px solid var(--border);
+   border-radius: 12px;
+   overflow: hidden;
+   background: var(--app-surface);
+   max-height: min(52vh, 380px);
+   overflow-y: auto;
+}
+
+#pickingDetailsRows {
+   overflow-y: auto;
+}
+
+.picking-details-header,
+.picking-detail-row {
+   display: grid;
+   grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.5fr);
+   gap: 16px;
+   align-items: center;
+   padding: 12px 14px;
+}
+
+.picking-details-header {
+   position: sticky;
+   top: 0;
+   z-index: 1;
+   background: var(--app-surface-secondary);
+   border-bottom: 1px solid var(--border);
+   color: var(--muted);
+   font-size: 12px;
+   font-weight: 900;
+   letter-spacing: .08em;
+   text-transform: uppercase;
+}
+
+.picking-detail-row {
+   border-top: 1px solid var(--border);
+}
+
+.picking-detail-row:first-of-type {
+   border-top: none;
+}
+
+.picking-detail-field {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   min-width: 0;
+}
+
+.picking-detail-field input {
+   width: 100%;
+   min-height: 42px;
+   border: 1px solid var(--border);
+   border-radius: 9px;
+   background: var(--input-background);
+   color: var(--text);
+   padding: 10px 12px;
+   font-size: 15px;
+}
+
+.picking-detail-field input:focus {
+   border-color: var(--blue);
+   outline: none;
+}
+
+.detail-unit {
+   flex-shrink: 0;
+   min-width: 38px;
+   padding: 6px 8px;
+   border-radius: 8px;
+   background: var(--app-surface-secondary);
+   color: var(--muted);
+   font-size: 11px;
+   font-weight: 900;
+   letter-spacing: .08em;
+   text-transform: uppercase;
+   text-align: center;
+}
+
+.picking-detail-lot {
+   min-width: 0;
+   font-size: 14px;
+   font-weight: 700;
+   color: var(--text);
+   word-break: break-word;
+}
+
+.picking-detail-empty {
+   padding: 25px 16px;
+   text-align: center;
+   color: var(--muted);
+}
+
+/* =========================================================
+   MODAL DE CONFERÊNCIA DE SEPARAÇÃO
 ========================================================= */
 
 .conferencia-separacao-modal {
-    width: min(520px, 100%);
+   width: min(520px, 100%);
 }
 
 .conferencia-separacao-modal .modal-header {

@@ -104,6 +104,14 @@
         });
     }
 
+    function updateBodyScrollLock() {
+        const hasVisibleModal = document.querySelector(".modal-overlay:not(.hidden)");
+        const locked = Boolean(hasVisibleModal);
+
+        document.body.style.overflow = locked ? "hidden" : "";
+        document.documentElement.style.overflow = locked ? "hidden" : "";
+    }
+
     function openModal(id) {
         const modal = getElement(id);
         if (!modal) {
@@ -113,6 +121,7 @@
         modal.classList.remove("hidden");
         modal.parentNode?.appendChild(modal);
         normalizeModalStack();
+        updateBodyScrollLock();
     }
 
     function closeModal(id) {
@@ -123,6 +132,7 @@
         document.dispatchEvent(new CustomEvent("app:modal-close", { detail: { id } }));
         modal.classList.add("hidden");
         normalizeModalStack();
+        updateBodyScrollLock();
     }
 
     let actionConfirmationResolve = null;
