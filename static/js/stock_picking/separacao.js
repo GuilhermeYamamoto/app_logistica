@@ -433,10 +433,8 @@
             addPesoPacotes.classList.add(
                 "secondary-action",
                 "package-action",
+                "full-width-action",
             );
-            if (!pesoDivergente) {
-                addPesoPacotes.classList.add("full-width-action");
-            }
             addPesoPacotes.innerHTML =
                 '<span class="action-icon-small">⚖️</span>REPLICAR PESO';
 
