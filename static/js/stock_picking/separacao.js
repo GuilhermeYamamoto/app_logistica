@@ -273,12 +273,23 @@
    // específicos desta etapa.
    function enhanceCard(card, picking, context) {
         // Herda o Card base e adiciona funcionalidades específicas para a separacao
+       const correctionRequested = Boolean(
+           picking.correcao_peso_solicitada ||
+           picking.correcaoPesoSolicitada ||
+           picking.peso_correcao_solicitada ||
+           picking.correctionRequested ||
+           picking.requestedCorrection,
+       );
+
+       if (correctionRequested) {
+           card.classList.add("correction-requested");
+       }
         
-        // Linhas do picking
-        const moveLines = picking.move_lines || [];
-        const conferido = isConferido(picking);
-        const pesoDivergente = Boolean(picking.divergencia_peso_picking);
-        const pesoConferido = !pesoDivergente;
+       // Linhas do picking
+       const moveLines = picking.move_lines || [];
+       const conferido = isConferido(picking);
+       const pesoDivergente = Boolean(picking.divergencia_peso_picking);
+       const pesoConferido = !pesoDivergente;
 
         // O card base cria ações padrão automaticamente. Nesta etapa,
         // pickings pendentes exibem suas ações operacionais nas ações
@@ -437,7 +448,7 @@
                 "full-width-action",
             );
             addPesoPacotes.innerHTML =
-                '<span class="action-icon-small">⚖️</span>REPLICAR PESO';
+                '<span class="action-icon-small">⚖️</span>REPLICAR PESO DOS PACOTES';
 
             context.addSecondaryAction(addPesoPacotes);
 
@@ -497,10 +508,21 @@
                                         "Não foi possível abrir a solicitação de correção.",
                                     );
                                 }
-                                inventory.showToast(
-                                    `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
-                                );
-                            });
+
+                               const card = corrigirPesoDivergente.closest(".picking-card");
+                               if (card) {
+                                   card.classList.add("correction-requested");
+                                   card.dataset.correctionRequested = "true";
+                               }
+
+                               picking.correcao_peso_solicitada = true;
+                               picking.correcaoPesoSolicitada = true;
+                               picking.peso_correcao_solicitada = true;
+
+                               inventory.showToast(
+                                   `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
+                               );
+                           });
                         } catch (error) {
                             console.error(
                                 "Erro ao solicitar correcao de peso:",
