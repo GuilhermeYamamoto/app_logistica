@@ -5,6 +5,42 @@
 .picking-card {
     display: flex;
     flex-direction: column;
+   position: relative;
+   overflow: hidden;
+}
+
+.picking-card.correction-requested {
+   opacity: .58;
+   filter: saturate(.9);
+   pointer-events: none;
+}
+
+.picking-card.correction-requested::after {
+   content: "CORREÇÃO DE PESO SOLICITADA";
+   position: absolute;
+   left: 0;
+   right: 0;
+   top: 50%;
+   transform: translateY(-50%);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   text-align: center;
+   min-height: 62px;
+   padding: 16px;
+   background: rgba(255, 255, 255, 0.18);
+   border-top: 1px solid rgba(255, 255, 255, 0.35);
+   border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+   color: rgba(255, 255, 255, 0.95);
+   font-size: 20px;
+   font-weight: 900;
+   letter-spacing: .08em;
+   text-transform: uppercase;
+   pointer-events: none;
+   z-index: 2;
+   box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
+   backdrop-filter: blur(10px) saturate(1.2);
+   -webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
 
 
