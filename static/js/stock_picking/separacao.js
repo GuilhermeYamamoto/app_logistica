@@ -268,23 +268,28 @@
 
     initializeConferenciaSeparacaoModal();
     
+   function hasTag(record, tagId) {
+       const tagIds = Array.isArray(record?.tagIds)
+           ? record.tagIds
+           : Array.isArray(record?.tag_ids)
+               ? record.tag_ids
+               : [];
+
+       return tagIds.some((id) => Number(id) === Number(tagId));
+   }
+
    // Personaliza o card padrão do inventário para a etapa de separação.
    // Aqui são criados os campos, botões, linhas de embalagem e eventos
    // específicos desta etapa.
    function enhanceCard(card, picking, context) {
-        // Herda o Card base e adiciona funcionalidades específicas para a separacao
-       const correctionRequested = Boolean(
-           picking.correcao_peso_solicitada ||
-           picking.correcaoPesoSolicitada ||
-           picking.peso_correcao_solicitada ||
-           picking.correctionRequested ||
-           picking.requestedCorrection,
-       );
+       const correctionRequested = hasTag(picking, 34);
 
        if (correctionRequested) {
            card.classList.add("correction-requested");
+       } else {
+           card.classList.remove("correction-requested");
        }
-        
+
        // Linhas do picking
        const moveLines = picking.move_lines || [];
        const conferido = isConferido(picking);
@@ -579,7 +584,7 @@
             conferirSeparacao.disabled = !pesoConferido;
             if (!pesoConferido) {
                 conferirSeparacao.title =
-                    "Preencha e corrija o peso antes de conferir.";
+                    "Preencha e corrija o peso antes de solicitar conferência.";
             }
             conferirSeparacao.innerHTML =
                 '<span class="action-icon-small">✓</span>SOLICITAR CONFERÊNCIA';
