@@ -69,20 +69,25 @@
    AÇÕES DA SEPARAÇÃO
    ========================================================= */
 
+.secondary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .secondary-actions .package-action {
     background: var(--purple);
     order: 1;
+    grid-column: 1 / -1;
 }
 
 .secondary-actions .print-action {
     background: #424b5a;
-    order: 3;
+    order: 4;
 }
 
 .secondary-actions .conference-action {
     background: var(--light-blue);
     grid-column: 1 / -1;
-    order: 4;
+    order: 5;
 }
 
 .secondary-actions .quality-action {
@@ -92,6 +97,7 @@
 .secondary-actions .correction-action {
     background: var(--orange);
     order: 2;
+    grid-column: 1 / -1;
 }
 
 .secondary-actions .full-width-action {
