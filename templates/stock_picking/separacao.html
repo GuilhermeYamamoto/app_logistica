@@ -79,6 +79,58 @@
             </form>
         </div>
     </div>
+
+    <div id="pickingDetailsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal picking-details-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">DETALHES DO PICKING</span>
+                    <h2 id="pickingDetailsTitle">PV</h2>
+                    <p id="pickingDetailsSubtitle">Pedido / Cliente</p>
+                </div>
+                <button
+                    type="button"
+                    class="close-modal"
+                    data-close="pickingDetailsModal"
+                    aria-label="Fechar detalhes do picking"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="picking-details-body">
+                <div class="picking-details-summary">
+                    <div class="picking-details-stat">
+                        <span>Quantidade Total de Embalagens</span>
+                        <strong id="pickingDetailsTotalQty">0</strong>
+                    </div>
+                    <div class="picking-details-stat">
+                        <span>Peso Total</span>
+                        <strong id="pickingDetailsTotalWeight">0,00 kg</strong>
+                    </div>
+                    <div class="picking-details-stat">
+                        <span>Lotes</span>
+                        <strong id="pickingDetailsLotCount">0</strong>
+                    </div>
+                </div>
+
+                <div class="picking-details-table">
+                    <div class="picking-details-header">
+                        <span>Quantidade</span>
+                        <span>Peso</span>
+                        <span>Lote</span>
+                    </div>
+                    <div id="pickingDetailsRows"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="secondary-button" data-close="pickingDetailsModal">
+                    FECHAR
+                </button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block inventory_scripts %}
