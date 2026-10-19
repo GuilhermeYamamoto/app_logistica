@@ -1,0 +1,75 @@
+{% extends "stock_picking/base.html" %}
+
+{% block title %}Entrega Retira{% endblock %}
+
+{% block inventory_head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/stock_picking/entrega_retira.css') }}?v={{ static_asset_version('css/stock_picking/entrega_retira.css') }}">
+{% endblock %}
+
+{% block inventory_modals %}
+    <div id="deliveryBatchModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal delivery-batch-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">DETALHES DO BATCH</span>
+                    <h2 id="deliveryBatchModalTitle">Pedido de Venda</h2>
+                    <p id="deliveryBatchModalSubtitle">Cliente</p>
+                </div>
+                <button
+                    type="button"
+                    class="close-modal"
+                    data-close="deliveryBatchModal"
+                    aria-label="Fechar detalhes do batch"
+                >×</button>
+            </div>
+            <div id="deliveryBatchModalSummary" class="delivery-modal-summary"></div>
+            <div id="deliveryBatchModalRecords" class="delivery-batch-records"></div>
+            <div class="modal-footer">
+                <button type="button" class="secondary-button" data-close="deliveryBatchModal">
+                    FECHAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deliveryCanhotoModal" class="modal-overlay hidden" data-close-on-backdrop="false">
+        <div class="modal delivery-canhoto-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">REGISTRO FOTOGRÁFICO</span>
+                    <h2>CANHOTO DA NF</h2>
+                    <p id="deliveryCanhotoInfo">-</p>
+                </div>
+                <button class="close-modal" type="button" data-close="deliveryCanhotoModal">×</button>
+            </div>
+            <div id="deliveryCanhotoPreview" class="delivery-canhoto-preview"></div>
+            <div class="modal-footer">
+                <button id="deliveryTakeCanhotoButton" class="secondary-button" type="button">
+                    TIRAR NOVA FOTO
+                </button>
+                <button id="deliveryConfirmBatchButton" class="primary-button" type="button">
+                    CONFIRMAR BATCH
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <input
+        id="deliveryCanhotoInput"
+        class="photo-file-input"
+        type="file"
+        accept="image/*"
+        capture="environment"
+    >
+{% endblock %}
+
+
+{% block inventory_scripts %}
+    <script src="{{ url_for('static', path='js/stock_picking/entrega_retira.js') }}?v={{ static_asset_version('js/stock_picking/entrega_retira.js') }}"></script>
+{% endblock %}
+
+{% block inventory_base_script %}
+    {{ super() }}
+{% endblock %}

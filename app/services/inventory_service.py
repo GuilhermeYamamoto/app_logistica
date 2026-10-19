@@ -74,6 +74,12 @@ class InventoryService:
                 "name": "Faturamento",
                 "picking_type_id": 134,
                 "template": "stock_picking/faturamento.html"
+            },
+            {
+                "key": "entrega-retira",
+                "name": "Entrega Retira",
+                "picking_type_id": 140,
+                "template": "stock_picking/entrega_retira.html"
             }
         ]
 
@@ -97,7 +103,33 @@ class InventoryService:
 
         try:
             pickings = None
-            if picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
+            if picking_type_id == 140:
+                pickings = client.execute(
+                    "stock.picking",
+                    "search_read",
+                    [
+                        ("picking_type_id", "=", picking_type_id),
+                        ("state", "=", "assigned"),
+                    ],
+                    fields=[
+                        "name",
+                        "origin",
+                        "partner_id",
+                        "state",
+                        "scheduled_date",
+                        "move_ids_without_package",
+                        "move_line_ids_without_package",
+                        "fotos_count",
+                        "pedido_compra_id",
+                        "pedido_venda_id",
+                        "parent_dfe_nfe_infnfe_ide_nnf",
+                        "user_id",
+                        "tag_ids",
+                        "batch_id",
+                    ],
+                    order="scheduled_date asc, id asc",
+                )
+            elif picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
                 pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
@@ -108,6 +140,34 @@ class InventoryService:
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1390: # Etapa criada apenas para diferenciar a conferencia da expedicao da armazenagem, que no Odoo são realizadas no mesmo picking_type_id (139)
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 139), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", False)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+
+            batch_ids = list({
+                picking["batch_id"][0]
+                for picking in pickings
+                if picking.get("batch_id")
+            })
+            batches_by_id = {}
+            if batch_ids:
+                batches = client.execute(
+                    "stock.picking.batch",
+                    "search_read",
+                    [("id", "in", batch_ids)],
+                    fields=[
+                        "id",
+                        "x_studio_numero_nf",
+                        "x_studio_local_material",
+                        "x_studio_peso_nf",
+                        "x_studio_volumes_nf",
+                        "x_studio_data_emissao_nf",
+                        "x_studio_transportadora_nf",
+                        "x_studio_endereco_entrega_nf",
+                        "x_studio_municipio_nf",
+                        "x_studio_uf_nf",
+                        "foto_canhoto_assinado",
+                    ],
+                )
+                batches_by_id = {batch["id"]: batch for batch in batches}
+
             # Busca os pickings que estão aguardando para entrar na etapa
             waiting_picking_type_id = (
                 120 if picking_type_id == 1200 else picking_type_id
@@ -184,6 +244,7 @@ class InventoryService:
                 move_line_fields = [
                     "id",
                     "picking_id",
+                    "product_id",
                     "peso",
                     "qty_done",
                     "package_type_id",
@@ -233,6 +294,12 @@ class InventoryService:
         records = []
         for picking in pickings:
             moves = moves_by_picking[picking["id"]]
+            batch = batches_by_id.get(
+                picking["batch_id"][0]
+                if picking.get("batch_id")
+                else None,
+                {},
+            )
             product_names = [move["product_id"][1] for move in moves if move["product_id"]]
             expected_quantity = sum(move["product_uom_qty"] for move in moves)
             received_quantity = sum(move.get(received_quantity_field, 0) for move in moves)
@@ -353,6 +420,26 @@ class InventoryService:
                     if picking.get("pedido_venda_id")
                     else None
                 ),
+                "batch_id": (
+                    picking["batch_id"][0]
+                    if picking.get("batch_id")
+                    else None
+                ),
+                "batch_name": (
+                    picking["batch_id"][1]
+                    if picking.get("batch_id")
+                    else None
+                ),
+                "invoiceNumber": batch.get("x_studio_numero_nf"),
+                "materialLocation": batch.get("x_studio_local_material"),
+                "invoiceWeight": batch.get("x_studio_peso_nf"),
+                "invoiceVolumeCount": batch.get("x_studio_volumes_nf"),
+                "invoiceIssueDate": batch.get("x_studio_data_emissao_nf"),
+                "carrier": batch.get("x_studio_transportadora_nf"),
+                "deliveryAddress": batch.get("x_studio_endereco_entrega_nf"),
+                "deliveryCity": batch.get("x_studio_municipio_nf"),
+                "deliveryState": batch.get("x_studio_uf_nf"),
+                "canhotoPhoto": batch.get("foto_canhoto_assinado"),
                 "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
                 "move_lines": picking_move_lines,
                 "volumeCount": len(volume_ids),
@@ -1443,6 +1530,84 @@ class InventoryService:
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print("Erro ao executar stock.picking.picture.create:", error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao registrar as fotos no Odoo.") from error
+
+    @staticmethod
+    def save_batch_canhoto(client: OdooClient, batch_id: int, photo: str):
+        if not photo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma foto do canhoto foi enviada.",
+            )
+
+        image_base64 = photo.split(",", 1)[1] if "," in photo else photo
+        if not image_base64:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A foto do canhoto é inválida.",
+            )
+
+        try:
+            batch = client.execute(
+                "stock.picking.batch",
+                "search_read",
+                [("id", "=", batch_id)],
+                fields=["id"],
+                limit=1,
+            )
+            if not batch:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Batch não encontrado.",
+                )
+
+            client.execute(
+                "stock.picking.batch",
+                "write",
+                [batch_id],
+                {"foto_canhoto_assinado": image_base64},
+            )
+            return {
+                "success": True,
+                "batch_id": batch_id,
+                "message": "Foto do canhoto registrada com sucesso.",
+            }
+        except HTTPException:
+            raise
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao registrar a foto do canhoto no Odoo.",
+            ) from error
+
+    @staticmethod
+    def confirm_batch(client: OdooClient, batch_id: int):
+        try:
+            batch = client.execute(
+                "stock.picking.batch",
+                "search_read",
+                [("id", "=", batch_id)],
+                fields=["id"],
+                limit=1,
+            )
+            if not batch:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Batch não encontrado.",
+                )
+
+            client.execute("stock.picking.batch", "action_confirm", [batch_id])
+            return {
+                "success": True,
+                "batch_id": batch_id,
+                "message": "Batch confirmado com sucesso.",
+            }
+        except HTTPException:
+            raise
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao confirmar o batch no Odoo.",
+            ) from error
 
 
     @staticmethod
