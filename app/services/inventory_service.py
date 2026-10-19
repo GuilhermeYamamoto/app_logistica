@@ -514,8 +514,12 @@ class InventoryService:
     ####################################
     def button_validate(client, picking_id):
         result = None
+        picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
         try:
             result = client.execute("stock.picking", "action_validate_with_backorder", [picking_id])
+            if picking_type_id[0].get("picking_type_id")[0] == 137:
+                # Se o picking for do tipo Recebimento de Qualidade, valida automaticamente o estoque transitorio relacionado.
+                InventoryService.valida_estoque_transitorio_automaticamente(client, picking_id)
         except xmlrpc.client.Fault as e:
             error_message = str(e)
             if "cannot marshal" in error_message:
@@ -524,6 +528,32 @@ class InventoryService:
             else:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
         return {"success": True, "picking_id": picking_id, "result": result}
+
+    def valida_estoque_transitorio_automaticamente(client, picking_id):
+        """
+        Valida automaticamente o estoque transitorio relacionado ao picking de qualidade.
+        Funcionamento:
+        1. Busca o picking de qualidade pelo ID fornecido.
+        2. Obtém o nome do picking de qualidade.
+        3. Busca os movimentos relacionados ao picking de qualidade.
+        4. Para cada movimento, verifica se há um movimento de destino (move_dest_ids).
+        5. Se houver um movimento de destino, busca o picking relacionado a esse movimento.
+        6. Se o picking de destino for encontrado, chama a ação de validação com backorder para esse picking.
+        """
+        picking_recebimento_qualidade = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 137), ("id", "=", picking_id)], fields=["name"])
+        picking_recebimento_qualidade_name = picking_recebimento_qualidade[0].get("name")
+        stock_move_line_qualidade = client.execute("stock.move", "search_read", [("reference", "=", picking_recebimento_qualidade_name)], fields=["id", "move_dest_ids"])
+        
+        try:
+            for move_line in stock_move_line_qualidade:
+                move_dest_id = move_line.get("move_dest_ids", [])[0]
+    
+                if move_dest_id:
+                    picking_estoque_transitorio_id = client.execute("stock.move", "search_read", [("id", "=", move_dest_id)], fields=["picking_id"])
+                    if picking_estoque_transitorio_id:
+                        client.execute("stock.picking", "action_validate_with_backorder", [picking_estoque_transitorio_id[0].get("picking_id")[0]])
+        except xmlrpc.client.Fault as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao validar o estoque transitorio automaticamente.")
 
     ####################################
     #  MÉTODO PARA VALIDAR PICKINGS DE UM PEDIDO

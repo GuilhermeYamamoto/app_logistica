@@ -614,7 +614,6 @@
             button.disabled = true;
             button.textContent = "VALIDANDO...";
         }
-
         try {
             await runAction(async () => {
                 const response = await fetch(
