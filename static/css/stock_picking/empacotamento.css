@@ -18,8 +18,8 @@
 }
 
 .dashboard-card.ready-to-print .dashboard-label {
-    font-size: 18px;
-    line-height: 1.2;
+    font-size: 15px;
+    font-weight: 900;
     letter-spacing: .5px;
     text-transform: uppercase;
 }
