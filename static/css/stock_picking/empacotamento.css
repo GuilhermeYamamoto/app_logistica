@@ -235,6 +235,15 @@
     filter: brightness(.94);
 }
 
+.pv-completed-button:disabled {
+    background: #d7dce4;
+    border-color: #d7dce4;
+    color: #8b929d;
+    cursor: not-allowed;
+    filter: none;
+    pointer-events: none;
+}
+
 .pv-completed-button:active {
     transform: scale(.96);
 }

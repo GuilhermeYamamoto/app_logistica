@@ -1479,6 +1479,11 @@
                         "Pacote gerado com sucesso!"
                     );
 
+                    await refreshRecords({
+                        replaceRecords: inventory.replaceRecords,
+                    });
+                    inventory.render();
+
                     /*
                     * Marca visualmente os pickings selecionados
                     * como empacotados somente depois que o Odoo
@@ -1635,6 +1640,10 @@
             const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+            const hasGeneratedPackage = group.pickings.some(
+                (picking) => hasPackageId(picking) || isPackedRecord(picking),
+            );
+
             let expandedCompletedButton = null;
             let expandedGeneratePackageButton = null;
 
@@ -1708,14 +1717,16 @@
                     expandedCompletedButton.className =
                         "pv-completed-button";
 
+                    expandedCompletedButton.disabled = !hasGeneratedPackage;
+
                     expandedCompletedButton.innerHTML = `
                         <span class="pv-completed-icon">✓</span>
                         <span>CONCLUÍDO</span>
                     `;
 
                     expandedCompletedButton.setAttribute(
-                        "aria-label",
-                        "Concluir PV"
+                       "aria-label",
+                       "Concluir PV"
                     );
 
                     expandedCompletedButton.addEventListener(
@@ -1780,6 +1791,7 @@
             finishButton.type = "button";
             finishButton.className =
                 "pv-action-button pv-finish-button";
+            finishButton.disabled = false;
 
             finishButton.setAttribute(
                 "aria-label",
