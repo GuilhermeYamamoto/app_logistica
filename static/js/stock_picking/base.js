@@ -9,6 +9,7 @@
         resultCount: document.getElementById("resultCount"),
         pendingCount: document.getElementById("pendingCount"),
         progressCount: document.getElementById("progressCount"),
+        conferidosCount: document.getElementById("conferidosCount"),
         readyToPrintCount: document.getElementById("readyToPrintCount"),
         validationText: document.getElementById("validationText"),
         validationButton: document.getElementById("confirmValidation"),
@@ -35,6 +36,10 @@
                 return "REGISTROS EM ANDAMENTO";
             }
 
+            if (filter === "conferidos") {
+                return "REGISTROS CONFERIDOS";
+            }
+
             if (filter === "pronto-para-imprimir") {
                 return "REGISTROS PRONTOS PARA IMPRIMIR";
             }
@@ -47,6 +52,7 @@
                 ? { label: "EM ANDAMENTO", className: "status-progress" }
                 : { label: "PENDENTE", className: "status-waiting" },
         isInProgress: (record) => Boolean(record.inProgress),
+        isConferido: () => false,
         isPending: (record) => !record.validated,
         matchesRecord: () => true,
         isReadyToPrint: () => false,
@@ -126,11 +132,18 @@
             return !record.validated && options.isInProgress(record);
         }
 
+        if (filter === "conferidos") {
+            return Boolean(options.isConferido(record));
+        }
+
         if (filter === "pronto-para-imprimir") {
             return options.isReadyToPrint(record);
         }
 
-        return options.isPending(record);
+        return !record.validated && (
+            options.isPending(record) ||
+            options.isInProgress(record)
+        );
     }
 
     function createElement(tagName, className, text) {
@@ -476,7 +489,10 @@
         if (elements.pendingCount) {
             elements.pendingCount.textContent = formatCount(
                 records.filter(
-                    (record) => options.isPending(record),
+                    (record) => !record.validated && (
+                        options.isPending(record) ||
+                        options.isInProgress(record)
+                    ),
                 ).length,
             );
         }
@@ -487,6 +503,14 @@
                     (record) =>
                         !record.validated &&
                         options.isInProgress(record),
+                ).length,
+            );
+        }
+
+        if (elements.conferidosCount) {
+            elements.conferidosCount.textContent = formatCount(
+                records.filter(
+                    (record) => Boolean(options.isConferido(record)),
                 ).length,
             );
         }
@@ -869,11 +893,28 @@
 
                 record.validated = true;
 
+                const remainingRecords = records.filter(
+                    (current) => Number(current.id) !== Number(record.id),
+                );
+
+                if (remainingRecords.length !== records.length) {
+                    replaceRecords(remainingRecords, { renderRecords: false });
+                }
+
                 window.AppUI.closeModal(
                     "validationModal",
                 );
 
-                render();
+                if (typeof options.refreshRecords === "function") {
+                    await options.refreshRecords({
+                        getRecords: () => records,
+                        replaceRecords,
+                        render,
+                        showToast,
+                    });
+                } else {
+                    render();
+                }
 
                 showToast(
                     options.validationSuccessMessage(record),

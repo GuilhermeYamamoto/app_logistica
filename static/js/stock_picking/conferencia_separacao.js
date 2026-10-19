@@ -120,8 +120,8 @@
 
         // Substitui as ações originais pelas específicas desta tela
         context.replacePrimaryActions([
-            createConferenciaSeparacaoAction(context, picking),
             context.createQualityAction(),
+            createConferenciaSeparacaoAction(context, picking),
         ]);
     }
 

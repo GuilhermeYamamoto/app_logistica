@@ -42,16 +42,22 @@
             <span class="dashboard-label">PENDENTES</span>
             <strong id="pendingCount">0</strong>
         </button>
-        <button class="dashboard-card progress" data-filter="andamento" type="button">
-            <span class="dashboard-label">
-                {% if stage.key == "separacao" %}
-                    CONFERIDOS
-                {% else %}
-                    EM ANDAMENTO
-                {% endif %}
-            </span>
-            <strong id="progressCount">0</strong>
-        </button>
+
+        {% if stage.key == "separacao" %}
+            <button class="dashboard-card progress" data-filter="andamento" type="button">
+                <span class="dashboard-label">EM ANDAMENTO</span>
+                <strong id="progressCount">0</strong>
+            </button>
+            <button class="dashboard-card completed" data-filter="conferidos" type="button">
+                <span class="dashboard-label">CONFERIDOS</span>
+                <strong id="conferidosCount">0</strong>
+            </button>
+        {% elif stage.key != "conferencia-separacao" %}
+            <button class="dashboard-card progress" data-filter="andamento" type="button">
+                <span class="dashboard-label">EM ANDAMENTO</span>
+                <strong id="progressCount">0</strong>
+            </button>
+        {% endif %}
     </section>
 
     <!-- MAIN CONTENT -->
