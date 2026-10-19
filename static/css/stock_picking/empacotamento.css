@@ -373,7 +373,7 @@
 
 .emp-picking-item.emp-picking-packed {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 
     /* Deixa toda a caixa mais apagada */
     opacity: 0.55;
@@ -383,6 +383,7 @@
     content: "EMPACOTADO";
 
     position: absolute;
+    z-index: 1;
 
     left: 50%;
     top: 50%;
@@ -406,10 +407,14 @@
     white-space: nowrap;
 
     /*
-     * Compensa a opacidade do card,
-     * mantendo o EMPACOTADO mais visível.
+     * Mantém o rótulo visível sem recortar os elementos do item.
      */
     opacity: 1.8;
+}
+
+.emp-picking-item.emp-picking-packed .emp-picking-info {
+    position: relative;
+    z-index: 2;
 }
 
 .emp-picking-item.emp-picking-packed
