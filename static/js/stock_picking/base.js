@@ -56,6 +56,7 @@
         isPending: (record) => !record.validated,
         matchesRecord: () => true,
         isReadyToPrint: () => false,
+        getDashboardCount: (records, matches) => records.filter(matches).length,
         getReadyToPrintCount: (records) => records.filter(
             (record) => options.isReadyToPrint(record),
         ).length,
@@ -488,30 +489,33 @@
 
         if (elements.pendingCount) {
             elements.pendingCount.textContent = formatCount(
-                records.filter(
+                options.getDashboardCount(
+                    records,
                     (record) => !record.validated && (
                         options.isPending(record) ||
                         options.isInProgress(record)
                     ),
-                ).length,
+                ),
             );
         }
 
         if (elements.progressCount) {
             elements.progressCount.textContent = formatCount(
-                records.filter(
+                options.getDashboardCount(
+                    records,
                     (record) =>
                         !record.validated &&
                         options.isInProgress(record),
-                ).length,
+                ),
             );
         }
 
         if (elements.conferidosCount) {
             elements.conferidosCount.textContent = formatCount(
-                records.filter(
+                options.getDashboardCount(
+                    records,
                     (record) => Boolean(options.isConferido(record)),
-                ).length,
+                ),
             );
         }
 

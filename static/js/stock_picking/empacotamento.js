@@ -74,6 +74,7 @@
     }
 
     let pvGroups = [];
+    let inProgressPVIds = new Set();
     let activePVCard = null;
     let activePackageModal = null;
     let selectedPackage = null;
@@ -167,6 +168,50 @@
         return normalizeTagIds(record).includes(33);
     }
 
+    function hasMoveLineMarkedForPackage(record) {
+        return (record?.move_lines || []).some(
+            (moveLine) => Boolean(moveLine?.gerar_pacote),
+        );
+    }
+
+    function isInProgressRecord(record) {
+        return !record?.validated &&
+            !isReadyToPrintRecord(record) &&
+            inProgressPVIds.has(getPedidoVendaKey(record));
+    }
+
+    function updateInProgressPVIds(records) {
+        const nextInProgressPVIds = new Set();
+        const recordsByPV = new Map();
+
+        for (const record of records || []) {
+            const pvKey = getPedidoVendaKey(record);
+
+            if (!recordsByPV.has(pvKey)) {
+                recordsByPV.set(pvKey, []);
+            }
+
+            recordsByPV.get(pvKey).push(record);
+        }
+
+        for (const [pvKey, pvRecords] of recordsByPV) {
+            const hasUnfinishedRecord = pvRecords.some(
+                (record) =>
+                    !record?.validated &&
+                    !isReadyToPrintRecord(record),
+            );
+            const hasMarkedMoveLine = pvRecords.some(
+                hasMoveLineMarkedForPackage,
+            );
+
+            if (hasUnfinishedRecord && hasMarkedMoveLine) {
+                nextInProgressPVIds.add(pvKey);
+            }
+        }
+
+        inProgressPVIds = nextInProgressPVIds;
+    }
+
     function buildPVGroupsData(records) {
         const groupsById = new Map();
 
@@ -199,6 +244,7 @@
     }
 
     function onRecordsReplaced(records) {
+        updateInProgressPVIds(records);
         buildPVGroups(records);
 
         setTimeout(() => {
@@ -400,12 +446,20 @@
         return getPickingPackageIds(picking).length > 0;
     }
 
-    function getReadyToPrintPackageCount(records) {
+    function getPedidoVendaKey(record) {
+        return record?.pedido_venda_id ?? "__NO_PV__";
+    }
+
+    function getPedidoVendaCount(records, matches = () => true) {
         return new Set(
             (records || [])
-                .filter(isReadyToPrintRecord)
-                .flatMap(getPickingPackageIds),
+                .filter(matches)
+                .map(getPedidoVendaKey),
         ).size;
+    }
+
+    function getReadyToPrintPedidoVendaCount(records) {
+        return getPedidoVendaCount(records, isReadyToPrintRecord);
     }
 
     function isFirstPickingForPackage(picking, packageIdsAlreadyRendered) {
@@ -448,6 +502,20 @@
                     : null;
             })
             .filter(Boolean);
+    }
+
+    function updateMoveLinesPackageState(moveLineIds, marked) {
+        const selectedMoveLineIds = new Set(
+            moveLineIds.map((moveLineId) => Number(moveLineId)),
+        );
+
+        for (const record of inventory.getRecords()) {
+            for (const moveLine of record.move_lines || []) {
+                if (selectedMoveLineIds.has(Number(moveLine.id))) {
+                    moveLine.gerar_pacote = marked;
+                }
+            }
+        }
     }
 
     async function marcarMoveLinesParaPacote(
@@ -637,6 +705,10 @@
                             "Linha adicionada ao pacote!"
                         );
 
+                        updateMoveLinesPackageState(moveLineIds, true);
+                        updateInProgressPVIds(inventory.getRecords());
+                        inventory.render();
+
                         console.log(
                             "Move lines marcadas para pacote:",
                             moveLineIds
@@ -649,6 +721,10 @@
                         inventory.showToast(
                             "Linha removida do pacote!"
                         );
+
+                        updateMoveLinesPackageState(moveLineIds, false);
+                        updateInProgressPVIds(inventory.getRecords());
+                        inventory.render();
 
                         console.log(
                             "Move lines removidas do pacote:",
@@ -2381,21 +2457,24 @@
         }
     }
 
-    function handleAfterRender() {
+    function handleAfterRender(visibleRecords) {
         try {
             const records =
                 window.AppInventory.getRecords
                     ? window.AppInventory.getRecords()
                     : [];
+            const filteredRecords = Array.isArray(visibleRecords)
+                ? visibleRecords
+                : records;
 
             const isReadyToPrintView =
                 document.querySelector(".dashboard-card.ready-to-print.active") !== null;
 
             const groupsToRender = isReadyToPrintView
                 ? buildPVGroupsData(
-                    records.filter((record) => isReadyToPrintRecord(record)),
+                    filteredRecords.filter((record) => isReadyToPrintRecord(record)),
                 )
-                : pvGroups;
+                : buildPVGroupsData(filteredRecords);
 
             buildPVGroups(records);
             renderPVGroupsDOM(groupsToRender, isReadyToPrintView);
@@ -2412,7 +2491,9 @@
         onAfterRender: handleAfterRender,
         enhanceCard,
         isReadyToPrint: isReadyToPrintRecord,
-        getReadyToPrintCount: getReadyToPrintPackageCount,
+        isInProgress: isInProgressRecord,
+        getDashboardCount: getPedidoVendaCount,
+        getReadyToPrintCount: getReadyToPrintPedidoVendaCount,
         refreshRecords,
     });
 }());
