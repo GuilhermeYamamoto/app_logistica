@@ -419,12 +419,17 @@
 .picking-details-modal {
    width: min(820px, 100%);
    max-height: min(78vh, 760px);
-   display: flex;
-   flex-direction: column;
+   display: grid;
+   grid-template-rows: auto minmax(0, 1fr) auto;
+   overflow: hidden;
 }
 
 .picking-details-body {
+   min-height: 0;
    padding: 0 26px 10px;
+   display: flex;
+   flex-direction: column;
+   gap: 18px;
    overflow: hidden;
 }
 
@@ -432,7 +437,7 @@
    display: grid;
    grid-template-columns: repeat(3, minmax(0, 1fr));
    gap: 12px;
-   margin-bottom: 18px;
+   margin-bottom: 0;
 }
 
 .picking-details-stat {
@@ -459,16 +464,26 @@
 }
 
 .picking-details-table {
+   flex: 1 1 auto;
+   min-height: 0;
+   height: 100%;
    border: 1px solid var(--border);
    border-radius: 12px;
    overflow: hidden;
    background: var(--app-surface);
-   max-height: min(52vh, 380px);
+   max-height: none;
    overflow-y: auto;
+   overscroll-behavior: contain;
 }
 
 #pickingDetailsRows {
    overflow-y: auto;
+}
+
+.picking-details-modal .modal-footer {
+   flex-shrink: 0;
+   padding-top: 16px;
+   margin-top: 0;
 }
 
 .picking-details-header,
