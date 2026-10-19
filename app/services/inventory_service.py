@@ -140,9 +140,15 @@ class InventoryService:
             }
             total_counts_by_pv = defaultdict(int)
             conferido_counts_by_pv = defaultdict(int)
+            stage_counts_by_pv = defaultdict(int)
+
+            for picking in pickings:
+                pedido_venda = picking.get("pedido_venda_id")
+                if pedido_venda:
+                    stage_counts_by_pv[pedido_venda[0]] += 1
 
             if (
-                picking_type_id == 1200 and
+                picking_type_id in [1200, 139] and
                 pedido_venda_ids
             ):
                 total_pickings = client.execute(
@@ -163,7 +169,10 @@ class InventoryService:
                         pedido_venda_id = pedido_venda[0]
                         total_counts_by_pv[pedido_venda_id] += 1
 
-                        if 29 in total_picking.get("tag_ids", []):
+                        if (
+                            picking_type_id == 1200 and
+                            29 in total_picking.get("tag_ids", [])
+                        ):
                             conferido_counts_by_pv[pedido_venda_id] += 1
 
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
@@ -178,6 +187,7 @@ class InventoryService:
                     "peso",
                     "qty_done",
                     "package_type_id",
+                    "result_package_id",
                     "lot_id",
                     "product_uom_id",
                     "referencia_interna",
@@ -263,6 +273,38 @@ class InventoryService:
             cliente = picking["partner_id"]
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
+            picking_move_lines = [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id]
+
+            volume_ids = {package[0] for move_line in picking_move_lines if (package := move_line.get("result_package_id"))}
+            material_locations = []
+            material_location_ids = set()
+            total_weight = 0.0
+
+            for move_line in picking_move_lines:
+                try:
+                    total_weight += float(move_line.get("peso") or 0)
+                except (TypeError, ValueError):
+                    continue
+
+                location_dest = move_line.get("location_dest_id")
+                if not location_dest:
+                    continue
+
+                location_id = (
+                    location_dest[0]
+                    if isinstance(location_dest, (list, tuple))
+                    else location_dest
+                )
+                location_name = (
+                    location_dest[1]
+                    if isinstance(location_dest, (list, tuple)) and len(location_dest) > 1
+                    else str(location_dest)
+                )
+
+                if location_id not in material_location_ids:
+                    material_location_ids.add(location_id)
+                    material_locations.append(location_name)
+
             photo_relation = picking.get("fotos_count") or []
             if isinstance(photo_relation, (list, tuple)):
                 photo_count = len(photo_relation)
@@ -312,7 +354,10 @@ class InventoryService:
                     else None
                 ),
                 "move_line_ids_without_package": picking.get("move_line_ids_without_package", []),
-                "move_lines": [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id],
+                "move_lines": picking_move_lines,
+                "volumeCount": len(volume_ids),
+                "totalWeight": total_weight,
+                "materialLocations": material_locations,
 
                 "waitingCount": (
                     waiting_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
@@ -321,6 +366,11 @@ class InventoryService:
                 ),
                 "totalPickingCount": (
                     total_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
+                    if picking.get("pedido_venda_id")
+                    else 0
+                ),
+                "stagePickingCount": (
+                    stage_counts_by_pv.get(picking["pedido_venda_id"][0], 0)
                     if picking.get("pedido_venda_id")
                     else 0
                 ),
@@ -1102,8 +1152,12 @@ class InventoryService:
     ####################################
     def button_validate(client, picking_id):
         result = None
+        picking_type_id = client.execute("stock.picking", "search_read", [("id", "=", picking_id)], fields=["picking_type_id"], limit=1)
         try:
             result = client.execute("stock.picking", "action_validate_with_backorder", [picking_id])
+            if picking_type_id[0].get("picking_type_id")[0] == 137:
+                # Se o picking for do tipo Recebimento de Qualidade, valida automaticamente o estoque transitorio relacionado.
+                InventoryService.valida_estoque_transitorio_automaticamente(client, picking_id)
         except xmlrpc.client.Fault as e:
             error_message = str(e)
             if "cannot marshal" in error_message:
@@ -1112,6 +1166,94 @@ class InventoryService:
             else:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
         return {"success": True, "picking_id": picking_id, "result": result}
+
+    def valida_estoque_transitorio_automaticamente(client, picking_id):
+        """
+        Valida automaticamente o estoque transitorio relacionado ao picking de qualidade.
+        Funcionamento:
+        1. Busca o picking de qualidade pelo ID fornecido.
+        2. Obtém o nome do picking de qualidade.
+        3. Busca os movimentos relacionados ao picking de qualidade.
+        4. Para cada movimento, verifica se há um movimento de destino (move_dest_ids).
+        5. Se houver um movimento de destino, busca o picking relacionado a esse movimento.
+        6. Se o picking de destino for encontrado, chama a ação de validação com backorder para esse picking.
+        """
+        picking_recebimento_qualidade = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 137), ("id", "=", picking_id)], fields=["name"])
+        picking_recebimento_qualidade_name = picking_recebimento_qualidade[0].get("name")
+        stock_move_line_qualidade = client.execute("stock.move", "search_read", [("reference", "=", picking_recebimento_qualidade_name)], fields=["id", "move_dest_ids"])
+        
+        try:
+            for move_line in stock_move_line_qualidade:
+                move_dest_id = move_line.get("move_dest_ids", [])[0]
+    
+                if move_dest_id:
+                    picking_estoque_transitorio_id = client.execute("stock.move", "search_read", [("id", "=", move_dest_id)], fields=["picking_id"])
+                    if picking_estoque_transitorio_id:
+                        client.execute("stock.picking", "action_validate_with_backorder", [picking_estoque_transitorio_id[0].get("picking_id")[0]])
+        except xmlrpc.client.Fault as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao validar o estoque transitorio automaticamente.")
+
+    ####################################
+    #  MÉTODO PARA VALIDAR PICKINGS DE UM PEDIDO
+    ####################################
+    #
+    #  Busca os pickings pendentes da Conferência para Expedição
+    #  pertencentes ao mesmo Pedido de Venda e chama a ação nativa
+    #  "Validar" do Odoo uma única vez com todo o recordset.
+    #
+    ####################################
+    @staticmethod
+    def button_validate_sales_order(client, pedido_venda_id):
+        try:
+            picking_ids = client.execute(
+                "stock.picking",
+                "search",
+                [
+                    ("picking_type_id", "=", 139),
+                    ("pedido_venda_id", "=", pedido_venda_id),
+                    ("state", "=", "assigned"),
+                    ("x_studio_local_definido", "=", True),
+                ],
+            )
+
+            if not picking_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Nenhum picking pendente foi encontrado para este Pedido de Venda.",
+                )
+
+            result = client.execute(
+                "stock.picking",
+                "button_validate",
+                picking_ids,
+            )
+        except HTTPException:
+            raise
+        except xmlrpc.client.Fault as error:
+            error_message = str(error)
+            if "cannot marshal" in error_message:
+                print(
+                    "AVISO: Os pickings foram validados, mas o Odoo "
+                    "não conseguiu serializar o retorno.",
+                )
+                result = None
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=error_message,
+                ) from error
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível validar os pickings do Pedido de Venda.",
+            ) from error
+
+        return {
+            "success": True,
+            "pedido_venda_id": pedido_venda_id,
+            "picking_ids": picking_ids,
+            "result": result,
+        }
 
     ####################################
     #  MÉTODO PARA FILTRAR PICKING POR NF
