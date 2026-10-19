@@ -20,41 +20,57 @@
         button.textContent = "✓ CONFERIR";
 
         button.addEventListener("click", async () => {
+            if (inventory.isActionInProgress()) {
+                return;
+            }
+
+            const confirmed = await window.AppUI.confirmAction({
+                kicker: "CONFERÊNCIA",
+                title: "CONFIRMAR CONFERÊNCIA",
+                text: `Deseja realmente conferir o picking ${picking.pv}?`,
+                confirmLabel: "CONFERIR",
+            });
+            if (!confirmed) {
+                return;
+            }
+
             try {
-                const response = await fetch(
-                    `/api/inventario/pickings/${picking.id}/conferido-separacao`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
+                await inventory.runAction(async () => {
+                    const response = await fetch(
+                        `/api/inventario/pickings/${picking.id}/conferido-separacao`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                picking_id: picking.id,
+                            }),
                         },
-                        body: JSON.stringify({
-                            picking_id: picking.id,
-                        }),
-                    },
-                );
-
-                const data = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    throw new Error(
-                        data.detail ||
-                        "Não foi possível conferir a separação.",
-                    );
-                }
-
-                inventory.showToast(
-                    `Picking ${picking.pv} conferido com sucesso!`,
-                );
-
-                const remainingPickings = inventory
-                    .getRecords()
-                    .filter(
-                        (record) =>
-                            Number(record.id) !== Number(picking.id),
                     );
 
-                inventory.replaceRecords(remainingPickings);
+                    const data = await response.json().catch(() => ({}));
+
+                    if (!response.ok) {
+                        throw new Error(
+                            data.detail ||
+                            "Não foi possível conferir a separação.",
+                        );
+                    }
+
+                    inventory.showToast(
+                        `Picking ${picking.pv} conferido com sucesso!`,
+                    );
+
+                    const remainingPickings = inventory
+                        .getRecords()
+                        .filter(
+                            (record) =>
+                                Number(record.id) !== Number(picking.id),
+                        );
+
+                    inventory.replaceRecords(remainingPickings);
+                });
             } catch (error) {
                 console.error(
                     "Erro ao conferir separação:",

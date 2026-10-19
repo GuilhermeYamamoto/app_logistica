@@ -94,8 +94,34 @@
         toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 2800);
     }
 
+    function normalizeModalStack() {
+        const visibleModals = Array.from(
+            document.querySelectorAll(".modal-overlay:not(.hidden)"),
+        );
+
+        visibleModals.forEach((modal, index) => {
+            modal.style.zIndex = String(1000 + index);
+        });
+    }
+
+    function updateBodyScrollLock() {
+        const hasVisibleModal = document.querySelector(".modal-overlay:not(.hidden)");
+        const locked = Boolean(hasVisibleModal);
+
+        document.body.style.overflow = locked ? "hidden" : "";
+        document.documentElement.style.overflow = locked ? "hidden" : "";
+    }
+
     function openModal(id) {
-        getElement(id)?.classList.remove("hidden");
+        const modal = getElement(id);
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.remove("hidden");
+        modal.parentNode?.appendChild(modal);
+        normalizeModalStack();
+        updateBodyScrollLock();
     }
 
     function closeModal(id) {
@@ -105,6 +131,52 @@
         }
         document.dispatchEvent(new CustomEvent("app:modal-close", { detail: { id } }));
         modal.classList.add("hidden");
+        normalizeModalStack();
+        updateBodyScrollLock();
+    }
+
+    let actionConfirmationResolve = null;
+
+    function confirmAction({
+        kicker = "CONFIRMAÇÃO",
+        title = "CONFIRMAR AÇÃO",
+        text = "Deseja realmente executar esta ação?",
+        confirmLabel = "CONFIRMAR",
+    } = {}) {
+        if (actionConfirmationResolve) {
+            return Promise.resolve(false);
+        }
+
+        const kickerElement = getElement("actionConfirmationKicker");
+        const titleElement = getElement("actionConfirmationTitle");
+        const textElement = getElement("actionConfirmationText");
+        const confirmButton = getElement("confirmActionConfirmation");
+
+        if (kickerElement) {
+            kickerElement.textContent = kicker;
+        }
+        if (titleElement) {
+            titleElement.textContent = title;
+        }
+        if (textElement) {
+            textElement.textContent = text;
+        }
+        if (confirmButton) {
+            confirmButton.textContent = confirmLabel;
+        }
+
+        openModal("actionConfirmationModal");
+
+        return new Promise((resolve) => {
+            actionConfirmationResolve = resolve;
+        });
+    }
+
+    function finishActionConfirmation(confirmed) {
+        const resolve = actionConfirmationResolve;
+        actionConfirmationResolve = null;
+        closeModal("actionConfirmationModal");
+        resolve?.(confirmed);
     }
 
     function initializeModals() {
@@ -125,6 +197,25 @@
                     closeModal(overlay.id);
                 }
             });
+        });
+
+        getElement("confirmActionConfirmation")?.addEventListener(
+            "click",
+            () => finishActionConfirmation(true),
+        );
+        getElement("cancelActionConfirmation")?.addEventListener(
+            "click",
+            () => finishActionConfirmation(false),
+        );
+        document.addEventListener("app:modal-close", (event) => {
+            if (
+                event.detail?.id === "actionConfirmationModal" &&
+                actionConfirmationResolve
+            ) {
+                const resolve = actionConfirmationResolve;
+                actionConfirmationResolve = null;
+                resolve(false);
+            }
         });
     }
 
@@ -307,6 +398,7 @@
         initializePullToRefresh,
         openModal,
         closeModal,
+        confirmAction,
         setGestureCaptured,
         setPullToRefreshHandler,
         showLoading,

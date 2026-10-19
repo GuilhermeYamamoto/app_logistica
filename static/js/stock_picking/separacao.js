@@ -86,9 +86,16 @@
         const pesoInput = document
             .getElementById("replicarPesoModal")
             ?.querySelector("#pesoPacotes");
+        const pickingInfo = document.getElementById("replicarPesoPickingInfo");
+
         if (pesoInput) {
             pesoInput.value = "";
         }
+
+        if (pickingInfo) {
+            pickingInfo.textContent = `PV ${picking?.pv || picking?.reference || "-"}`;
+        }
+
         window.AppUI.openModal("replicarPesoModal");
     }
 
@@ -106,6 +113,16 @@
         const pesoPacotes = modal?.querySelector("#pesoPacotes")?.value;
 
         if (!picking || pesoPacotes === undefined) {
+            return;
+        }
+
+        const confirmed = await window.AppUI.confirmAction({
+            kicker: "ALTERAÇÃO DE PESO",
+            title: "REPLICAR PESO",
+            text: `Deseja replicar o peso de ${pesoPacotes} kg para os pacotes do picking ${picking.pv}?`,
+            confirmLabel: "REPLICAR PESO",
+        });
+        if (!confirmed) {
             return;
         }
 
@@ -251,17 +268,33 @@
 
     initializeConferenciaSeparacaoModal();
     
+   function hasTag(record, tagId) {
+       const tagIds = Array.isArray(record?.tagIds)
+           ? record.tagIds
+           : Array.isArray(record?.tag_ids)
+               ? record.tag_ids
+               : [];
+
+       return tagIds.some((id) => Number(id) === Number(tagId));
+   }
+
    // Personaliza o card padrão do inventário para a etapa de separação.
    // Aqui são criados os campos, botões, linhas de embalagem e eventos
    // específicos desta etapa.
    function enhanceCard(card, picking, context) {
-        // Herda o Card base e adiciona funcionalidades específicas para a separacao
-        
-        // Linhas do picking
-        const moveLines = picking.move_lines || [];
-        const conferido = isConferido(picking);
-        const pesoDivergente = Boolean(picking.divergencia_peso_picking);
-        const pesoConferido = !pesoDivergente;
+       const correctionRequested = hasTag(picking, 34);
+
+       if (correctionRequested) {
+           card.classList.add("correction-requested");
+       } else {
+           card.classList.remove("correction-requested");
+       }
+
+       // Linhas do picking
+       const moveLines = picking.move_lines || [];
+       const conferido = isConferido(picking);
+       const pesoDivergente = Boolean(picking.divergencia_peso_picking);
+       const pesoConferido = !pesoDivergente;
 
         // O card base cria ações padrão automaticamente. Nesta etapa,
         // pickings pendentes exibem suas ações operacionais nas ações
@@ -315,6 +348,7 @@
         const qtdEmbalagensLabel = document.createElement("div");
 
         const qtdEmbalagensStyle = document.createElement("strong");
+        qtdEmbalagensStyle.className = "qtd-embalagens-label";
         qtdEmbalagensStyle.textContent = "Quantidade Total Embalagens";
 
         qtdEmbalagensLabel.appendChild(qtdEmbalagensStyle);
@@ -359,7 +393,7 @@
 
         // ***** Campo tipo de pacote do Picking *****
         const tipoEmbalagemBox = document.createElement("div");
-        tipoEmbalagemBox.className = "secondary-info-box-1";
+        tipoEmbalagemBox.className = "secondary-info-box-1 tipo-embalagem-box";
 
         const tipoEmbalagemLabel = document.createElement("div");
         tipoEmbalagemLabel.className = "secondary-info-label";
@@ -416,12 +450,10 @@
             addPesoPacotes.classList.add(
                 "secondary-action",
                 "package-action",
+                "full-width-action",
             );
-            if (!pesoDivergente) {
-                addPesoPacotes.classList.add("full-width-action");
-            }
             addPesoPacotes.innerHTML =
-                '<span class="action-icon-small">⚖️</span>Adicionar Peso Pacotes';
+                '<span class="action-icon-small">⚖️</span>REPLICAR PESO DOS PACOTES';
 
             context.addSecondaryAction(addPesoPacotes);
 
@@ -442,7 +474,7 @@
                     "correction-action",
                 );
                 corrigirPesoDivergente.innerHTML =
-                    '<span class="action-icon-small">🛠️</span>Corrigir Peso Divergente';
+                    '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
 
                 context.addSecondaryAction(corrigirPesoDivergente);
 
@@ -450,29 +482,52 @@
                 corrigirPesoDivergente.addEventListener(
                     "click",
                     async () => {
+                        const confirmed = await window.AppUI.confirmAction({
+                            kicker: "CORREÇÃO DE PESO",
+                            title: "CORRIGIR PESO DIVERGENTE",
+                            text: `Deseja solicitar a correção do peso divergente do picking ${picking.pv}?`,
+                            confirmLabel: "CORRIGIR PESO",
+                        });
+                        if (!confirmed) {
+                            return;
+                        }
+
                         try {
-                            const response = await fetch(
-                                `/api/inventario/pickings/${picking.id}/corrigir-peso-divergente`,
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
+                            await inventory.runAction(async () => {
+                                const response = await fetch(
+                                    `/api/inventario/pickings/${picking.id}/corrigir-peso-divergente`,
+                                    {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                            picking_id: picking.id,
+                                        }),
                                     },
-                                    body: JSON.stringify({
-                                        picking_id: picking.id,
-                                    }),
-                                },
-                            );
-                            const data = await response.json().catch(() => ({}));
-                            if (!response.ok) {
-                                throw new Error(
-                                    data.detail ||
-                                    "Não foi possível abrir a solicitação de correção.",
                                 );
-                            }
-                            inventory.showToast(
-                                `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
-                            );
+                                const data = await response.json().catch(() => ({}));
+                                if (!response.ok) {
+                                    throw new Error(
+                                        data.detail ||
+                                        "Não foi possível abrir a solicitação de correção.",
+                                    );
+                                }
+
+                               const card = corrigirPesoDivergente.closest(".picking-card");
+                               if (card) {
+                                   card.classList.add("correction-requested");
+                                   card.dataset.correctionRequested = "true";
+                               }
+
+                               picking.correcao_peso_solicitada = true;
+                               picking.correcaoPesoSolicitada = true;
+                               picking.peso_correcao_solicitada = true;
+
+                               inventory.showToast(
+                                   `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
+                               );
+                           });
                         } catch (error) {
                             console.error(
                                 "Erro ao solicitar correcao de peso:",
@@ -510,7 +565,7 @@
                     "Preencha e corrija o peso antes de imprimir.";
             }
             imprimirEtqPacotes.innerHTML =
-                '<span class="action-icon-small">🖨️</span>Imprimir Etiqueta Embalagens';
+                '<span class="action-icon-small">🖨️</span>IMPRIMIR ETIQUETA';
             // Solicita a impressão das etiquetas das embalagens deste picking.
             imprimirEtqPacotes.addEventListener(
                 "click",
@@ -532,7 +587,7 @@
                     "Preencha e corrija o peso antes de conferir.";
             }
             conferirSeparacao.innerHTML =
-                '<span class="action-icon-small">✅</span>Conferir Separação';
+                '<span class="action-icon-small">✓</span>SOLICITAR CONFERÊNCIA';
 
             context.addSecondaryAction(conferirSeparacao);
 
@@ -544,203 +599,176 @@
             );
         }
 
-       // ***** Adiciona o botão de expandir linhas do Picking *****
-        const pickingLines = document.createElement("section");
-        pickingLines.className = "picking-lines";
+       function atualizarPesoTotal() {
+           const total = moveLines.reduce((total, line) => {
+               return total + (Number(line.peso) || 0);
+           }, 0);
 
-        const linesContent = document.createElement("div");
-        linesContent.className = "picking-lines-content";
+           pesoTotalValue.textContent = total.toFixed(2);
+       }
 
-        // Recalcula o peso total mostrado no resumo do card a partir
-        // dos pesos atuais das move lines em memória.
-        function atualizarPesoTotal() {
-            const total = moveLines.reduce((total, line) => {
-                return total + (Number(line.peso) || 0);
-            }, 0);
+       function openPickingDetailsModal(pickingTarget) {
+           const rowsContainer = document.getElementById("pickingDetailsRows");
+           const title = document.getElementById("pickingDetailsTitle");
+           const subtitle = document.getElementById("pickingDetailsSubtitle");
+           const totalQty = document.getElementById("pickingDetailsTotalQty");
+           const totalWeight = document.getElementById("pickingDetailsTotalWeight");
+           const lotCount = document.getElementById("pickingDetailsLotCount");
 
-            pesoTotalValue.textContent = total.toFixed(2);
-        }
-    
-        const toggleButton = document.createElement("button");
-        toggleButton.type = "button";
-        toggleButton.className = "picking-lines-toggle";
-        toggleButton.setAttribute("aria-expanded", "false");
-        toggleButton.setAttribute("aria-label", "Expandir Picking Lines");
+           if (!rowsContainer || !title || !subtitle || !totalQty || !totalWeight || !lotCount) {
+               return;
+           }
 
-        const toggleIcon = document.createElement("span");
-        toggleIcon.className = "picking-lines-toggle-icon";
-        toggleIcon.textContent = "▾";
+           const targetMoveLines = pickingTarget.move_lines || [];
+           const totalEmbalagens = targetMoveLines.length;
+           const totalPeso = targetMoveLines.reduce(
+               (sum, line) => sum + (Number(line.peso) || 0),
+               0,
+           );
+           const uniqueLots = new Set(
+               targetMoveLines
+                   .map((line) => line.lot_id ? String(line.lot_id[1] || "") : "")
+                   .filter(Boolean),
+           );
 
-        toggleButton.appendChild(toggleIcon);
-        pickingLines.appendChild(linesContent);
-        pickingLines.appendChild(toggleButton);
+           title.textContent = `PV ${pickingTarget.pv || pickingTarget.reference || "-"}`;
+           subtitle.textContent = `${pickingTarget.pedido_venda_name || "Pedido"} / ${pickingTarget.cliente || "Cliente"}`;
+           totalQty.textContent = String(totalEmbalagens);
+           totalWeight.textContent = `${totalPeso.toFixed(2)} kg`;
+           lotCount.textContent = String(uniqueLots.size);
+           rowsContainer.innerHTML = "";
 
-        // Coloca o botão de expansao das linhas do picking na borda inferior do picking-card
-        card.appendChild(pickingLines);
+           if (targetMoveLines.length === 0) {
+               rowsContainer.innerHTML = '<div class="picking-detail-empty">Nenhuma linha encontrada.</div>';
+               window.AppUI.openModal("pickingDetailsModal");
+               return;
+           }
 
-        // Adiciona o evento de clique para expandir/colapsar as linhas do picking
-        // Expande ou recolhe as move lines do picking.
-        // Quando expande, o conteúdo é recriado para refletir os dados
-        // mais recentes existentes no objeto picking.
-        function togglePickingLines() {
-            const expanded =
-                toggleButton.getAttribute("aria-expanded") === "true";
+           targetMoveLines.forEach((line) => {
+               const row = document.createElement("div");
+               row.className = "picking-detail-row";
 
-            if (expanded) {
-                linesContent.hidden = true;
-                toggleButton.setAttribute("aria-expanded", "false");
-                toggleIcon.textContent = "▾";
-                return;
-            }
+               const quantity = Number(line.qty_done) || 0;
+               const peso = Number(line.peso) || 0;
+               const productUom = line.product_uom_id ? line.product_uom_id[1] : "";
+               const lot = line.lot_id ? line.lot_id[1] : "Não definido";
 
-            linesContent.innerHTML = "";
+               row.innerHTML = `
+                   <div class="picking-detail-field quantity-field">
+                       <input
+                           class="detail-quantity-input"
+                           type="number"
+                           value="${quantity}"
+                           step="0.01"
+                           min="0"
+                       >
+                       <span class="detail-unit">CT</span>
+                   </div>
+                   <div class="picking-detail-field weight-field">
+                       <input
+                           class="detail-peso-input"
+                           type="number"
+                           value="${peso}"
+                           step="0.01"
+                           min="0"
+                       >
+                       <span class="detail-unit">Kg</span>
+                   </div>
+                   <div class="picking-detail-lot">${lot}</div>
+               `;
 
-            // Cabeçalho das colunas
-            if (moveLines.length > 0) {
-                const header = document.createElement("div");
-                header.className = "picking-lines-header";
+               const qtyInput = row.querySelector(".detail-quantity-input");
+               const pesoInput = row.querySelector(".detail-peso-input");
 
-                header.innerHTML = `
-                    <div><strong>Quantidade</strong></div>
-                    <div><strong>Peso</strong></div>
-                    <div><strong>Lote</strong></div>
-                `;
+               qtyInput.addEventListener("change", () => {
+                   inventory.updateReceivedQuantity(pickingTarget, qtyInput, line.id);
+                   line.qty_done = Number(qtyInput.value) || 0;
+                   atualizarQuantidadeRecebida();
+               });
 
-                linesContent.appendChild(header);
-            }
+               pesoInput.addEventListener("input", () => {
+                   line.peso = Number(pesoInput.value) || 0;
+               });
 
-            // Cria uma linha visual para cada stock.move.line retornada
-            // pelo Odoo e conecta os eventos dos campos editáveis.
-            moveLines.forEach((line) => {
-                const lineElement = document.createElement("div");
-                lineElement.className = "picking-line-item";
+               pesoInput.addEventListener("change", () => {
+                   updatePesoValue(pickingTarget, pesoInput, line.id);
+               });
 
-                const peso = line.peso || 0;
-                const qtyDone = line.qty_done || 0;
-                const productUom = line.product_uom_id ? line.product_uom_id[1] : "";
-                const lot = line.lot_id
-                    ? line.lot_id[1]
-                    : "Não definido";
+               rowsContainer.appendChild(row);
+           });
 
-                lineElement.innerHTML = `
-                    <div class="picking-line-quantity">
-                        <input class="quantity-input" type="number"
-                               value="${qtyDone}" step="0.01" min="0"/>
-                        <span>${productUom}</span>
-                    </div>
+           window.AppUI.openModal("pickingDetailsModal");
+       }
 
-                    <div class="picking-line-weight">
-                        <input class="quantity-input peso-input" type="number"
-                               value="${peso}" step="0.01" min="0"/>Kg
-                    </div>
+       const detailsHint = document.createElement("button");
+       detailsHint.type = "button";
+       detailsHint.className = "picking-details-hint";
+       detailsHint.innerHTML = '<span>👁️</span>VER DETALHES';
+       detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
-                    <div class="picking-line-lot">
-                        <h3>${lot}</h3>
-                    </div>
-                `;
+       detailsHint.addEventListener("click", (event) => {
+           event.stopPropagation();
+           openPickingDetailsModal(picking);
+       });
 
-                linesContent.appendChild(lineElement);
+       card.appendChild(detailsHint);
 
-                const qtyDoneInput =
-                    lineElement.querySelector(".quantity-input");
+       card.setAttribute("tabindex", "0");
+       card.setAttribute("role", "button");
+       card.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
-                // Salva a quantidade recebida no endpoint compartilhado
-                // e atualiza o total exibido no card.
-                qtyDoneInput.addEventListener("change", () => {
-                    inventory.updateReceivedQuantity(
-                        picking,
-                        qtyDoneInput,
-                        line.id
-                    );
+       card.addEventListener("keydown", (event) => {
+           if (event.key === "Enter" || event.key === " ") {
+               event.preventDefault();
+               openPickingDetailsModal(picking);
+           }
+       });
 
-                    line.qty_done = Number(qtyDoneInput.value);
+       card.addEventListener("click", (event) => {
+           if (
+               event.target.closest("button") ||
+               event.target.closest("input") ||
+               event.target.closest("select") ||
+               event.target.closest("textarea") ||
+               event.target.closest("a")
+           ) {
+               return;
+           }
 
-                    atualizarQuantidadeRecebida();
-                });
-
-                const pesoInput =
-                    lineElement.querySelector(".peso-input");
-
-                // Atualiza imediatamente o total visual enquanto o usuário
-                // digita. A persistência ocorre somente no evento change.
-                pesoInput.addEventListener("input", () => {
-                    line.peso = Number(pesoInput.value) || 0;
-                    atualizarPesoTotal();
-                });
-
-                // Salva o peso da move line no Odoo quando o campo perde foco
-                // ou o usuário confirma a alteração.
-                pesoInput.addEventListener("change", () =>
-                    updatePesoValue(picking, pesoInput, line.id)
-                );
-            });
-
-            if (moveLines.length === 0) {
-                linesContent.innerHTML = `
-                    <div class="picking-line-empty">
-                        Nenhuma linha encontrada.
-                    </div>
-                `;
-            }
-
-            linesContent.hidden = false;
-            toggleButton.setAttribute("aria-expanded", "true");
-            toggleIcon.textContent = "▴";
-        }
-
-        // Impede que o clique no botão também acione o clique geral do card.
-        toggleButton.addEventListener("click", (event) => {
-            event.stopPropagation();
-            togglePickingLines();
-        });
-
-        // Permite expandir/recolher clicando no card, exceto quando o
-        // clique veio de um controle que já possui ação própria.
-        card.addEventListener("click", (event) => {
-            // Elementos que possuem comportamento próprio
-            // não devem expandir/recolher as linhas.
-            if (
-                event.target.closest("button") ||
-                event.target.closest("input") ||
-                event.target.closest("select") ||
-                event.target.closest("textarea") ||
-                event.target.closest("a")
-            ) {
-                return;
-            }
-
-            togglePickingLines();
-        });
+           openPickingDetailsModal(picking);
+       });
 
         // Solicita ao FastAPI os dados da etiqueta e, em seguida,
         // envia esses dados para a impressora IoT.
         async function printLabel(picking) {
             try {
-                const response = await fetch(
-                    `/api/inventario/${picking.id}/imprimir-etiqueta`,
-                    {
+                await inventory.runAction(async () => {
+                    const response = await fetch(
+                        `/api/inventario/${picking.id}/imprimir-etiqueta`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                        },
+                    );
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(data.detail || "Não foi possível imprimir a etiqueta.");
+                    }
+                    if (!data.iot_url || !data.payload) {
+                        throw new Error("Resposta inválida do servidor para impressão.");
+                    }
+
+                    const iotResponse = await fetch(data.iot_url, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                    },
-                );
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data.detail || "Não foi possível imprimir a etiqueta.");
-                }
-                if (!data.iot_url || !data.payload) {
-                    throw new Error("Resposta inválida do servidor para impressão.");
-                }
-
-                const iotResponse = await fetch(data.iot_url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data.payload),
+                        body: JSON.stringify(data.payload),
+                    });
+                    if (!iotResponse.ok) {
+                        const body = await iotResponse.json().catch(() => iotResponse.statusText);
+                        throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
+                    }
+                    inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
                 });
-                if (!iotResponse.ok) {
-                    const body = await iotResponse.json().catch(() => iotResponse.statusText);
-                    throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
-                }
-                inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
             } catch (error) {
                 console.error("Erro ao imprimir etiqueta:", error);
                 inventory.showToast(error.message || "Não foi possível imprimir a etiqueta.", "!");

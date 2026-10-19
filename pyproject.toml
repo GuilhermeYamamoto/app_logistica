@@ -14,6 +14,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "uvicorn[standard]>=0.24.0",
     "redis>=4.5.0",
+    "requests>=2.31.0",
 ]
 
 [project.scripts]
@@ -22,3 +23,7 @@ fast-api-odoo = "app.main:app"
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = "."

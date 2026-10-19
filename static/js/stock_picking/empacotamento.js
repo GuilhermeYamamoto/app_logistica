@@ -1,6 +1,69 @@
 (function () {
     "use strict";
 
+    function formatCompactCount(value) {
+        return new Intl.NumberFormat("pt-BR", {
+            notation: "compact",
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+
+    function updateReadyToPrintCount(value) {
+        const readyToPrintCount = document.getElementById("readyToPrintCount");
+
+        if (!readyToPrintCount) {
+            return;
+        }
+
+        readyToPrintCount.textContent = formatCompactCount(
+            Number.isFinite(value) ? Number(value) : 0,
+        );
+    }
+
+    window.updateReadyToPrintCount = updateReadyToPrintCount;
+
+    function ensureReadyToPrintCard() {
+        const dashboard = document.querySelector(".dashboard");
+
+        if (!dashboard) {
+            return;
+        }
+
+        const existingCard = dashboard.querySelector(".dashboard-card.ready-to-print");
+
+        if (existingCard) {
+            window.AppInventory?.render();
+            return;
+        }
+
+        const readyCard = document.createElement("button");
+        readyCard.type = "button";
+        readyCard.className = "dashboard-card ready-to-print";
+        readyCard.dataset.filter = "pronto-para-imprimir";
+        readyCard.setAttribute(
+            "aria-label",
+            "PRONTO PARA IMPRIMIR"
+        );
+        readyCard.innerHTML =
+            '<span class="dashboard-label">PRONTO PARA IMPRIMIR</span><strong id="readyToPrintCount">0</strong>';
+
+        dashboard.appendChild(readyCard);
+
+        if (typeof window.AppInventory?.render === "function") {
+            window.AppInventory.render();
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            ensureReadyToPrintCard,
+            { once: true }
+        );
+    } else {
+        ensureReadyToPrintCard();
+    }
+
     const inventory = window.AppInventory;
 
     if (!inventory) {
@@ -12,10 +75,23 @@
 
     let pvGroups = [];
     let activePVCard = null;
-    let isCheckboxDragSelecting = false;
-    let checkboxDragPointerId = null;
     let activePackageModal = null;
     let selectedPackage = null;
+    let activeFinishModal = null;
+
+    function sanitizeToastError(error, fallback) {
+        const rawMessage = error?.message || "";
+        const cleaned = String(rawMessage)
+            .trim()
+            .replace(/^Error:\s*/i, "")
+            .replace(/\s+/g, " ");
+
+        if (!cleaned) {
+            return fallback;
+        }
+
+        return cleaned.length > 80 ? fallback : cleaned;
+    }
 
     function enhanceCard(card, record, context) {
         context.replacePrimaryActions([]);
@@ -53,7 +129,45 @@
         });
     }
 
-    function buildPVGroups(records) {
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function isReadyToPrintRecord(record) {
+        const tagIds = normalizeTagIds(record);
+
+        return Boolean(
+            record?.readyToPrint ||
+            record?.status === "ready_to_print" ||
+            record?.pronto_para_imprimir === true ||
+            (
+                record?.state === "done" &&
+                tagIds.includes(33)
+            )
+        );
+    }
+
+    function isPackedRecord(record) {
+        return normalizeTagIds(record).includes(33);
+    }
+
+    function buildPVGroupsData(records) {
         const groupsById = new Map();
 
         for (const record of records || []) {
@@ -75,7 +189,13 @@
             groupsById.get(key).pickings.push(record);
         }
 
-        pvGroups = Array.from(groupsById.values());
+        return Array.from(groupsById.values());
+    }
+
+    function buildPVGroups(records) {
+        pvGroups = buildPVGroupsData(
+            (records || []).filter((record) => !isReadyToPrintRecord(record)),
+        );
     }
 
     function onRecordsReplaced(records) {
@@ -83,7 +203,20 @@
 
         setTimeout(() => {
             try {
-                renderPVGroupsDOM();
+                const isReadyToPrintView =
+                    document.querySelector(
+                        ".dashboard-card.ready-to-print.active",
+                    ) !== null;
+                const groupsToRender = isReadyToPrintView
+                    ? buildPVGroupsData(
+                        records.filter(isReadyToPrintRecord),
+                    )
+                    : pvGroups;
+
+                renderPVGroupsDOM(
+                    groupsToRender,
+                    isReadyToPrintView,
+                );
             } catch (error) {
                 console.error(
                     "Erro ao renderizar grupos de PV no empacotamento:",
@@ -93,200 +226,348 @@
         }, 0);
     }
 
-    function setupCheckboxDragSelection(pickingsList) {
-        let startPicking = null;
-        let startCheckbox = null;
+    async function getAvailablePackages() {
+        const response = await fetch("/api/inventario/embalagens");
 
-        let hasDragged = false;
-        let suppressNextClick = false;
+        if (!response.ok) {
+            throw new Error("Não foi possível carregar as embalagens disponíveis.");
+        }
 
-        let dragTargetState = null;
+        return await response.json();
+    }
 
-        let startX = 0;
-        let startY = 0;
+    async function gerarPacote(data) {
+        const response = await fetch(
+            "/api/inventario/gerar-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
 
-        let holdTimer = null;
-        let holdActivated = false;
+        if (!response.ok) {
+            let detail =
+                "Não foi possível gerar o pacote.";
 
-        const DRAG_THRESHOLD = 8;
-        const HOLD_DURATION = 500;
+            try {
+                const errorData =
+                    await response.json();
 
-        pickingsList.addEventListener(
-            "pointerdown",
-            (event) => {
-                const pickingItem =
-                    event.target.closest(
-                        ".emp-picking-item"
-                    );
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
 
-                if (!pickingItem) {
-                    return;
-                }
+            throw new Error(detail);
+        }
 
-                window.AppUI?.setGestureCaptured(true);
+        return await response.json();
+    }
 
-                const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
-                    );
+    async function finalizarPickings(data) {
+        const response = await fetch(
+            "/api/inventario/finalizar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
 
-                if (!checkbox) {
-                    return;
-                }
+        if (!response.ok) {
+            let detail =
+                "Não foi possível finalizar.";
 
-                if (checkbox.disabled) {
-                    return;
-                }
+            try {
+                const errorData =
+                    await response.json();
 
-                startPicking = pickingItem;
-                startCheckbox = checkbox;
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
 
-                hasDragged = false;
-                holdActivated = false;
+            throw new Error(detail);
+        }
 
-                startX = event.clientX;
-                startY = event.clientY;
+        return await response.json();
+    }
 
-                // O estado que será aplicado
-                // durante a seleção múltipla.
-                dragTargetState = !checkbox.checked;
+    async function refreshRecords({ replaceRecords }) {
+        const stageKey =
+            document.body.dataset.stageKey;
 
-                /*
-                * Não inicia o modo de seleção múltipla
-                * imediatamente.
-                *
-                * O usuário precisa manter o dedo/mouse
-                * pressionado por 1 segundo.
-                */
-                holdTimer = setTimeout(
-                    () => {
-                        if (
-                            !startPicking ||
-                            !startCheckbox
-                        ) {
-                            return;
-                        }
+        const response = await fetch(
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}`,
+            {
+                headers: {
+                    Accept: "application/json",
+                },
+                cache: "no-store",
+            }
+        );
 
-                        holdActivated = true;
+        const data =
+            await response.json().catch(
+                () => null
+            );
 
-                        isCheckboxDragSelecting = true;
-                        checkboxDragPointerId =
-                            event.pointerId;
+        if (
+            !response.ok ||
+            !Array.isArray(data?.records)
+        ) {
+            throw new Error(
+                data?.detail ||
+                "Não foi possível atualizar os registros."
+            );
+        }
 
-                        window.AppUI?.setGestureCaptured(true);
+        replaceRecords(data.records);
+    }
 
-                        // Vibração ao ativar a seleção múltipla.
-                        if ("vibrate" in navigator) {
-                            navigator.vibrate(50);
-                        }
-
-                        startCheckbox.checked =
-                            dragTargetState;
-
-                        try {
-                            startPicking.setPointerCapture(
-                                event.pointerId
-                            );
-                        } catch (error) {
-                            // Alguns dispositivos podem não
-                            // permitir pointer capture.
-                        }
+    async function printPackageLabel(picking) {
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch(
+                    "/api/inventario/imprimir-pacote",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            package_id: picking.packageId,
+                        }),
                     },
-                    HOLD_DURATION
                 );
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail ||
+                        "Não foi possível imprimir o pacote.",
+                    );
+                }
+
+                inventory.showToast(
+                    `PACOTE DO ${picking.pv} ENVIADO PARA IMPRESSÃO`,
+                );
+
+                await refreshRecords({
+                    replaceRecords: inventory.replaceRecords,
+                });
+                window.AppInventory.render();
+            });
+
+        } catch (error) {
+            console.error("Erro ao imprimir pacote:", error);
+            inventory.showToast(
+                error.message || "Não foi possível imprimir o pacote.",
+                "!",
+            );
+        }
+    }
+
+    function getPickingPackageIds(picking) {
+        const packageIds = [picking?.packageId];
+
+        return packageIds
+            .map((packageId) => Number(packageId))
+            .filter((packageId) => Number.isInteger(packageId) && packageId > 0);
+    }
+
+    async function printGroupPackages(group) {
+        const uniquePackageIds = new Set(
+            (group.pickings || []).flatMap(getPickingPackageIds),
+        );
+
+        for (const packageId of uniquePackageIds) {
+            await printPackageLabel({
+                packageId,
+                pv: group.pedido_venda_name || "PV",
+            });
+        }
+    }
+
+    function hasPackageId(picking) {
+        return getPickingPackageIds(picking).length > 0;
+    }
+
+    function getReadyToPrintPackageCount(records) {
+        return new Set(
+            (records || [])
+                .filter(isReadyToPrintRecord)
+                .flatMap(getPickingPackageIds),
+        ).size;
+    }
+
+    function isFirstPickingForPackage(picking, packageIdsAlreadyRendered) {
+        const packageIds = getPickingPackageIds(picking);
+        const packageId = packageIds[0];
+
+        if (!packageId || packageIdsAlreadyRendered.has(packageId)) {
+            return false;
+        }
+
+        packageIdsAlreadyRendered.add(packageId);
+        return true;
+    }
+
+    function getSelectedPickings(group, pickingsList) {
+        const selectedMoveLineIds = new Set(
+            Array.from(
+                pickingsList.querySelectorAll(
+                    ".emp-picking-checkbox:checked",
+                ),
+            ).flatMap((checkbox) => {
+                const item = checkbox.closest(".emp-picking-item");
+
+                try {
+                    return JSON.parse(item?.dataset.moveLineIds || "[]");
+                } catch (error) {
+                    return [];
+                }
+            }).map(Number),
+        );
+
+        return group.pickings
+            .map((picking) => {
+                const moveLines = (picking.move_lines || []).filter(
+                    (moveLine) => selectedMoveLineIds.has(Number(moveLine.id)),
+                );
+
+                return moveLines.length
+                    ? { ...picking, move_lines: moveLines }
+                    : null;
+            })
+            .filter(Boolean);
+    }
+
+    async function marcarMoveLinesParaPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/marcar-para-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
             }
         );
 
+        if (!response.ok) {
+            let detail =
+                "Não foi possível marcar as linhas para pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function tirarMoveLinesDoPacote(
+        moveLineIds
+    ) {
+        if (!moveLineIds?.length) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/inventario/tirar-do-pacote",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    move_line_ids: moveLineIds,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível remover as linhas do pacote.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    async function selecionarTodos(data) {
+        const response = await fetch(
+            "/api/inventario/selecionar-todos",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            }
+        );
+
+        if (!response.ok) {
+            let detail =
+                "Não foi possível selecionar todos os pickings.";
+
+            try {
+                const errorData =
+                    await response.json();
+
+                detail =
+                    errorData.detail || detail;
+            } catch (error) {
+                // Mantém a mensagem padrão.
+            }
+
+            throw new Error(detail);
+        }
+
+        return await response.json();
+    }
+
+    function setupCheckboxChange(pickingsList) {
         pickingsList.addEventListener(
-            "pointermove",
-            (event) => {
-                /*
-                * Antes de completar 1 segundo,
-                * NÃO fazemos seleção múltipla.
-                *
-                * Isso permite que o movimento natural
-                * do dedo continue sendo interpretado
-                * como rolagem da lista.
-                */
-                if (
-                    !holdActivated ||
-                    !isCheckboxDragSelecting ||
-                    event.pointerId !== checkboxDragPointerId ||
-                    !startPicking
-                ) {
-                    return;
-                }
-
-                const distanceX =
-                    Math.abs(event.clientX - startX);
-
-                const distanceY =
-                    Math.abs(event.clientY - startY);
-
-                if (
-                    !hasDragged &&
-                    Math.max(distanceX, distanceY) >=
-                        DRAG_THRESHOLD
-                ) {
-                    hasDragged = true;
-                }
-
-                if (!hasDragged) {
-                    return;
-                }
-
-                const element =
-                    document.elementFromPoint(
-                        event.clientX,
-                        event.clientY
-                    );
-
-                const pickingItem =
-                    element?.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
+            "change",
+            async (event) => {
                 const checkbox =
-                    pickingItem.querySelector(
-                        ".emp-picking-checkbox"
-                    );
-
-                if (!checkbox || checkbox.disabled) {
-                    return;
-                }
-
-                checkbox.checked =
-                    dragTargetState;
-            }
-        );
-
-        pickingsList.addEventListener(
-            "click",
-            (event) => {
-                if (suppressNextClick) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    suppressNextClick = false;
-
-                    return;
-                }
-
-                const pickingItem =
                     event.target.closest(
-                        ".emp-picking-item"
-                    );
-
-                if (!pickingItem) {
-                    return;
-                }
-
-                const checkbox =
-                    pickingItem.querySelector(
                         ".emp-picking-checkbox"
                     );
 
@@ -294,137 +575,108 @@
                     return;
                 }
 
-                if (checkbox.disabled) {
+                const pickingItem =
+                    checkbox.closest(
+                        ".emp-picking-item"
+                    );
+
+                if (!pickingItem) {
                     return;
                 }
 
-                /*
-                * Se o clique foi diretamente na checkbox,
-                * mantemos o comportamento nativo do input.
-                */
-                if (
-                    event.target.closest(
-                        ".emp-picking-checkbox"
-                    )
-                ) {
+                let moveLineIds = [];
+
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]"
+                    );
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do picking:",
+                        error
+                    );
+
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    inventory.showToast(
+                        "Não foi possível identificar as linhas do picking.",
+                        "!"
+                    );
+
                     return;
                 }
 
-                /*
-                * Clique normal na caixa:
-                * seleciona/desseleciona o picking.
-                */
-                checkbox.checked =
-                    !checkbox.checked;
-            },
-            true
-        );
+                moveLineIds = moveLineIds
+                    .map((id) => Number(id))
+                    .filter(
+                        (id) =>
+                            Number.isInteger(id) &&
+                            id > 0
+                    );
 
-        const finishDragSelection = (event) => {
-            /*
-            * Cancela o timer caso o usuário solte
-            * antes de completar 1 segundo.
-            */
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
+                if (!moveLineIds.length) {
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    inventory.showToast(
+                        "O picking selecionado não possui move lines.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                try {
+                    if (checkbox.checked) {
+                        await marcarMoveLinesParaPacote(
+                            moveLineIds
+                        );
+
+                        inventory.showToast(
+                            "Linha adicionada ao pacote!"
+                        );
+
+                        console.log(
+                            "Move lines marcadas para pacote:",
+                            moveLineIds
+                        );
+                    } else {
+                        await tirarMoveLinesDoPacote(
+                            moveLineIds
+                        );
+
+                        inventory.showToast(
+                            "Linha removida do pacote!"
+                        );
+
+                        console.log(
+                            "Move lines removidas do pacote:",
+                            moveLineIds
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Erro ao atualizar pacote das move lines:",
+                        error
+                    );
+
+                    // Volta a checkbox para o estado anterior
+                    // se o backend retornar erro.
+                    checkbox.checked =
+                        !checkbox.checked;
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível atualizar o pacote."
+                        ),
+                        "!"
+                    );
+                }
             }
-
-            /*
-            * Se a seleção múltipla ainda não foi ativada,
-            * não fazemos nada relacionado ao drag.
-            */
-            if (
-                !holdActivated ||
-                !isCheckboxDragSelecting ||
-                event.pointerId !== checkboxDragPointerId
-            ) {
-                window.AppUI?.setGestureCaptured(false);
-
-                startPicking = null;
-                startCheckbox = null;
-
-                hasDragged = false;
-                holdActivated = false;
-                dragTargetState = null;
-
-                startX = 0;
-                startY = 0;
-
-                isCheckboxDragSelecting = false;
-                checkboxDragPointerId = null;
-
-                return;
-            }
-
-            /*
-            * Se houve arraste, impedimos o click seguinte
-            * de alterar novamente o estado inicial.
-            */
-            if (hasDragged) {
-                suppressNextClick = true;
-            }
-
-            window.AppUI?.setGestureCaptured(false);
-
-            isCheckboxDragSelecting = false;
-            checkboxDragPointerId = null;
-
-            startPicking = null;
-            startCheckbox = null;
-
-            hasDragged = false;
-            holdActivated = false;
-            dragTargetState = null;
-
-            startX = 0;
-            startY = 0;
-        };
-
-        pickingsList.addEventListener(
-            "pointerup",
-            finishDragSelection
-        );
-
-        pickingsList.addEventListener(
-            "pointercancel",
-            finishDragSelection
         );
     }
-
-    function getAvailablePackages() {
-        /*
-        * Dados temporários para a interface.
-        *
-        * Futuramente esta função deverá consultar o backend
-        * para retornar as embalagens realmente disponíveis.
-        *
-        * Exemplo futuro:
-        *
-        * return fetch("/api/inventario/embalagens")
-        *     .then(response => response.json());
-        */
-
-        return [
-            {
-                id: 1,
-                name: "Caixa Pequena",
-            },
-            {
-                id: 2,
-                name: "Caixa Média",
-            },
-            {
-                id: 3,
-                name: "Caixa Grande",
-            },
-            {
-                id: 4,
-                name: "Embalagem Especial",
-            },
-        ];
-    }
-
 
     function closePackageModal() {
         if (!activePackageModal) {
@@ -445,11 +697,11 @@
         pickingsList,
         selectedPickings
     ) {
-        const selectedPickingIds =
+        const selectedMoveLineIds =
             new Set(
-                selectedPickings.map(
-                    (picking) => String(picking.id)
-                )
+                selectedPickings
+                    .flatMap((picking) => picking.move_lines || [])
+                    .map((moveLine) => String(moveLine.id)),
             );
 
         const pickingItems =
@@ -459,14 +711,21 @@
 
         pickingItems.forEach(
             (pickingItem) => {
-                const pickingId =
-                    pickingItem.dataset.pickingId;
+                let moveLineIds = [];
 
-                if (
-                    !selectedPickingIds.has(
-                        String(pickingId)
-                    )
-                ) {
+                try {
+                    moveLineIds = JSON.parse(
+                        pickingItem.dataset.moveLineIds || "[]",
+                    ).map(String);
+                } catch (error) {
+                    console.error(
+                        "Não foi possível ler as move lines do item:",
+                        error,
+                    );
+                    return;
+                }
+
+                if (!moveLineIds.some((id) => selectedMoveLineIds.has(id))) {
                     return;
                 }
 
@@ -487,7 +746,370 @@
         );
     }
 
-    function openPackageModal(pvGroup, selectedPickings) {
+    function closeFinishModal() {
+        if (!activeFinishModal) {
+            return;
+        }
+
+        activeFinishModal.remove();
+
+        activeFinishModal = null;
+
+        document.body.classList.remove(
+            "emp-modal-open"
+        );
+    }
+
+
+    function openFinishModal(selectedPickings) {
+        closeFinishModal();
+
+        // =========================================
+        // OVERLAY
+        // =========================================
+
+        const modalOverlay =
+            document.createElement("div");
+
+        modalOverlay.className =
+            "modal-overlay";
+
+
+        // =========================================
+        // MODAL
+        // =========================================
+
+        const modal =
+            document.createElement("div");
+
+        modal.className =
+            "modal action-modal";
+
+
+        // =========================================
+        // CABEÇALHO
+        // =========================================
+
+        const modalHeader =
+            document.createElement("div");
+
+        modalHeader.className =
+            "modal-header";
+
+
+        const headerContent =
+            document.createElement("div");
+
+
+        const kicker =
+            document.createElement("span");
+
+        kicker.className =
+            "modal-kicker";
+
+        kicker.textContent =
+            "FINALIZAÇÃO";
+
+
+        const title =
+            document.createElement("h2");
+
+        title.textContent =
+            "Finalizar";
+
+
+        headerContent.append(
+            kicker,
+            title
+        );
+
+
+        const closeButton =
+            document.createElement("button");
+
+        closeButton.type = "button";
+
+        closeButton.className =
+            "close-modal";
+
+        closeButton.setAttribute(
+            "aria-label",
+            "Fechar"
+        );
+
+        closeButton.textContent =
+            "×";
+
+        closeButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        modalHeader.append(
+            headerContent,
+            closeButton
+        );
+
+
+        // =========================================
+        // ÍCONE
+        // =========================================
+
+        const actionIcon =
+            document.createElement("div");
+
+        actionIcon.className =
+            "action-icon validation-icon";
+
+        actionIcon.textContent =
+            "✓";
+
+
+        // =========================================
+        // MENSAGEM
+        // =========================================
+
+        const message =
+            document.createElement("p");
+
+        message.textContent =
+            "Você tem certeza que deseja finalizar?";
+
+
+        // =========================================
+        // BOTÕES
+        // =========================================
+
+        const modalFooter =
+            document.createElement("div");
+
+        modalFooter.className =
+            "modal-footer";
+
+
+        const cancelButton =
+            document.createElement("button");
+
+        cancelButton.type = "button";
+
+        cancelButton.className =
+            "secondary-button";
+
+        cancelButton.textContent =
+            "CANCELAR";
+
+        cancelButton.addEventListener(
+            "click",
+            closeFinishModal
+        );
+
+
+        const confirmButton =
+            document.createElement("button");
+
+        confirmButton.type = "button";
+
+        confirmButton.className =
+            "primary-button";
+
+        confirmButton.textContent =
+            "CONFIRMAR";
+
+
+        // Por enquanto, sem funcionalidade.
+        confirmButton.addEventListener(
+            "click",
+            async (event) => {
+                event.stopPropagation();
+
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                const finishPayload = {
+                    picking_ids:
+                        pickingIds,
+
+                    move_line_ids:
+                        moveLineIds,
+                };
+
+                console.log(
+                    "Payload enviado para finalizar:",
+                    finishPayload
+                );
+
+                confirmButton.disabled =
+                    true;
+
+                confirmButton.textContent =
+                    "FINALIZANDO...";
+
+                try {
+                    const result =
+                        await finalizarPickings(
+                            finishPayload
+                        );
+
+                    console.log(
+                        "Finalização concluída:",
+                        result
+                    );
+
+                    const finalizedPickingIds =
+                        new Set(
+                            pickingIds.map(
+                                (id) => Number(id)
+                            )
+                        );
+
+                    const currentRecords =
+                        inventory.getRecords
+                            ? inventory.getRecords()
+                            : [];
+
+                    const remainingRecords =
+                        currentRecords.filter(
+                            (record) =>
+                                !finalizedPickingIds.has(
+                                    Number(record.id)
+                                )
+                        );
+
+                    closeFinishModal();
+
+                    inventory.replaceRecords(
+                        remainingRecords
+                    );
+
+                    inventory.showToast(
+                        "Finalização concluída com sucesso!"
+                    );
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao finalizar:",
+                        error
+                    );
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível finalizar."
+                        ),
+                        "!"
+                    );
+
+                    confirmButton.disabled =
+                        false;
+
+                    confirmButton.textContent =
+                        "CONFIRMAR";
+                }
+            }
+        );
+
+
+        modalFooter.append(
+            cancelButton,
+            confirmButton
+        );
+
+
+        // =========================================
+        // MONTAGEM
+        // =========================================
+
+        modal.append(
+            modalHeader,
+            actionIcon,
+            message,
+            modalFooter
+        );
+
+
+        modalOverlay.appendChild(
+            modal
+        );
+
+
+        // =========================================
+        // FECHAR CLICANDO FORA
+        // =========================================
+
+        modalOverlay.addEventListener(
+            "click",
+            (event) => {
+                if (
+                    event.target ===
+                    modalOverlay
+                ) {
+                    closeFinishModal();
+                }
+            }
+        );
+
+
+        // =========================================
+        // ABRIR
+        // =========================================
+
+        document.body.appendChild(
+            modalOverlay
+        );
+
+        activeFinishModal =
+            modalOverlay;
+
+        document.body.classList.add(
+            "emp-modal-open"
+        );
+    }
+
+    async function openPackageModal(pvGroup, selectedPickings) {
         closePackageModal();
 
         selectedPackage = null;
@@ -616,57 +1238,93 @@
         packageOptions.className =
             "emp-package-options hidden";
 
-        const availablePackages =
-            getAvailablePackages();
-
-        for (const packageData of availablePackages) {
-            const option =
-                document.createElement("button");
-
-            option.type = "button";
-
-            option.className =
-                "emp-package-option";
-
-            option.dataset.packageId =
-                String(packageData.id);
-
-            option.textContent =
-                packageData.name;
-
-            option.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
-
-                    selectedPackage =
-                        packageData;
-
-                    packageSelectorText.textContent =
-                        packageData.name;
-
-                    packageSelector.classList.add(
-                        "has-selection"
-                    );
-
-                    packageOptions.classList.add(
-                        "hidden"
-                    );
-
-                    finishPackageButton.disabled =
-                        false;
-                }
-            );
-
-            packageOptions.appendChild(option);
-        }
-
-        const togglePackageOptions =
-            () => {
-                packageOptions.classList.toggle(
+        async function togglePackageOptions() {
+            if (
+                !packageOptions.classList.contains(
+                    "hidden"
+                )
+            ) {
+                packageOptions.classList.add(
                     "hidden"
                 );
-            };
+
+                return;
+            }
+
+            packageOptions.replaceChildren();
+
+            packageSelectorText.textContent =
+                "Carregando embalagens...";
+
+            try {
+                const availablePackages =
+                    await getAvailablePackages();
+
+                for (const packageData of availablePackages) {
+                    const option =
+                        document.createElement("button");
+
+                    option.type = "button";
+
+                    option.className =
+                        "emp-package-option";
+
+                    option.dataset.packageId =
+                        String(packageData.id);
+
+                    option.textContent =
+                        packageData.name;
+
+                    option.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+
+                            selectedPackage =
+                                packageData;
+
+                            packageSelectorText.textContent =
+                                packageData.name;
+
+                            packageSelector.classList.add(
+                                "has-selection"
+                            );
+
+                            packageOptions.classList.add(
+                                "hidden"
+                            );
+
+                            finishPackageButton.disabled =
+                                false;
+
+                            inventory.showToast(
+                                "Embalagem selecionada!"
+                            );
+                        }
+                    );
+
+                    packageOptions.appendChild(
+                        option
+                    );
+                }
+
+                packageSelectorText.textContent =
+                    selectedPackage?.name ||
+                    "Selecione a embalagem";
+
+                packageOptions.classList.remove(
+                    "hidden"
+                );
+            } catch (error) {
+                console.error(
+                    "Erro ao carregar embalagens:",
+                    error
+                );
+
+                packageSelectorText.textContent =
+                    "Erro ao carregar embalagens";
+            }
+        }
 
         packageSelector.addEventListener(
             "click",
@@ -729,58 +1387,137 @@
 
         finishPackageButton.addEventListener(
             "click",
-            (event) => {
+            async (event) => {
                 event.stopPropagation();
 
                 if (!selectedPackage) {
                     return;
                 }
 
-                /*
-                * Estrutura preparada para o backend.
-                *
-                * Futuramente este objeto será enviado
-                * para o endpoint responsável pela geração
-                * do pacote.
-                */
+                const pickingIds =
+                    selectedPickings
+                        .map(
+                            (picking) =>
+                                Number(picking.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                const moveLineIds =
+                    selectedPickings
+                        .flatMap(
+                            (picking) =>
+                                picking.move_lines || []
+                        )
+                        .map(
+                            (moveLine) =>
+                                Number(moveLine.id)
+                        )
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        );
+
+                if (!pickingIds.length) {
+                    inventory.showToast(
+                        "Nenhum picking foi selecionado.",
+                        "!"
+                    );
+
+                    return;
+                }
+
+                if (!moveLineIds.length) {
+                    inventory.showToast(
+                        "Nenhuma move line foi encontrada nos pickings selecionados.",
+                        "!"
+                    );
+
+                    return;
+                }
+
                 const packagePayload = {
-                    pedido_venda_id:
-                        pvGroup.pedido_venda_id,
-
-                    pedido_venda_name:
-                        pvGroup.pedido_venda_name,
-
                     picking_ids:
-                        selectedPickings.map(
-                            (picking) => picking.id
-                        ),
+                        pickingIds,
 
-                    embalagem_id:
-                        selectedPackage.id,
+                    move_line_ids:
+                        moveLineIds,
+
+                    package_type_id:
+                        Number(selectedPackage.id),
                 };
 
                 console.log(
-                    "Payload preparado para gerar pacote:",
+                    "Payload enviado para gerar pacote:",
                     packagePayload
                 );
 
-                /*
-                * Marca visualmente os pickings selecionados
-                * como empacotados.
-                */
-                const activePVPickings =
-                    activePVCard?.querySelector(
-                        ".pv-pickings"
+                finishPackageButton.disabled =
+                    true;
+
+                finishPackageButton.textContent =
+                    "GERANDO...";
+
+                try {
+                    const result =
+                        await inventory.runAction(
+                            () => gerarPacote(
+                                packagePayload,
+                            ),
+                        );
+
+                    console.log(
+                        "Pacote gerado com sucesso:",
+                        result
                     );
 
-                if (activePVPickings) {
-                    markPickingsAsPacked(
-                        activePVPickings,
-                        selectedPickings
+                    inventory.showToast(
+                        "Pacote gerado com sucesso!"
                     );
+
+                    /*
+                    * Marca visualmente os pickings selecionados
+                    * como empacotados somente depois que o Odoo
+                    * confirmar a operação.
+                    */
+                    const activePVPickings =
+                        activePVCard?.querySelector(
+                            ".pv-pickings"
+                        );
+
+                    if (activePVPickings) {
+                        markPickingsAsPacked(
+                            activePVPickings,
+                            selectedPickings
+                        );
+                    }
+
+                    closePackageModal();
+
+                } catch (error) {
+                    console.error(
+                        "Erro ao gerar pacote:",
+                        error
+                    );
+
+                    inventory.showToast(
+                        sanitizeToastError(
+                            error,
+                            "Não foi possível gerar pacote."
+                        ),
+                        "!"
+                    );
+
+                    finishPackageButton.disabled =
+                        false;
+
+                    finishPackageButton.textContent =
+                        "FINALIZAR";
                 }
-
-                closePackageModal();
             }
         );
 
@@ -829,7 +1566,10 @@
         );
     }
 
-    function renderPVGroupsDOM() {
+    function renderPVGroupsDOM(
+        groupsToRender = pvGroups,
+        readyToPrintView = false,
+    ) {
         const container =
             document.getElementById("pickingsContainer");
 
@@ -837,18 +1577,16 @@
             return;
         }
 
-        // Guarda qual PV estava aberto antes do render.
         const activePVKey =
             activePVCard?.dataset?.pvId || null;
 
         activePVCard = null;
-
-        // Limpa o container para reconstruir a estrutura por PV.
         container.replaceChildren();
 
-        for (const group of pvGroups) {
+        for (const group of groupsToRender || []) {
             const pvCard = document.createElement("section");
             pvCard.className = "pv-card";
+            const isReadyToPrintView = readyToPrintView;
 
             const pvKey =
                 group.pedido_venda_id === null
@@ -897,6 +1635,25 @@
             const pvActions = document.createElement("div");
             pvActions.className = "pv-actions";
 
+            let expandedCompletedButton = null;
+            let expandedGeneratePackageButton = null;
+
+            function restoreDefaultPVActions() {
+                if (expandedCompletedButton) {
+                    expandedCompletedButton.remove();
+                    expandedCompletedButton = null;
+                }
+
+                if (expandedGeneratePackageButton) {
+                    expandedGeneratePackageButton.remove();
+                    expandedGeneratePackageButton = null;
+                }
+
+                pvActions.replaceChildren(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             // =========================
             // PV AINDA NÃO EMPACOTADO
@@ -925,82 +1682,82 @@
                 (event) => {
                     event.stopPropagation();
 
-                    // Expande o PV.
+                    if (activePVCard && activePVCard !== pvCard) {
+                        return;
+                    }
+
                     expandPV();
 
-                    // Remove EMPACOTAR e FINALIZAR.
-                    pvActions.replaceChildren();
+                    if (expandedGeneratePackageButton) {
+                        expandedGeneratePackageButton.remove();
+                    }
+
+                    if (expandedCompletedButton) {
+                        expandedCompletedButton.remove();
+                    }
 
                     // =========================
                     // BOTÃO CONCLUÍDO
                     // =========================
 
-                    const completedButton =
+                    expandedCompletedButton =
                         document.createElement("button");
 
-                    completedButton.type = "button";
+                    expandedCompletedButton.type = "button";
 
-                    completedButton.className =
+                    expandedCompletedButton.className =
                         "pv-completed-button";
 
-                    completedButton.innerHTML = `
+                    expandedCompletedButton.innerHTML = `
                         <span class="pv-completed-icon">✓</span>
                         <span>CONCLUÍDO</span>
                     `;
 
-                    completedButton.setAttribute(
+                    expandedCompletedButton.setAttribute(
                         "aria-label",
                         "Concluir PV"
                     );
 
-                    // Por enquanto, sem funcionalidade.
-                    completedButton.addEventListener(
+                    expandedCompletedButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
+
+                            openFinishModal(
+                                group.pickings
+                            );
                         }
                     );
 
-                    pvCard.appendChild(completedButton);
+                    pvCard.appendChild(expandedCompletedButton);
 
                     // Cria o botão GERAR PACOTE.
-                    const generatePackageButton =
+                    expandedGeneratePackageButton =
                         document.createElement("button");
 
-                    generatePackageButton.type = "button";
-                    generatePackageButton.className =
+                    expandedGeneratePackageButton.type = "button";
+                    expandedGeneratePackageButton.className =
                         "pv-action-button pv-generate-package-button";
 
-                    generatePackageButton.setAttribute(
+                    expandedGeneratePackageButton.setAttribute(
                         "aria-label",
                         "Gerar pacote"
                     );
 
-                    generatePackageButton.innerHTML = `
+                    expandedGeneratePackageButton.innerHTML = `
                         <span class="pv-action-icon">📦</span>
                         <span>GERAR PACOTE</span>
                     `;
 
-                    generatePackageButton.addEventListener(
+                    expandedGeneratePackageButton.addEventListener(
                         "click",
                         (event) => {
                             event.stopPropagation();
 
                             const selectedPickings =
-                                group.pickings.filter(
-                                    (picking, index) => {
-                                        const pickingItems =
-                                            pickingsList.querySelectorAll(
-                                                ".emp-picking-item"
-                                            );
-
-                                        const checkbox =
-                                            pickingItems[index]?.querySelector(
-                                                ".emp-picking-checkbox"
-                                            );
-
-                                        return checkbox?.checked;
-                                    }
+                                getSelectedPickings(
+                                    group,
+                                    pickingsList,
                                 );
 
                             openPackageModal(
@@ -1010,8 +1767,8 @@
                         }
                     );
 
-                    pvActions.appendChild(
-                        generatePackageButton
+                    pvActions.replaceChildren(
+                        expandedGeneratePackageButton
                     );
                 }
             );
@@ -1038,13 +1795,43 @@
                 "click",
                 (event) => {
                     event.stopPropagation();
+
+                    openFinishModal(
+                        group.pickings
+                    );
                 }
             );
 
-            pvActions.append(
-                packageButton,
-                finishButton,
+            const printPackagesButton = document.createElement("button");
+            printPackagesButton.type = "button";
+            printPackagesButton.className =
+                "pv-action-button pv-print-packages-button";
+            printPackagesButton.setAttribute(
+                "aria-label",
+                "Imprimir pacotes",
             );
+            printPackagesButton.innerHTML = `
+                <span class="pv-action-icon">🖨️</span>
+                <span>IMPRIMIR PACOTES</span>
+            `;
+            printPackagesButton.disabled =
+                !group.pickings.some(hasPackageId);
+            printPackagesButton.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+                    printGroupPackages(group);
+                },
+            );
+
+            if (isReadyToPrintView) {
+                pvActions.append(printPackagesButton);
+            } else {
+                pvActions.append(
+                    packageButton,
+                    finishButton,
+                );
+            }
 
             header.append(
                 left,
@@ -1059,24 +1846,52 @@
 
             const pickingsList =
                 document.createElement("div");
+            const packageIdsAlreadyRendered = new Set();
 
             pickingsList.className =
                 shouldRestoreOpen
                     ? "pv-pickings"
                     : "pv-pickings hidden";
 
+            const pickingEntries = isReadyToPrintView
+                ? group.pickings.map((picking) => ({
+                    picking,
+                    moveLine: null,
+                }))
+                : group.pickings.flatMap((picking) =>
+                    (picking.move_lines || []).map((moveLine) => ({
+                        picking,
+                        moveLine,
+                    })),
+                );
+
             for (
-                const [index, picking]
-                of group.pickings.entries()
+                const [index, entry]
+                of pickingEntries.entries()
             ) {
+                const { picking, moveLine } = entry;
                 const pickingItem =
                     document.createElement("div");
 
-                pickingItem.className =
-                    "emp-picking-item";
+                const isPacked = !isReadyToPrintView &&
+                    isPackedRecord(picking);
+
+                pickingItem.className = [
+                    "emp-picking-item",
+                    isPacked ? "emp-picking-packed" : "",
+                ].filter(Boolean).join(" ");
 
                 pickingItem.dataset.pickingId =
                     String(picking.id);
+
+                pickingItem.dataset.moveLineIds =
+                    JSON.stringify(
+                        moveLine
+                            ? [moveLine.id].filter(Boolean)
+                            : (picking.move_lines || [])
+                                .map((line) => line.id)
+                                .filter(Boolean)
+                    );
 
                 const checkbox =
                     document.createElement("input");
@@ -1085,9 +1900,14 @@
                 checkbox.className =
                     "emp-picking-checkbox";
 
+                checkbox.checked =
+                    !isPacked &&
+                    Boolean(moveLine?.gerar_pacote === true);
+                checkbox.disabled = isPacked;
+
                 checkbox.setAttribute(
                     "aria-label",
-                    `Selecionar picking ${index + 1}`
+                    `Selecionar linha ${index + 1}`
                 );
 
                 const info =
@@ -1126,7 +1946,7 @@
                     "emp-picking-value";
 
                 productValue.textContent =
-                    picking.move_lines?.[0]?.referencia_interna ||
+                    moveLine?.referencia_interna ||
                     "Sem produto";
 
                 product.append(
@@ -1156,7 +1976,7 @@
                     "emp-picking-value";
 
                 weightValue.textContent =
-                    picking.move_lines?.[0]?.peso ?? "0";
+                    (moveLine?.peso ?? "0") + " Kg";
 
                 weight.append(
                     weightLabel,
@@ -1198,7 +2018,7 @@
                     "emp-picking-value";
 
                 lotValue.textContent =
-                    picking.move_lines?.[0]?.lot_id?.[1] ?? "Sem lote";
+                    moveLine?.lot_id?.[1] ?? "Sem lote";
 
                 lot.append(
                     lotLabel,
@@ -1227,7 +2047,7 @@
                     "emp-picking-value";
 
                 quantityValue.textContent =
-                    picking.move_lines?.[0]?.qty_done ?? "0";
+                    moveLine?.qty_done ?? "0";
 
                 quantity.append(
                     quantityLabel,
@@ -1244,18 +2064,250 @@
                     secondRow
                 );
 
-                pickingItem.append(
-                    checkbox,
-                    info
-                );
+                if (isReadyToPrintView) {
+                    const printPackageButton =
+                        document.createElement("button");
+
+                    printPackageButton.type = "button";
+                    printPackageButton.className =
+                        "secondary-action print-action emp-package-print-button";
+                    printPackageButton.innerHTML =
+                        '<span class="action-icon-small">🖨️</span>Imprimir Pacote';
+                    const shouldRenderPackageButton =
+                        isFirstPickingForPackage(
+                            picking,
+                            packageIdsAlreadyRendered,
+                        );
+
+                    printPackageButton.disabled = !hasPackageId(picking);
+                    printPackageButton.hidden =
+                        hasPackageId(picking) && !shouldRenderPackageButton;
+                    printPackageButton.title = hasPackageId(picking)
+                        ? "Imprimir etiqueta do pacote"
+                        : "Nenhum pacote encontrado para este picking";
+                    printPackageButton.addEventListener(
+                        "click",
+                        (event) => {
+                            event.stopPropagation();
+                            printPackageLabel(picking);
+                        },
+                    );
+
+                    pickingItem.append(
+                        info,
+                        printPackageButton,
+                    );
+                } else {
+                    pickingItem.append(
+                        checkbox,
+                        info,
+                    );
+                }
 
                 pickingsList.appendChild(
                     pickingItem
                 );
+
+                pickingItem.addEventListener(
+                    "click",
+                    (event) => {
+                        if (event.target === checkbox) {
+                            return;
+                        }
+
+                        if (checkbox.disabled) {
+                            return;
+                        }
+
+                        checkbox.checked =
+                            !checkbox.checked;
+
+                        checkbox.dispatchEvent(
+                            new Event("change", {
+                                bubbles: true,
+                            })
+                        );
+                    }
+                );
+            }
+
+            // =========================
+            // CHECKBOX SELECIONAR TODOS
+            // =========================
+
+            const selectAllContainer =
+                document.createElement("div");
+
+            selectAllContainer.className =
+                "emp-select-all-container";
+
+            const selectAllCheckbox =
+                document.createElement("input");
+
+            selectAllCheckbox.type =
+                "checkbox";
+
+            selectAllCheckbox.className =
+                "emp-select-all-checkbox";
+
+            selectAllCheckbox.setAttribute(
+                "aria-label",
+                "Selecionar todos os pickings"
+            );
+
+            selectAllCheckbox.addEventListener(
+                "change",
+                async () => {
+                    const pickingIds =
+                        group.pickings
+                            .map(
+                                (picking) =>
+                                    Number(picking.id)
+                            )
+                            .filter(
+                                (id) =>
+                                    Number.isInteger(id) &&
+                                    id > 0
+                            );
+
+                    const moveLineIds =
+                        group.pickings
+                            .flatMap(
+                                (picking) =>
+                                    picking.move_lines || []
+                            )
+                            .map(
+                                (moveLine) =>
+                                    Number(moveLine.id)
+                            )
+                            .filter(
+                                (id) =>
+                                    Number.isInteger(id) &&
+                                    id > 0
+                            );
+
+                    if (!pickingIds.length) {
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            "Nenhum picking foi encontrado.",
+                            "!"
+                        );
+
+                        return;
+                    }
+
+                    if (!moveLineIds.length) {
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            "Nenhuma move line foi encontrada nos pickings.",
+                            "!"
+                        );
+
+                        return;
+                    }
+
+                    const selectAllPayload = {
+                        picking_ids:
+                            pickingIds,
+
+                        move_line_ids:
+                            moveLineIds,
+                    };
+
+                    console.log(
+                        "Payload enviado para selecionar todos:",
+                        selectAllPayload
+                    );
+
+                    selectAllCheckbox.disabled = true;
+
+                    try {
+                        const result =
+                            await inventory.runAction(
+                                () => selecionarTodos(
+                                    selectAllPayload,
+                                ),
+                            );
+
+                        console.log(
+                            "Todos os pickings selecionados:",
+                            result
+                        );
+
+                        const pickingItems =
+                            pickingsList.querySelectorAll(
+                                ".emp-picking-item"
+                            );
+
+                        pickingItems.forEach(
+                            (pickingItem) => {
+                                const checkbox =
+                                    pickingItem.querySelector(
+                                        ".emp-picking-checkbox"
+                                    );
+
+                                if (
+                                    checkbox &&
+                                    !checkbox.disabled
+                                ) {
+                                    checkbox.checked = true;
+                                }
+                            }
+                        );
+
+                        selectAllCheckbox.checked = true;
+
+                        inventory.showToast(
+                            "Todos os pickings foram selecionados!"
+                        );
+
+                    } catch (error) {
+                        console.error(
+                            "Erro ao selecionar todos os pickings:",
+                            error
+                        );
+
+                        selectAllCheckbox.checked = false;
+
+                        inventory.showToast(
+                            sanitizeToastError(
+                                error,
+                                "Não foi possível selecionar todos os pickings."
+                            ),
+                            "!"
+                        );
+
+                    } finally {
+                        selectAllCheckbox.disabled = false;
+                    }
+                }
+            );
+
+            const selectAllLabel =
+                document.createElement("span");
+
+            selectAllLabel.className =
+                "emp-select-all-label";
+
+            selectAllLabel.textContent =
+                "Selecionar todos";
+
+            selectAllContainer.append(
+                selectAllCheckbox,
+                selectAllLabel
+            );
+
+            if (!isReadyToPrintView) {
+                pickingsList.prepend(
+                    selectAllContainer
+                );
             }
 
             pvCard.appendChild(pickingsList);
-            setupCheckboxDragSelection(pickingsList);
+
+            setupCheckboxChange(pickingsList);
 
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
@@ -1266,17 +2318,21 @@
             // EXPANDIR / RECOLHER PV
             // =========================
 
+            function collapsePV() {
+                activePVCard = null;
+                pickingsList.classList.add("hidden");
+                pvCard.classList.remove("pv-focus-open");
+                restoreDefaultPVActions();
+            }
+
             function expandPV() {
                 const isOpen =
                     !pickingsList.classList.contains("hidden");
 
-                // Se já estiver aberto, não faz nada.
                 if (isOpen) {
                     return;
                 }
 
-                // Não permite abrir outro PV enquanto
-                // já existe um PV aberto.
                 if (
                     activePVCard &&
                     activePVCard !== pvCard
@@ -1284,7 +2340,6 @@
                     return;
                 }
 
-                // Abre o PV.
                 activePVCard = pvCard;
 
                 pickingsList.classList.remove(
@@ -1298,6 +2353,18 @@
                 scrollToExpandedPV(pvCard);
             }
 
+            header.addEventListener("click", (event) => {
+                if (event.target.closest("button")) {
+                    return;
+                }
+
+                if (pickingsList.classList.contains("hidden")) {
+                    return;
+                }
+
+                collapsePV();
+            });
+
             container.appendChild(pvCard);
         }
     }
@@ -1309,8 +2376,17 @@
                     ? window.AppInventory.getRecords()
                     : [];
 
+            const isReadyToPrintView =
+                document.querySelector(".dashboard-card.ready-to-print.active") !== null;
+
+            const groupsToRender = isReadyToPrintView
+                ? buildPVGroupsData(
+                    records.filter((record) => isReadyToPrintRecord(record)),
+                )
+                : pvGroups;
+
             buildPVGroups(records);
-            renderPVGroupsDOM();
+            renderPVGroupsDOM(groupsToRender, isReadyToPrintView);
         } catch (error) {
             console.error(
                 "Erro ao processar renderização dos PVs no empacotamento:",
@@ -1323,5 +2399,8 @@
         onRecordsReplaced,
         onAfterRender: handleAfterRender,
         enhanceCard,
+        isReadyToPrint: isReadyToPrintRecord,
+        getReadyToPrintCount: getReadyToPrintPackageCount,
+        refreshRecords,
     });
 }());

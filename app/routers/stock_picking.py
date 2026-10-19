@@ -91,9 +91,124 @@ async def stage_page(
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client, stage["picking_type_id"])
+    if stage_key == "empacotamento":
+        ready_records = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+        records["records"].extend(ready_records["records"])
     return templates.TemplateResponse(request=request, name=stage["template"], context={"stage": stage, "records": records})
 
+# FILTROS DA BUSCA DO INVENTÁRIO
 
+@router.get("/api/inventario/buscar/{stage_key}")
+def buscar_registros_inventario(
+    stage_key: str,
+    campo: str,
+    termo: str,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Filtra os registros de uma etapa do inventário pelo campo selecionado.
+    Os registros são obtidos pelo InventoryService e filtrados no backend.
+    """
+
+    stage = get_stage(stage_key)
+
+    termo = (termo or "").strip().casefold()
+
+    if not termo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe um termo para realizar a busca.",
+        )
+
+    campos_permitidos = {
+        "nota_fiscal",
+        "fornecedor",
+        "pedido_compra",
+        "pedido_venda",
+        "cliente",
+    }
+
+    if campo not in campos_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campo de busca inválido.",
+        )
+
+    # Obtém os registros da etapa selecionada.
+    resultado = InventoryService.list_stage_records(
+        client,
+        stage["picking_type_id"],
+    )
+
+    # A etapa de empacotamento também reúne os registros
+    # que estão prontos para impressão.
+    if stage_key == "empacotamento":
+        registros_prontos = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+
+        resultado["records"].extend(
+            registros_prontos["records"]
+        )
+
+    def corresponde(registro):
+        if campo == "nota_fiscal":
+            valor = registro.get("nf_number")
+
+        elif campo == "fornecedor":
+            # Exemplo: "PO2392 - BELENUS" -> "BELENUS"
+            pedido_compra = str(
+                registro.get("client") or ""
+            )
+
+            partes = pedido_compra.split(" - ", 1)
+
+            valor = (
+                partes[1]
+                if len(partes) > 1
+                else pedido_compra
+            )
+
+        elif campo == "pedido_compra":
+            # Exemplo: "PO2392 - BELENUS" -> "PO2392"
+            pedido_compra = str(
+                registro.get("client") or ""
+            )
+
+            partes = pedido_compra.split(" - ", 1)
+
+            valor = (
+                partes[0]
+                if len(partes) > 1
+                else pedido_compra
+            )
+
+        elif campo == "pedido_venda":
+            valor = registro.get("pedido_venda_name")
+
+        else:  # cliente
+            valor = (
+                registro.get("cliente")
+                or registro.get("partner")
+            )
+
+        return termo in str(valor or "").casefold()
+
+    registros_filtrados = [
+        registro
+        for registro in resultado["records"]
+        if corresponde(registro)
+    ]
+
+    return {
+        **resultado,
+        "records": registros_filtrados,
+        "total": len(registros_filtrados),
+    }
 
 ####################################
 #  IMPRESSÃO DA ETIQUETA
@@ -110,6 +225,17 @@ async def stage_page(
 @router.post("/api/inventario/{picking_id}/imprimir-etiqueta")
 async def imprimir_etiqueta(picking_id: int, client=Depends(get_odoo_client)):
     return await InventoryService.print_report(client, picking_id)
+
+
+@router.post("/api/inventario/imprimir-pacote")
+def imprimir_pacote(data: Dict[str, Any] = Body(...), client=Depends(get_odoo_client)):
+    package_id = data.get("package_id")
+    if not isinstance(package_id, int) or package_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Identificador de pacote inválido.",
+        )
+    return InventoryService.print_report_empacotamento(client, package_id)
 
 
 
@@ -218,6 +344,147 @@ def list_responsible_users(
 
     return InventoryService.list_active_responsible_users(client)
 
+####################################
+#  EMBALAGENS DISPONÍVEIS
+####################################
+
+@router.get("/api/inventario/embalagens")
+def list_package_types(
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Retorna os tipos de embalagem disponíveis
+    a partir do stock.picking.sale.wizard.
+    """
+
+    return InventoryService.list_package_types(client)
+
+
+####################################
+#  GERAR PACOTE
+####################################
+
+@router.post("/api/inventario/gerar-pacote")
+def gerar_pacote(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Cria o wizard de embalagem no Odoo
+    e executa action_put_in_pack.
+    """
+
+    return InventoryService.action_put_in_pack(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+        data.get("package_type_id"),
+    )
+
+####################################
+#  FINALIZAR
+####################################
+
+@router.post("/api/inventario/finalizar")
+def finalizar(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Cria o wizard de finalização no Odoo
+    e executa action_finalizar.
+    """
+
+    return InventoryService.action_finalizar(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+    )
+
+####################################
+#  MARCAR MOVE LINES PARA PACOTE
+####################################
+
+@router.post("/api/inventario/marcar-para-pacote")
+def marcar_para_pacote(
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Marca as move lines selecionadas para pacote no Odoo.
+    """
+
+    move_line_ids = data.get("move_line_ids")
+
+    if not move_line_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma linha de movimentação foi informada.",
+        )
+
+    try:
+        move_line_ids = [
+            int(move_line_id)
+            for move_line_id in move_line_ids
+        ]
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Os IDs das linhas de movimentação são inválidos.",
+        )
+
+    return InventoryService.marcar_para_pacote(
+        client,
+        move_line_ids,
+    )
+
+####################################
+#  REMOVER MOVE LINES DO PACOTE
+####################################
+
+@router.post("/api/inventario/tirar-do-pacote")
+def tirar_do_pacote(
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """
+    Remove as move lines selecionadas do pacote no Odoo.
+    """
+
+    move_line_ids = data.get("move_line_ids")
+
+    if not move_line_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma linha de movimentação foi informada.",
+        )
+
+    try:
+        move_line_ids = [
+            int(move_line_id)
+            for move_line_id in move_line_ids
+        ]
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Os IDs das linhas de movimentação são inválidos.",
+        )
+
+    return InventoryService.tirar_do_pacote(
+        client,
+        move_line_ids,
+    )
+
+@router.post("/api/inventario/selecionar-todos")
+def selecionar_todos(
+    data: dict = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    return InventoryService.action_select_all(
+        client,
+        data.get("picking_ids", []),
+        data.get("move_line_ids", []),
+    )
 
 @router.post("/api/inventario/pickings/{picking_id}/responsavel")
 def set_responsible_user(
@@ -389,6 +656,12 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
     """
     stage = get_stage(stage_key)
     records = InventoryService.list_stage_records(client,stage["picking_type_id"],)
+    if stage_key == "empacotamento":
+        ready_records = InventoryService.list_stage_records(
+            client,
+            InventoryService.READY_TO_PRINT_STAGE_ID,
+        )
+        records["records"].extend(ready_records["records"])
     return JSONResponse(
         content=records,
         headers={
@@ -407,7 +680,7 @@ def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)
     """
     Chama a ação no Odoo que replica determinado peso para todos as linhas do picking na separação.
     """
-    replicar_peso = InventoryService.action_replicar_peso(client, picking_data)
+    replicar_peso = InventoryService.action_replicar_peso(client, picking_data) 
     return {"success": True, "message": "Peso atualizado com sucesso."}
 
 @router.post("/api/inventario/pickings/{picking_id}/conferir-separacao")
