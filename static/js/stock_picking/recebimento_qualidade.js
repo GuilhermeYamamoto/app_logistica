@@ -1000,7 +1000,7 @@
     inventory.configure({
         beforeValidate,
         enhanceCard,
-        canEditQuantity: true, // Permite editar o campo de quantidade no cartão do pedido
+        canEditQuantity: false, // Mantém o campo de quantidade somente visual, como na etapa de separação.
         getSectionTitle: (filter) => filter === "andamento"
             ? "PEDIDOS EM ANDAMENTO"
             : "PEDIDOS PENDENTES",

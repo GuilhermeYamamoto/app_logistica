@@ -235,10 +235,10 @@
                 }
 
                 window.AppUI.closeModal("conferenciaSeparacaoModal");
+                await refreshStageRecords();
                 inventory.showToast(
                     `Solicitada Conferência do picking ${picking.pv} com sucesso!`,
                 );
-                window.location.reload();
             });
         } catch (error) {
             console.error("Erro ao conferir separação:", error);
@@ -252,6 +252,7 @@
                 button.disabled = false;
                 button.textContent = originalText;
             }
+            selectedConferenciaPicking = null;
         }
     }
 
@@ -276,6 +277,12 @@
                : [];
 
        return tagIds.some((id) => Number(id) === Number(tagId));
+   }
+
+   function hasMoveLineValue(picking) {
+       return Array.isArray(picking?.move_lines) && picking.move_lines.reduce((total, line) => {
+           return total + (Number(line?.peso || 0));
+       }, 0) > 0;
    }
 
    // Personaliza o card padrão do inventário para a etapa de separação.
@@ -813,19 +820,37 @@
     inventory.configure({
         enhanceCard,
         // Textos exibidos conforme o filtro selecionado no dashboard.
-        getSectionTitle: (filter) => filter === "andamento"
-            ? "PICKINGS CONFERIDOS"
-            : "PICKINGS PENDENTES",
+        getSectionTitle: (filter) => {
+            if (filter === "andamento") {
+                return "PICKINGS EM ANDAMENTO";
+            }
+
+            if (filter === "conferidos") {
+                return "PICKINGS CONFERIDOS";
+            }
+
+            return "PICKINGS PENDENTES";
+        },
         // Converte o estado do picking em texto e classe visual do status.
-        getStatus: (picking) => isConferido(picking)
-            ? { label: "CONFERIDO", className: "status-progress" }
-            : { label: "PENDENTE", className: "status-waiting" },
+        getStatus: (picking) => {
+            if (isConferido(picking)) {
+                return { label: "CONFERIDO", className: "status-progress" };
+            }
+
+            if (hasMoveLineValue(picking)) {
+                return { label: "EM ANDAMENTO", className: "status-progress" };
+            }
+
+            return { label: "PENDENTE", className: "status-waiting" };
+        },
         // Define quais registros entram na seção "em andamento".
-        isInProgress: isConferido,
+        isInProgress: (picking) => !isConferido(picking) && hasMoveLineValue(picking),
+        isConferido,
         // Define quais registros permanecem na seção de pendentes.
         isPending: (picking) =>
             !picking.validated &&
-            !isConferido(picking),
+            !isConferido(picking) &&
+            !hasMoveLineValue(picking),
         // O botão "Concluído" já usa o validationModal compartilhado do
         // base.js. Estas opções apenas personalizam o texto da confirmação.
         validationText: (picking) =>

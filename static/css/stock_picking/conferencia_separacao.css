@@ -1,3 +1,11 @@
+.dashboard {
+    grid-template-columns: 1fr;
+}
+
+.dashboard-card.pending {
+    grid-column: 1 / -1;
+}
+
 .picking-actions,
 .secondary-actions {
     display: grid;

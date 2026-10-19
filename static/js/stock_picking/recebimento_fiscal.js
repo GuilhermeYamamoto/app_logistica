@@ -55,10 +55,24 @@
         return false;
     }
 
-    // Configura o módulo de inventário com a função enhanceCard e permite a edição de quantidade
+    // Configura o módulo de inventário com a função enhanceCard e permite a edição de quantidade.
+    // Em andamento: quando a quantidade recebida ultrapassa 1 unidade, o registro entra no dashboard
+    // correspondente, mas continua aparecendo na lista de pendentes.
     inventory.configure({
         canEditQuantity: true,
         enhanceCard,
         beforeValidate,
+        isInProgress: (picking) => !picking.validated && Number(picking.receivedQuantity) > 1,
+        getStatus: (picking) => {
+            if (picking.validated) {
+                return { label: "CONCLUÍDO", className: "status-completed" };
+            }
+
+            if (Number(picking.receivedQuantity) > 1) {
+                return { label: "EM ANDAMENTO", className: "status-progress" };
+            }
+
+            return { label: "PENDENTE", className: "status-waiting" };
+        },
     });
 }());

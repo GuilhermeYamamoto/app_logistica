@@ -47,7 +47,7 @@ class InventoryService:
             },
             {
                 "key": "conferencia-separacao",
-                "name": "Conferencia Separacao",
+                "name": "Conferência Separação",
                 "picking_type_id": 1200, #Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de conferencia de separacao e separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
                 "template": "stock_picking/conferencia_separacao.html",
             },
@@ -59,13 +59,13 @@ class InventoryService:
             },
             {
                 "key": "armazenamento-expedicao",
-                "name": "Armazenamento Expedicao",
+                "name": "Armazenamento Expedição",
                 "picking_type_id": 1390, # Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de armazenamento e conferencia da expedicao, que no Odoo são realizadas no mesmo picking_type_id (139)
                 "template": "stock_picking/armazenamento_expedicao.html",
             },
             {
                 "key": "conferencia-expedicao",
-                "name": "Conferencia Expedicao",
+                "name": "Conferência Expedição",
                 "picking_type_id": 139,
                 "template": "stock_picking/conferencia_expedicao.html"
             },
