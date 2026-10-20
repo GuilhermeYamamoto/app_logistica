@@ -589,6 +589,23 @@ def save_picking_photos(data: SavePickingPhotos = Body(...), client=Depends(get_
 
     return InventoryService.save_picking_photos(client,data,)
 
+@router.post("/api/inventario/batches/{batch_id}/canhoto")
+def save_batch_canhoto(
+    batch_id: int,
+    data: Dict[str, Any] = Body(...),
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """Registra a foto do canhoto no batch do Odoo."""
+    return InventoryService.save_batch_canhoto(client, batch_id, data.get("photo"))
+
+@router.post("/api/inventario/batches/{batch_id}/confirmar")
+def confirm_batch(
+    batch_id: int,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """Confirma o batch no Odoo."""
+    return InventoryService.confirm_batch(client, batch_id)
+
 @router.post("/api/inventario/pickings/{picking_id}/barcode")
 def receive_barcode(picking_id: int, data: BarcodeScan = Body(...), client: OdooClient = Depends(get_odoo_client)):
     """Recebe o código de barras lido para o picking informado."""
