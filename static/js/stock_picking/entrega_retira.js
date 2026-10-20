@@ -257,7 +257,7 @@
         const text = document.getElementById("deliveryConfirmText");
         if (text) {
             text.textContent =
-                `Deseja aprovar a fotografia e validar a entrega de ${firstRecord.pedido_venda_name || firstRecord.reference || "este batch"}?`;
+                `Deseja aprovar a fotografia e validar a entrega da NF ${firstRecord.invoiceNumber || "não informada"}?`;
         }
         window.AppUI.openModal("deliveryConfirmModal");
     }
