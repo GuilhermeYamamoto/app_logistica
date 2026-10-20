@@ -49,9 +49,9 @@
         context.addSecondaryAction(
             context.createAction({
                 className: "main-action validation-action",
-                label: "ENVIAR PARA CONFERÊNCIA",
-                arialLabel: "ENVIAR PARA CONFERÊNCIA",
-                icon: "✔",
+                label: "SOLICITAR CONFERÊNCIA",
+                arialLabel: "SOLICITAR CONFERÊNCIA",
+                icon: "✓",
                 disabled: !hasValidLocation,
                 onClick: () => enviarParaConferenciaExpedicao(picking.id)
             }),

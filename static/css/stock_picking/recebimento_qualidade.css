@@ -4,6 +4,9 @@
 ========================================================= */
 
 .barcode-scanner-action {
+    min-height: 72px;
+    font-size: 16px;
+    font-weight: 900;
     background: var(--purple);
     color: white;
 }
