@@ -208,7 +208,7 @@
 }
 
 .secondary-actions .conference-action {
-    background: var(--light-blue);
+    background: var(--green);
     grid-column: 1 / -1;
     order: 5;
 }
