@@ -1249,26 +1249,37 @@ body {
     position: fixed;
     z-index: 11000;
     right: 25px;
-    bottom: 25px;
+    top: 20%;
+    bottom: auto;
+
     min-width: 310px;
     padding: 17px 20px;
     border-radius: 11px;
+
     background: #172033;
     color: white;
     box-shadow: 0 12px 35px rgba(0, 0, 0, .25);
+
     display: flex;
     align-items: center;
     gap: 10px;
+
     font-size: 15px;
     font-weight: 800;
-    transform: translateY(120px);
+
+    transform: translateY(-20px);
     opacity: 0;
+
+    pointer-events: none;
+
     transition: .25s ease;
 }
 
 .toast.show {
     transform: translateY(0);
     opacity: 1;
+
+    pointer-events: auto;
 }
 
 .toast span:first-child {
