@@ -161,15 +161,36 @@
 
         preview.replaceChildren();
         if (currentCanhotoPhoto) {
+            const slot = document.createElement("div");
+            slot.className = "delivery-photo-slot";
             const image = document.createElement("img");
+            image.className = "delivery-photo-preview";
             image.src = currentCanhotoPhoto.startsWith("data:")
                 ? currentCanhotoPhoto
                 : `data:image/jpeg;base64,${currentCanhotoPhoto}`;
             image.alt = "Foto do canhoto da nota fiscal";
-            preview.append(image);
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "remove-photo-button";
+            removeButton.textContent = "×";
+            removeButton.title = "Excluir foto e tirar outra";
+            removeButton.addEventListener("click", () => {
+                currentCanhotoPhoto = null;
+                updateCanhotoInterface();
+                inventory.showToast("FOTO REMOVIDA");
+            });
+            slot.append(image, removeButton);
+            preview.append(slot);
         } else {
+            const addPhotoButton = document.createElement("button");
+            addPhotoButton.type = "button";
+            addPhotoButton.className = "delivery-add-photo-button";
+            addPhotoButton.innerHTML = '<span class="camera-icon">📷</span><span>TIRAR FOTO</span>';
+            addPhotoButton.addEventListener("click", selectCanhotoPhoto);
+            preview.append(addPhotoButton);
             const message = document.createElement("p");
-            message.textContent = "Nenhuma foto registrada para este batch.";
+            message.className = "delivery-photo-empty";
+            message.textContent = "Nenhuma foto selecionada.";
             preview.append(message);
         }
         confirmButton.disabled =
@@ -228,6 +249,19 @@
         reader.readAsDataURL(file);
     }
 
+    function openBatchConfirmation() {
+        if (!selectedBatch || !currentCanhotoPhoto || canhotoSaving) {
+            return;
+        }
+        const firstRecord = selectedBatch.records[0] || {};
+        const text = document.getElementById("deliveryConfirmText");
+        if (text) {
+            text.textContent =
+                `Deseja aprovar a fotografia e validar a entrega de ${firstRecord.pedido_venda_name || firstRecord.reference || "este batch"}?`;
+        }
+        window.AppUI.openModal("deliveryConfirmModal");
+    }
+
     async function confirmBatch() {
         if (!selectedBatch || canhotoSaving || inventory.isActionInProgress()) {
             return;
@@ -239,7 +273,7 @@
         }
 
         canhotoSaving = true;
-        const confirmButton = document.getElementById("deliveryConfirmBatchButton");
+        const confirmButton = document.getElementById("deliveryConfirmActionButton");
         if (confirmButton) {
             confirmButton.disabled = true;
             confirmButton.textContent = "CONFIRMANDO...";
@@ -273,6 +307,7 @@
                     throw new Error(data.detail || "Não foi possível confirmar o batch.");
                 }
 
+                window.AppUI.closeModal("deliveryConfirmModal");
                 window.AppUI.closeModal("deliveryCanhotoModal");
                 inventory.replaceRecords(
                     inventory
@@ -291,7 +326,7 @@
             canhotoSaving = false;
             if (confirmButton) {
                 confirmButton.disabled = false;
-                confirmButton.textContent = "CONFIRMAR BATCH";
+                confirmButton.textContent = "APROVAR E VALIDAR";
             }
         }
     }
@@ -307,10 +342,10 @@
         canhotoInputInitialized = true;
         input.addEventListener("change", readCanhotoPhoto);
         document
-            .getElementById("deliveryTakeCanhotoButton")
-            ?.addEventListener("click", selectCanhotoPhoto);
-        document
             .getElementById("deliveryConfirmBatchButton")
+            ?.addEventListener("click", openBatchConfirmation);
+        document
+            .getElementById("deliveryConfirmActionButton")
             ?.addEventListener("click", confirmBatch);
     }
 

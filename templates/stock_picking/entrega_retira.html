@@ -46,11 +46,31 @@
             </div>
             <div id="deliveryCanhotoPreview" class="delivery-canhoto-preview"></div>
             <div class="modal-footer">
-                <button id="deliveryTakeCanhotoButton" class="secondary-button" type="button">
-                    TIRAR NOVA FOTO
-                </button>
                 <button id="deliveryConfirmBatchButton" class="primary-button" type="button">
-                    CONFIRMAR BATCH
+                    VALIDAR ENTREGA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deliveryConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal action-modal delivery-confirm-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">CONFIRMAÇÃO</span>
+                    <h2>VALIDAR ENTREGA</h2>
+                    <p id="deliveryConfirmText">
+                        Deseja aprovar a fotografia e validar esta entrega?
+                    </p>
+                </div>
+                <button class="close-modal" type="button" data-close="deliveryConfirmModal">×</button>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-button" type="button" data-close="deliveryConfirmModal">
+                    CANCELAR
+                </button>
+                <button id="deliveryConfirmActionButton" class="primary-button" type="button">
+                    APROVAR E VALIDAR
                 </button>
             </div>
         </div>
