@@ -1,3 +1,15 @@
+.picking-actions,
+.secondary-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.main-action,
+.secondary-action {
+    width: 100%;
+}
+
 .sales-order-card {
     margin-bottom: 16px;
     position: relative;
@@ -15,6 +27,8 @@
     gap: 16px;
     padding: 18px;
     border: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
     background: var(--blue);
     color: #ffffff;
     text-align: left;
@@ -56,7 +70,7 @@
     position: absolute;
     left: 50%;
     bottom: 0;
-    z-index: 2;
+    z-index: 5;
     width: 24px;
     height: 24px;
     display: flex;

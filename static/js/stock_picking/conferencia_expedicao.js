@@ -368,6 +368,15 @@
         if (value) {
             value.textContent = record.cliente || "Cliente não definido";
         }
+
+        context.replacePrimaryActions([
+            context.createQualityAction(
+                "main-action quality-action",
+            ),
+            context.createValidationAction(
+                "main-action validation-action",
+            ),
+        ]);
     }
 
     inventory.configure({
