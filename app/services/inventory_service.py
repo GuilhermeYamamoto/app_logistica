@@ -1595,7 +1595,7 @@ class InventoryService:
                     detail="Batch não encontrado.",
                 )
 
-            client.execute("stock.picking.batch", "action_confirm", [batch_id])
+            client.execute("stock.picking.batch", "action_done", [batch_id])
             return {
                 "success": True,
                 "batch_id": batch_id,
