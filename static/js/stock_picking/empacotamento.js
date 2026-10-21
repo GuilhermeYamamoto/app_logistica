@@ -1735,9 +1735,14 @@
                     expandedGeneratePackageButton = null;
                 }
 
+                if (isReadyToPrintView) {
+                    pvActions.replaceChildren(printPackagesButton);
+                    return;
+                }
+
                 pvActions.replaceChildren(
                     packageButton,
-                    finishButton,
+                    finishButton
                 );
             }
 
@@ -1763,103 +1768,15 @@
                 <span>EMPACOTAR</span>
             `;
 
-            packageButton.addEventListener(
-                "click",
-                (event) => {
-                    event.stopPropagation();
+            packageButton.addEventListener("click", (event) => {
+                event.stopPropagation();
 
-                    if (activePVCard && activePVCard !== pvCard) {
-                        return;
-                    }
-
-                    expandPV();
-
-                    if (expandedGeneratePackageButton) {
-                        expandedGeneratePackageButton.remove();
-                    }
-
-                    if (expandedCompletedButton) {
-                        expandedCompletedButton.remove();
-                    }
-
-                    // =========================
-                    // BOTÃO CONCLUÍDO
-                    // =========================
-
-                    expandedCompletedButton =
-                        document.createElement("button");
-
-                    expandedCompletedButton.type = "button";
-
-                    expandedCompletedButton.className =
-                        "pv-completed-button";
-
-                    expandedCompletedButton.disabled = !hasGeneratedPackage;
-
-                    expandedCompletedButton.innerHTML = `
-                        <span class="pv-completed-icon">✓</span>
-                        <span>CONCLUÍDO</span>
-                    `;
-
-                    expandedCompletedButton.setAttribute(
-                       "aria-label",
-                       "Concluir PV"
-                    );
-
-                    expandedCompletedButton.addEventListener(
-                        "click",
-                        (event) => {
-                            event.stopPropagation();
-
-                            openFinishModal(
-                                group.pickings
-                            );
-                        }
-                    );
-
-                    pvCard.appendChild(expandedCompletedButton);
-
-                    // Cria o botão GERAR PACOTE.
-                    expandedGeneratePackageButton =
-                        document.createElement("button");
-
-                    expandedGeneratePackageButton.type = "button";
-                    expandedGeneratePackageButton.className =
-                        "pv-action-button pv-generate-package-button";
-
-                    expandedGeneratePackageButton.setAttribute(
-                        "aria-label",
-                        "Gerar pacote"
-                    );
-
-                    expandedGeneratePackageButton.innerHTML = `
-                        <span class="pv-action-icon">📦</span>
-                        <span>GERAR PACOTE</span>
-                    `;
-
-                    expandedGeneratePackageButton.addEventListener(
-                        "click",
-                        (event) => {
-                            event.stopPropagation();
-
-                            const selectedPickings =
-                                getSelectedPickings(
-                                    group,
-                                    pickingsList,
-                                );
-
-                            openPackageModal(
-                                group,
-                                selectedPickings
-                            );
-                        }
-                    );
-
-                    pvActions.replaceChildren(
-                        expandedGeneratePackageButton
-                    );
+                if (activePVCard && activePVCard !== pvCard) {
+                    return;
                 }
-            );
+
+                expandPV();
+            });
 
             // BOTÃO FINALIZAR
 
@@ -1890,6 +1807,77 @@
                     );
                 }
             );
+            
+            function showExpandedPVActions() {
+                // A visualização "Pronto para imprimir" mantém
+                // suas ações próprias.
+                if (isReadyToPrintView) {
+                    return;
+                }
+
+                // Cria o botão CONCLUÍDO apenas uma vez.
+                if (!expandedCompletedButton) {
+                    expandedCompletedButton = document.createElement("button");
+
+                    expandedCompletedButton.type = "button";
+                    expandedCompletedButton.className = "pv-completed-button";
+                    expandedCompletedButton.disabled = !hasGeneratedPackage;
+
+                    expandedCompletedButton.innerHTML = `
+                        <span class="pv-completed-icon">✓</span>
+                        <span>CONCLUÍDO</span>
+                    `;
+
+                    expandedCompletedButton.setAttribute(
+                        "aria-label",
+                        "Concluir PV"
+                    );
+
+                    expandedCompletedButton.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        openFinishModal(group.pickings);
+                    });
+                }
+
+                // Cria o botão GERAR PACOTE apenas uma vez.
+                if (!expandedGeneratePackageButton) {
+                    expandedGeneratePackageButton = document.createElement("button");
+
+                    expandedGeneratePackageButton.type = "button";
+                    expandedGeneratePackageButton.className =
+                        "pv-action-button pv-generate-package-button";
+
+                    expandedGeneratePackageButton.setAttribute(
+                        "aria-label",
+                        "Gerar pacote"
+                    );
+
+                    expandedGeneratePackageButton.innerHTML = `
+                        <span class="pv-action-icon">📦</span>
+                        <span>GERAR PACOTE</span>
+                    `;
+
+                    expandedGeneratePackageButton.addEventListener("click", (event) => {
+                        event.stopPropagation();
+
+                        const selectedPickings = getSelectedPickings(
+                            group,
+                            pickingsList
+                        );
+
+                        openPackageModal(group, selectedPickings);
+                    });
+                }
+
+                // Garante que CONCLUÍDO esteja abaixo da lista do PV.
+                if (expandedCompletedButton.parentElement !== pvCard) {
+                    pvCard.appendChild(expandedCompletedButton);
+                }
+
+                // Substitui EMPACOTAR e FINALIZAR por GERAR PACOTE.
+                pvActions.replaceChildren(expandedGeneratePackageButton);
+            }
+
 
             const printPackagesButton = document.createElement("button");
             printPackagesButton.type = "button";
@@ -2401,6 +2389,9 @@
             if (shouldRestoreOpen) {
                 pvCard.classList.add("pv-focus-open");
                 activePVCard = pvCard;
+
+                // Recria as ações do estado expandido após renderizações.
+                showExpandedPVActions();
             }
 
             // =========================
@@ -2409,35 +2400,34 @@
 
             function collapsePV() {
                 activePVCard = null;
+
                 pickingsList.classList.add("hidden");
                 pvCard.classList.remove("pv-focus-open");
+
                 restoreDefaultPVActions();
             }
 
+            
             function expandPV() {
-                const isOpen =
-                    !pickingsList.classList.contains("hidden");
+                const isOpen = !pickingsList.classList.contains("hidden");
 
+                // Mesmo se já estiver aberto, sincroniza os botões.
                 if (isOpen) {
+                    showExpandedPVActions();
                     return;
                 }
 
-                if (
-                    activePVCard &&
-                    activePVCard !== pvCard
-                ) {
+                if (activePVCard && activePVCard !== pvCard) {
                     return;
                 }
 
                 activePVCard = pvCard;
 
-                pickingsList.classList.remove(
-                    "hidden"
-                );
+                pickingsList.classList.remove("hidden");
+                pvCard.classList.add("pv-focus-open");
 
-                pvCard.classList.add(
-                    "pv-focus-open"
-                );
+                // Atualiza as ações sempre que o PV é expandido.
+                showExpandedPVActions();
 
                 scrollToExpandedPV(pvCard);
             }
