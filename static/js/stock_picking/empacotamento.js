@@ -164,7 +164,50 @@
         );
     }
 
+    
+    function getPackageRelationId(value) {
+        if (Array.isArray(value)) {
+            return value.length ? Number(value[0]) : null;
+        }
+
+        if (value && typeof value === "object") {
+            return value.id == null ? null : Number(value.id);
+        }
+
+        if (value == null || value === false || value === "") {
+            return null;
+        }
+
+        const id = Number(value);
+        return Number.isFinite(id) ? id : null;
+    }
+
+    function isPackedMoveLine(moveLine) {
+        if (!moveLine) {
+            return false;
+        }
+
+        const sourcePackageId = getPackageRelationId(moveLine.package_id);
+        const destinationPackageId = getPackageRelationId(moveLine.result_package_id);
+
+        // O destino pode ficar vazio durante o processamento.
+        // Nesse caso, a linha ainda não está empacotada.
+        return destinationPackageId !== null &&
+            sourcePackageId !== destinationPackageId;
+    }
+
+    function isEmpacotamentoStage() {
+        return document.body.dataset.stageKey === "empacotamento";
+    }
+
     function isPackedRecord(record) {
+        if (
+            isEmpacotamentoStage() &&
+            Array.isArray(record?.move_lines)
+        ) {
+            return record.move_lines.some(isPackedMoveLine);
+        }
+
         return normalizeTagIds(record).includes(33);
     }
 
@@ -707,7 +750,6 @@
 
                         updateMoveLinesPackageState(moveLineIds, true);
                         updateInProgressPVIds(inventory.getRecords());
-                        inventory.render();
 
                         console.log(
                             "Move lines marcadas para pacote:",
@@ -724,7 +766,6 @@
 
                         updateMoveLinesPackageState(moveLineIds, false);
                         updateInProgressPVIds(inventory.getRecords());
-                        inventory.render();
 
                         console.log(
                             "Move lines removidas do pacote:",
@@ -1560,24 +1601,6 @@
                         replaceRecords: inventory.replaceRecords,
                     });
                     inventory.render();
-
-                    /*
-                    * Marca visualmente os pickings selecionados
-                    * como empacotados somente depois que o Odoo
-                    * confirmar a operação.
-                    */
-                    const activePVPickings =
-                        activePVCard?.querySelector(
-                            ".pv-pickings"
-                        );
-
-                    if (activePVPickings) {
-                        markPickingsAsPacked(
-                            activePVPickings,
-                            selectedPickings
-                        );
-                    }
-
                     closePackageModal();
 
                 } catch (error) {
@@ -1950,8 +1973,11 @@
                 const pickingItem =
                     document.createElement("div");
 
-                const isPacked = !isReadyToPrintView &&
-                    isPackedRecord(picking);
+                const isPacked = !isReadyToPrintView && (
+                    isEmpacotamentoStage()
+                        ? isPackedMoveLine(moveLine)
+                        : isPackedRecord(picking)
+                );
 
                 pickingItem.className = [
                     "emp-picking-item",
