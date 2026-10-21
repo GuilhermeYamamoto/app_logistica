@@ -412,7 +412,14 @@
 
         const tipoEmbalagemValue = document.createElement("div");
         tipoEmbalagemValue.className = "secondary-info-value";
-        const tipoPacote = moveLines[0].package_type_id[1] ? moveLines[0].package_type_id[1] : "Não definido";
+        const tiposPacote = [...new Set(
+            moveLines
+                .map((line) => line.package_type_id?.[1])
+                .filter(Boolean),
+        )];
+        const tipoPacote = tiposPacote.length > 0
+            ? tiposPacote.join(", ")
+            : "Não definido";
         tipoEmbalagemValue.textContent = tipoPacote;
         tipoEmbalagemBox.appendChild(tipoEmbalagemLabel);
         tipoEmbalagemBox.appendChild(tipoEmbalagemValue);
