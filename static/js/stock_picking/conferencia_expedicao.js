@@ -45,12 +45,26 @@
     }
 
     function getGroupSummary(group) {
-        const volumeCount = group.records.reduce(
-            (total, record) => total + Number(record.volumeCount || 0),
+        const summariesByOrigin = new Map();
+        for (const record of group.records) {
+            const origin = record.origin || String(record.id);
+            if (!summariesByOrigin.has(origin)) {
+                summariesByOrigin.set(origin, {
+                    volumeCount: Number(
+                        record.originVolumeCount ?? record.volumeCount ?? 0,
+                    ),
+                    totalWeight: Number(
+                        record.originTotalWeight ?? record.totalWeight ?? 0,
+                    ),
+                });
+            }
+        }
+        const volumeCount = Array.from(summariesByOrigin.values()).reduce(
+            (total, summary) => total + summary.volumeCount,
             0,
         );
-        const totalWeight = group.records.reduce(
-            (total, record) => total + Number(record.totalWeight || 0),
+        const totalWeight = Array.from(summariesByOrigin.values()).reduce(
+            (total, summary) => total + summary.totalWeight,
             0,
         );
         const stagePickingCount = Number(

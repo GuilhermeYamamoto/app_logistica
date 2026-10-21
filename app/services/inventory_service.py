@@ -235,6 +235,38 @@ class InventoryService:
                         ):
                             conferido_counts_by_pv[pedido_venda_id] += 1
 
+            volumes_by_origin = {}
+            if picking_type_id == 139:
+                origins = {picking.get("origin") for picking in pickings if picking.get("origin")}
+                if origins:
+                    origin_pickings = client.execute("stock.picking", "search_read", [
+                            ("origin", "in", list(origins)),
+                            ("state", "=", "assigned"),
+                            ("picking_type_id", "=", 139)],
+                        fields=["origin", "move_line_ids_without_package"],
+                    )
+
+                    origin_move_line_ids = [move_line_id for origin_picking in origin_pickings for move_line_id in origin_picking.get("move_line_ids_without_package", [])]
+                    
+                    origin_move_lines = []
+                    if origin_move_line_ids:
+                        origin_move_lines = client.execute("stock.move.line", "search_read", [("id", "in", origin_move_line_ids)], fields=["picking_id", "peso", "package_id", "result_package_id"])
+
+                    picking_origins = {picking["id"]: picking.get("origin") for picking in origin_pickings}
+                    volumes_by_origin = {origin: {"volumes": set(), "weight": 0.0} for origin in origins}
+                    for move_line in origin_move_lines:
+                        origin = picking_origins.get((move_line.get("picking_id") or [None])[0])
+                        if not origin:
+                            continue
+
+                        package = (move_line.get("package_id") or move_line.get("result_package_id"))
+                        if package:
+                            volumes_by_origin[origin]["volumes"].add(package[0])
+                        try:
+                            volumes_by_origin[origin]["weight"] += float(move_line.get("peso") or 0)
+                        except (TypeError, ValueError):
+                            continue
+
             move_ids = [move_id for picking in pickings for move_id in picking["move_ids_without_package"]]
             
             move_line_ids = [move_line_id for picking in pickings for move_line_id in picking["move_line_ids_without_package"]]
@@ -381,6 +413,7 @@ class InventoryService:
             record = {
                 "nf_number": nf_number,
                 "id": picking["id"],
+                "origin": picking.get("origin"),
                 "pv": f'{picking["name"]} - NF {nf_number}' if nf_number else picking["name"],
                 "reference": picking["name"],
                 "client": (partner[1] if partner else "Sem fornecedor"),
@@ -444,6 +477,16 @@ class InventoryService:
                 "move_lines": picking_move_lines,
                 "volumeCount": len(volume_ids),
                 "totalWeight": total_weight,
+                "originVolumeCount": len(
+                    volumes_by_origin.get(picking.get("origin"), {}).get(
+                        "volumes",
+                        volume_ids,
+                    )
+                ),
+                "originTotalWeight": volumes_by_origin.get(
+                    picking.get("origin"),
+                    {},
+                ).get("weight", total_weight),
                 "materialLocations": material_locations,
 
                 "waitingCount": (
