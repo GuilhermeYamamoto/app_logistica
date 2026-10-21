@@ -248,6 +248,7 @@ class InventoryService:
                     "peso",
                     "qty_done",
                     "package_type_id",
+                    "package_id",
                     "result_package_id",
                     "lot_id",
                     "product_uom_id",
