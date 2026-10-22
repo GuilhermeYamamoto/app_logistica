@@ -1,1 +1,7 @@
 @import url("recebimento_qualidade.css");
+
+/* Faz o card PENDENTES ocupar toda a linha em Armazenamento Expedição */
+.dashboard:has(.dashboard-card.pending):not(:has(.dashboard-card.progress)) .dashboard-card.pending {
+    grid-column: 1 / -1;
+    width: 100%;
+}
