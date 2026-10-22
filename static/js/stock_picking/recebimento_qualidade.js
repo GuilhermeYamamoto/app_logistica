@@ -15,6 +15,7 @@
 
     let filteredPickingIds = null;
     let currentPhotoPickingId = null;
+    const printedLabels = new Set();
     let currentPhotoIndex = null;
     let photoSession = [];
     let photosSaving = false;
@@ -90,14 +91,15 @@
             }),
         );
 
-        context.addSecondaryAction(
-            context.createValidationAction(
-                "main-action validation-action",
-                !picking.photosRegistered ||
-                    !picking.local ||
-                    picking.local === "CD/STO",
-            ),
+        const validationButton = context.createValidationAction(
+            "main-action validation-action",
+            !picking.photosRegistered ||
+                !picking.local ||
+                picking.local === "CD/STO" ||
+                !printedLabels.has(picking.id),
         );
+
+        context.addSecondaryAction(validationButton);
 
         const secondaryInfoRow = document.createElement("div");
         secondaryInfoRow.className = "secondary-info-row";
@@ -989,6 +991,10 @@
                     const body = await iotResponse.json().catch(() => iotResponse.statusText);
                     throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
                 }
+                printedLabels.add(picking.id);
+
+                inventory.render();
+
                 inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
             });
         } catch (error) {
