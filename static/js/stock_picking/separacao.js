@@ -794,6 +794,7 @@
         // a consulta seguinte que atualiza o campo de divergência.
         async function updatePesoValue(picking, input, lineId = null) {
             const value = Number(input.value);
+
             try {
                 await inventory.runAction(async () => {
                     const response = await fetch("/api/peso-value", {
@@ -805,16 +806,42 @@
                             peso_value: value,
                         }),
                     });
+
                     const data = await response.json().catch(() => ({}));
+
                     if (!response.ok) {
-                        throw new Error(data.detail || "Erro ao atualizar peso.");
+                        throw new Error(
+                            data.detail || "Erro ao atualizar peso."
+                        );
                     }
+
+                    // Atualiza os registros com os dados mais recentes do servidor.
                     await refreshStageRecords();
+
+                    // Recupera o picking atualizado após o refresh.
+                    const updatedRecords = inventory.getRecords
+                        ? inventory.getRecords()
+                        : [];
+
+                    const updatedPicking = updatedRecords.find(
+                        (record) => Number(record.id) === Number(picking.id)
+                    );
+
+                    // Atualiza o conteúdo do modal sem exigir que o usuário
+                    // feche e abra novamente.
+                    if (updatedPicking) {
+                        openPickingDetailsModal(updatedPicking);
+                    }
+
                     inventory.showToast("Peso atualizado.");
                 });
             } catch (error) {
                 console.error("Erro ao atualizar peso:", error);
-                AppInventory.showToast(error.message || "Erro ao atualizar peso.", "!");
+
+                inventory.showToast(
+                    error.message || "Erro ao atualizar peso.",
+                    "!"
+                );
             }
         }
 
