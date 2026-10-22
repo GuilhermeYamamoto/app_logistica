@@ -1107,8 +1107,10 @@
 
                 try {
                     const result =
-                        await finalizarPickings(
-                            finishPayload
+                        await inventory.runAction(
+                            () => finalizarPickings(
+                                finishPayload,
+                            ),
                         );
 
                     console.log(
@@ -1376,7 +1378,9 @@
 
             try {
                 const availablePackages =
-                    await getAvailablePackages();
+                    await inventory.runAction(
+                        () => getAvailablePackages(),
+                    );
 
                 for (const packageData of availablePackages) {
                     const option =
@@ -1593,6 +1597,8 @@
                         result
                     );
 
+                    closePackageModal();
+
                     inventory.showToast(
                         "Pacote gerado com sucesso!"
                     );
@@ -1601,7 +1607,6 @@
                         replaceRecords: inventory.replaceRecords,
                     });
                     inventory.render();
-                    closePackageModal();
 
                 } catch (error) {
                     console.error(
