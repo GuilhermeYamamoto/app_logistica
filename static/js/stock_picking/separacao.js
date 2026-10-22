@@ -11,6 +11,7 @@
 
     let selectedConferenciaPicking = null;
     let selectedReplicarPesoPicking = null;
+    const printedLabels = new Set();
 
     // Retorna true quando o picking possui a tag 29, usada pelo Odoo
     // para indicar que a separação foi conferida.
@@ -595,10 +596,15 @@
                 "secondary-action",
                 "conference-action",
             );
-            conferirSeparacao.disabled = !pesoConferido;
+            conferirSeparacao.disabled =
+                !pesoConferido || !printedLabels.has(picking.id);
+
             if (!pesoConferido) {
                 conferirSeparacao.title =
                     "Preencha e corrija o peso antes de conferir.";
+            } else if (!printedLabels.has(picking.id)) {
+                conferirSeparacao.title =
+                    "Imprima a etiqueta antes de solicitar a conferência.";
             }
             conferirSeparacao.innerHTML =
                 '<span class="action-icon-small">✓</span>SOLICITAR CONFERÊNCIA';
@@ -781,6 +787,24 @@
                         const body = await iotResponse.json().catch(() => iotResponse.statusText);
                         throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
                     }
+
+                    // Registra a impressão somente após a resposta IoT ser bem-sucedida.
+                    printedLabels.add(picking.id);
+
+                    // Libera a conferência respeitando a trava de divergência já existente.
+                    const conferirSeparacao = card.querySelector(".conference-action");
+
+                    if (conferirSeparacao) {
+                        conferirSeparacao.disabled = !pesoConferido;
+
+                        if (!pesoConferido) {
+                            conferirSeparacao.title =
+                                "Preencha e corrija o peso antes de conferir.";
+                        } else {
+                            conferirSeparacao.title = "";
+                        }
+                    }
+
                     inventory.showToast(`ETIQUETA DO ${picking.pv} ENVIADA PARA IMPRESSÃO`);
                 });
             } catch (error) {
