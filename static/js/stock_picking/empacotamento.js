@@ -1597,6 +1597,8 @@
                         result
                     );
 
+                    closePackageModal();
+
                     inventory.showToast(
                         "Pacote gerado com sucesso!"
                     );
@@ -1605,7 +1607,6 @@
                         replaceRecords: inventory.replaceRecords,
                     });
                     inventory.render();
-                    closePackageModal();
 
                 } catch (error) {
                     console.error(
