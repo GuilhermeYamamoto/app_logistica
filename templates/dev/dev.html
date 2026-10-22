@@ -1,0 +1,132 @@
+{% extends "base/base.html" %}
+
+{% block title %}Ferramentas de desenvolvimento - FastAPI Odoo{% endblock %}
+
+{% block head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/dev/dev.css') }}?v={{ static_asset_version('css/dev/dev.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">FastAPI Odoo</p>
+                <h1>Ferramentas de desenvolvimento</h1>
+                <p>Operações auxiliares para diagnosticar e testar a integração com o Odoo.</p>
+            </div>
+            <div class="home-header-actions">
+                <button class="dev-unlock-button" type="button" id="openUnlockModal">
+                    <span aria-hidden="true">🔒</span>
+                    Desbloquear
+                </button>
+                <a class="logout-button" href="/index">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-grid" aria-label="Ferramentas de desenvolvimento">
+            {% for option in options %}
+                {% if dev_unlocked and option.route %}
+                    <a class="module-card" href="{{ option.route }}">
+                {% else %}
+                    <article
+                        class="module-card{% if not dev_unlocked %} module-card--blocked{% endif %}"
+                        {% if not dev_unlocked %}data-open-unlock{% endif %}
+                    >
+                {% endif %}
+                    {% if not dev_unlocked %}
+                        <span class="dev-blocked-badge">Bloqueada</span>
+                    {% elif not option.route %}
+                        <span class="dev-blocked-badge">Em breve</span>
+                    {% endif %}
+                    <h2>{{ option.name }}</h2>
+                    <p>{{ option.description }}</p>
+                    <span>Caixa de ferramentas</span>
+                {% if dev_unlocked and option.route %}
+                    </a>
+                {% else %}
+                    </article>
+                {% endif %}
+            {% else %}
+                <p>Nenhuma ferramenta de desenvolvimento configurada.</p>
+            {% endfor %}
+        </section>
+    </main>
+
+    <div class="dev-modal-backdrop hidden" id="unlockModal" role="presentation">
+        <section class="dev-modal" role="dialog" aria-modal="true" aria-labelledby="unlockModalTitle">
+            <button class="dev-modal-close" type="button" id="closeUnlockModal" aria-label="Fechar">×</button>
+            <span class="dev-modal-icon" aria-hidden="true">🔐</span>
+            <h2 id="unlockModalTitle">Desbloquear ferramentas</h2>
+            <p>Confirme sua senha do Odoo. Apenas administradores podem acessar esta área.</p>
+            <form method="post" action="/dev/unlock" id="devUnlockForm">
+                <label for="devPassword">Senha</label>
+                <input id="devPassword" name="password" type="password" autocomplete="current-password" required>
+                <p class="dev-modal-error hidden" id="unlockError" role="alert"></p>
+                <button class="dev-modal-submit" type="submit">Desbloquear</button>
+            </form>
+        </section>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const modal = document.getElementById("unlockModal");
+        const passwordInput = document.getElementById("devPassword");
+        const unlockError = document.getElementById("unlockError");
+
+        function openModal() {
+            modal.classList.remove("hidden");
+            passwordInput.focus();
+        }
+
+        function closeModal() {
+            modal.classList.add("hidden");
+            unlockError.classList.add("hidden");
+            unlockError.textContent = "";
+        }
+
+        document.getElementById("openUnlockModal").addEventListener("click", openModal);
+        document.querySelectorAll("[data-open-unlock]").forEach((card) => {
+            card.addEventListener("click", openModal);
+            card.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openModal();
+                }
+            });
+        });
+        document.getElementById("closeUnlockModal").addEventListener("click", closeModal);
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+                closeModal();
+            }
+        });
+
+        document.getElementById("devUnlockForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const password = passwordInput.value;
+            const response = await fetch("/dev/unlock", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({password}),
+            });
+
+            if (response.ok) {
+                window.location.href = "/dev";
+                return;
+            }
+
+            const result = await response.json().catch(() => ({}));
+            unlockError.textContent = result.detail || "Não foi possível desbloquear as ferramentas.";
+            unlockError.classList.remove("hidden");
+        });
+    </script>
+{% endblock %}

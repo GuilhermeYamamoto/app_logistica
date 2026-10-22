@@ -1,0 +1,45 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ toolbox.name }} - Ferramentas de desenvolvimento{% endblock %}
+
+{% block head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/dev/dev.css') }}?v={{ static_asset_version('css/dev/dev.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">Caixa de ferramentas</p>
+                <h1>{{ toolbox.name }}</h1>
+                <p>{{ toolbox.description }}</p>
+            </div>
+            <div class="home-header-actions">
+                <a class="logout-button" href="/dev">Voltar</a>
+            </div>
+        </header>
+
+        <section class="tool-list" aria-label="Ferramentas disponíveis">
+            <div class="tool-list-heading">
+                <h2>Ferramentas disponíveis</h2>
+                <span>{{ tools|length }} ferramenta(s)</span>
+            </div>
+            {% for tool in tools %}
+                <a class="tool-list-item" href="{{ tool.route }}">
+                    <span class="tool-list-icon" aria-hidden="true">▶</span>
+                    <span>
+                        <strong>{{ tool.name }}</strong>
+                        <small>{{ tool.description }}</small>
+                    </span>
+                </a>
+            {% else %}
+                <div class="tool-list-empty">
+                    Nenhuma ferramenta foi disponibilizada nesta caixa ainda.
+                </div>
+            {% endfor %}
+        </section>
+    </main>
+{% endblock %}

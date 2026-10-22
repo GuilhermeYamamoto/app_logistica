@@ -1,0 +1,337 @@
+.home-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dev-unlock-button,
+.dev-modal-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 7px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    background: white;
+    color: var(--odoo-purple);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dev-unlock-button:hover {
+    background: #f4eef3;
+}
+
+.module-card--blocked {
+    position: relative;
+    overflow: hidden;
+    opacity: 0.78;
+}
+
+.module-card[data-open-unlock] {
+    cursor: pointer;
+}
+
+.module-card--blocked::after {
+    position: absolute;
+    top: 16px;
+    right: -34px;
+    width: 130px;
+    padding: 4px;
+    background: var(--odoo-purple);
+    color: white;
+    content: "BLOCKED";
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: center;
+    transform: rotate(35deg);
+}
+
+.dev-blocked-badge {
+    margin-bottom: 10px;
+    color: var(--odoo-purple);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.dev-modal-backdrop {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(18, 23, 35, 0.58);
+}
+
+.dev-modal {
+    position: relative;
+    width: min(100%, 420px);
+    padding: 32px;
+    border-radius: 12px;
+    background: var(--odoo-surface);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.dev-modal-icon {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 30px;
+}
+
+.dev-modal h2 {
+    margin: 0 0 8px;
+    color: var(--odoo-purple);
+    font-size: 22px;
+}
+
+.dev-modal p {
+    color: var(--odoo-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dev-modal form {
+    display: grid;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.dev-modal input {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    font: inherit;
+}
+
+.dev-modal input:focus {
+    border-color: var(--odoo-purple);
+    outline: 3px solid var(--odoo-focus);
+}
+
+.dev-modal-submit {
+    margin-top: 8px;
+    border-color: var(--odoo-purple);
+    background: var(--odoo-purple);
+    color: white;
+}
+
+.dev-modal-submit:hover {
+    background: var(--odoo-purple-hover);
+}
+
+.dev-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    border: 0;
+    background: transparent;
+    color: var(--odoo-muted);
+    font-size: 26px;
+    cursor: pointer;
+}
+
+.dev-modal-error {
+    margin: 4px 0 0;
+    color: #b42318 !important;
+    font-size: 13px !important;
+}
+
+@media (max-width: 640px) {
+    .home-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+.dev-tool-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.dev-tool-panel {
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 6px;
+    background: var(--odoo-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dev-tool-panel h2 {
+    margin: 0 0 10px;
+    color: var(--odoo-purple);
+    font-size: 18px;
+}
+
+.dev-tool-description {
+    color: var(--odoo-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dev-tool-form {
+    display: grid;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.dev-tool-form input[type="number"] {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 4px;
+    font: inherit;
+}
+
+.dev-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    color: var(--odoo-text);
+    font-size: 13px;
+}
+
+.dev-modal-submit:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.dev-code-panel pre,
+.dev-log-panel pre {
+    box-sizing: border-box;
+    width: 100%;
+    height: 260px;
+    max-width: 100%;
+    max-height: none;
+    min-height: 0;
+    margin: 0;
+    padding: 14px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 4px;
+    background: #1d2027;
+    color: #d5f5d5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.dev-log-panel {
+    grid-column: 1 / -1;
+}
+
+.dev-log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dev-log-header span {
+    color: var(--odoo-muted);
+    font-size: 12px;
+}
+
+.dev-tool-error {
+    color: #b42318;
+    font-size: 13px;
+}
+
+.tool-list {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 22px;
+    border: 1px solid var(--odoo-border);
+    border-radius: 6px;
+    background: var(--odoo-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.tool-list-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+
+    .tool-list-heading h2 {
+        margin: 0;
+        color: var(--odoo-purple);
+        font-size: 19px;
+        font-weight: 500;
+    }
+
+    .tool-list-heading span {
+        color: var(--odoo-muted);
+        font-size: 12px;
+    }
+
+    .tool-list-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 12px;
+        border-top: 1px solid var(--odoo-border);
+        color: inherit;
+        text-decoration: none;
+        transition: background-color 0.15s;
+    }
+
+    .tool-list-item:hover {
+        background: #f7f3f6;
+    }
+
+    .tool-list-icon {
+        color: var(--odoo-purple);
+        font-size: 14px;
+    }
+
+    .tool-list-item strong,
+    .tool-list-item small {
+        display: block;
+    }
+
+    .tool-list-item strong {
+        color: var(--odoo-purple);
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .tool-list-item small {
+        margin-top: 4px;
+        color: var(--odoo-muted);
+        font-size: 13px;
+    }
+
+    .tool-list-empty {
+        padding: 22px 12px 8px;
+        border-top: 1px solid var(--odoo-border);
+        color: var(--odoo-muted);
+        font-size: 13px;
+    }
+
+    @media (max-width: 760px) {
+        .dev-tool-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .dev-log-panel {
+            grid-column: auto;
+        }
+    }

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # FastAPI
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    DEV_UNLOCK_SECRET: str = "odoo-indufix"
+    DEV_UNLOCK_MAX_AGE: int = 1 * 60
 
     # Paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent

@@ -19,6 +19,7 @@ MODULES = [
     ModuleInfo(name="Inventário", model="stock.picking", description="Transferências e entregas", route="/inventario"),
     ModuleInfo(name="Produtos", model="product.template", description="Catálogo de produtos"),
     ModuleInfo(name="Contatos", model="res.partner", description="Clientes e fornecedores"),
+    ModuleInfo(name="Dev", model="dev", description="Módulo para desenvolvedores", route="/dev"),
 ]
 
 

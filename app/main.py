@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routers import auth, index, stock_picking, models
+from app.routers import auth, dev, index, stock_picking, models
 
 app = FastAPI()
 
@@ -27,6 +27,8 @@ app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 app.include_router(auth.router)
 app.include_router(index.router)
 app.include_router(stock_picking.router)
+if settings.ENVIRONMENT.lower() == "development":
+    app.include_router(dev.router)
 app.include_router(models.router)
 
 

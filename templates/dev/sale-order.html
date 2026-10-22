@@ -1,0 +1,112 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ tool_name }} - Ferramentas de desenvolvimento{% endblock %}
+
+{% block head %}
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/dev/dev.css') }}?v={{ static_asset_version('css/dev/dev.css') }}"
+    >
+{% endblock %}
+
+{% block content %}
+    <main class="home-page">
+        <header class="home-header">
+            <div>
+                <p class="eyebrow">Ferramenta de desenvolvimento</p>
+                <h1>{{ tool_name }}</h1>
+                <p>Prepara uma cotação a partir de um CRM Lead usando métodos RPC definidos.</p>
+            </div>
+            <div class="home-header-actions">
+                <a class="logout-button" href="/dev">Voltar</a>
+            </div>
+        </header>
+
+        <section class="dev-tool-layout">
+            <article class="dev-tool-panel">
+                <h2>Execução</h2>
+                <p class="dev-tool-description">
+                    A simulação é o modo padrão. Marque a execução somente quando quiser criar e confirmar a cotação no Odoo.
+                </p>
+                <form id="saleOrderForm" class="dev-tool-form">
+                    <label for="leadId">ID do CRM Lead</label>
+                    <input id="leadId" name="lead_id" type="number" min="1" required>
+                    <label class="dev-checkbox">
+                        <input id="executeTool" name="execute" type="checkbox">
+                        <span>Executar no Odoo (criar e confirmar)</span>
+                    </label>
+                    <button class="dev-modal-submit" type="submit" id="runToolButton">
+                        Executar ferramenta
+                    </button>
+                </form>
+                <p class="dev-tool-error hidden" id="toolError" role="alert"></p>
+            </article>
+
+            <article class="dev-tool-panel dev-code-panel">
+                <h2>Código RPC executado</h2>
+                <pre><code>lead = rpc("crm.lead", "search_read", lead_id)
+suppliers = rpc("product.supplierinfo", "search_read")
+products = rpc("product.product", "search")
+payment_term = rpc("account.payment.term", "search")
+incoterm = rpc("account.incoterms", "search")
+carrier = rpc("delivery.carrier", "search")
+
+values = prepare_sale_order(lead, products, ...)
+
+if execute:
+    sale_order_id = rpc("sale.order", "create", values)
+    rpc("sale.order", "get_item_cost", sale_order_id)
+    rpc("ir.actions.server", "run", action_id=1817)
+    rpc("sale.order", "action_integra_crm", sale_order_id)
+    rpc("ir.actions.server", "run", action_id=1817)
+    rpc("sale.order", "action_confirm", sale_order_id)</code></pre>
+            </article>
+
+            <article class="dev-tool-panel dev-log-panel">
+                <div class="dev-log-header">
+                    <h2>Shell da operação</h2>
+                    <span id="toolStatus">Aguardando execução</span>
+                </div>
+                <pre id="toolLog" aria-live="polite">Nenhuma operação executada.</pre>
+            </article>
+        </section>
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const form = document.getElementById("saleOrderForm");
+        const runButton = document.getElementById("runToolButton");
+        const logOutput = document.getElementById("toolLog");
+        const statusOutput = document.getElementById("toolStatus");
+        const errorOutput = document.getElementById("toolError");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            runButton.disabled = true;
+            errorOutput.classList.add("hidden");
+            statusOutput.textContent = "Executando...";
+            logOutput.textContent = "Conectando ao Odoo...";
+
+            const response = await fetch("/dev/api/tools/sale-order", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    lead_id: Number(document.getElementById("leadId").value),
+                    execute: document.getElementById("executeTool").checked,
+                }),
+            });
+            const result = await response.json().catch(() => ({}));
+            logOutput.textContent = (result.logs || []).join("\n") || "Nenhum log retornado.";
+
+            if (!response.ok) {
+                statusOutput.textContent = "Falha";
+                errorOutput.textContent = result.error || result.detail || "A ferramenta falhou.";
+                errorOutput.classList.remove("hidden");
+            } else {
+                statusOutput.textContent = result.result.execute ? "Executado" : "Simulado";
+            }
+            runButton.disabled = false;
+        });
+    </script>
+{% endblock %}
