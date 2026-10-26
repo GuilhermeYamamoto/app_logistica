@@ -52,7 +52,7 @@
                 <span class="dashboard-label">CONFERIDOS</span>
                 <strong id="conferidosCount">0</strong>
             </button>
-        {% elif stage.key not in ["conferencia-separacao", "armazenamento-expedicao", "entrega-retira"] %}
+        {% elif stage.key not in ["conferencia-separacao", "armazenamento-expedicao", "conferencia-expedicao", "entrega-retira"] %}
             <button class="dashboard-card progress" data-filter="andamento" type="button">
                 <span class="dashboard-label">EM ANDAMENTO</span>
                 <strong id="progressCount">0</strong>

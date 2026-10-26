@@ -5,6 +5,12 @@
     gap: 8px;
 }
 
+/* Faz o card PENDENTES ocupar toda a linha em Armazenamento Expedição */
+.dashboard:has(.dashboard-card.pending):not(:has(.dashboard-card.progress)) .dashboard-card.pending {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
 .main-action,
 .secondary-action {
     width: 100%;
