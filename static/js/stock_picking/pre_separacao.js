@@ -1996,11 +1996,11 @@
                     const chatCounter = pvCard.querySelector('.chat-tab.pv-counter-tab');
                     if (chatCounter) {
                         chatCounter.textContent =
-                            `${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`;
+                            `${pendingInStageCount}/${pendingPlusWaitingCount}`;
 
                         chatCounter.setAttribute(
                             'aria-label',
-                            `Contador: ${validatedCount}/${pendingInStageCount} - ${pendingPlusWaitingCount}`
+                            `Contador: ${pendingInStageCount}/${pendingPlusWaitingCount}`
                         );
                     }
                 }

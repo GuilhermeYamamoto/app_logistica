@@ -241,7 +241,7 @@
         const counter = createElement(
             "span",
             "pv-counter",
-            `${conferidoCount}/${naoConferidoCount} - ${totalCount}`,
+            `${naoConferidoCount}/${totalCount}`,
         );
         const pickingsList = createElement(
             "div",
