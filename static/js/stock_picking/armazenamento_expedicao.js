@@ -73,7 +73,7 @@
 
         const localValue = document.createElement("div");
         localValue.className = "local-value";
-        localValue.textContent = picking.local && picking.local !== "CD/STO" ? picking.local : "Não definido";
+        localValue.textContent = picking.local && picking.local !== "CD/EXP" ? picking.local : "Não definido";
 
         localBox.append(localLabel, localValue);
 
