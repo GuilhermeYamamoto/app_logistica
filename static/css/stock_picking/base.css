@@ -2414,3 +2414,11 @@ body {
         box-sizing: border-box;
     }
 }
+
+/* =========================================================
+   RECORTE DA TARJA — SOMENTE NO CARD DO PICKING
+========================================================= */
+
+.picking-card:has(.estoque-glass-banner) {
+    position: relative;
+}

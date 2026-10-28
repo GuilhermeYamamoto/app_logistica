@@ -54,6 +54,36 @@
                
         const product = context.main.querySelector(".product-info");
 
+        // TARJA ESTOQUE — tag Odoo ID 35
+        const hasEstoqueTag = (picking.tagIds || [])
+            .some((tagId) => Number(tagId) === 35);
+
+        if (hasEstoqueTag) {
+
+            card.classList.add("has-estoque-tag");
+            // Evita duplicar a tarja caso o card seja reutilizado.
+            card.querySelector(".estoque-glass-banner")?.remove();
+
+            const estoqueBanner = document.createElement("div");
+            estoqueBanner.className = "estoque-glass-banner";
+            estoqueBanner.textContent = "ESTOQUE";
+            estoqueBanner.setAttribute("aria-label", "Picking de estoque");
+
+            // Permite posicionar a tarja em relação ao picking.
+            card.style.position = "relative";
+
+            // Cria uma área de recorte independente da chat-tab.
+            let bannerClip = card.querySelector(".estoque-banner-clip");
+
+            if (!bannerClip) {
+                bannerClip = document.createElement("div");
+                bannerClip.className = "estoque-banner-clip";
+                card.appendChild(bannerClip);
+            }
+
+            bannerClip.replaceChildren(estoqueBanner);
+        }
+
         context.replacePrimaryActions([
             context.createAction({
                 className: "main-action photo-action",
