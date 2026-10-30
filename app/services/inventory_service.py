@@ -46,6 +46,12 @@ class InventoryService:
                 "template": "stock_picking/separacao.html",
             },
             {
+                "key": "estocagem",
+                "name": "Estocagem",
+                "picking_type_id": 147,
+                "template": "stock_picking/estocagem.html",
+            },
+            {
                 "key": "conferencia-separacao",
                 "name": "Conferência Separação",
                 "picking_type_id": 1200, #Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de conferencia de separacao e separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
