@@ -23,17 +23,17 @@ async def prevent_html_caching(request, call_next):
 # Montar arquivos estáticos
 app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 
-# Incluir routers
-app.include_router(auth.router)
-app.include_router(index.router)
-app.include_router(stock_picking.router)
-app.include_router(models.router)
-
-
 @app.get("/health")
 async def health():
     """Verificar saúde da aplicação."""
     return {"status": "ok"}
+
+
+# Incluir routers (após /health, pois models.router tem a rota catch-all /{model})
+app.include_router(auth.router)
+app.include_router(index.router)
+app.include_router(stock_picking.router)
+app.include_router(models.router)
 
 
 if __name__ == "__main__":
