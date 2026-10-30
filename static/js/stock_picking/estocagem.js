@@ -152,6 +152,7 @@
 
     function enhanceCard(card, picking, context) {
 
+        let currentPicking = null;
         const addPeso = document.createElement("button");
 
         addPeso.type = "button";
@@ -173,13 +174,57 @@
 
         // Abre o modal ao clicar
         addPeso.addEventListener("click", function () {
+            currentPicking = picking;
 
             const modal = createWeightModal();
 
             modal.classList.remove("hidden");
 
             modal.querySelector("#itemWeight").focus();
+        });
 
+        const modal = createWeightModal();
+
+        modal.addEventListener("weight:confirmed", async function (event) {
+            const weight = event.detail.weight;
+
+            if (!currentPicking) {
+                console.error("Nenhum picking selecionado para atualizar o peso.");
+                return;
+            }
+
+            const moveLines = currentPicking.move_lines || [];
+
+            if (!moveLines.length) {
+                inventory.showToast("Nenhuma linha de movimentação encontrada para este picking.");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/peso-value", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        picking_id: currentPicking.id,
+                        move_line_id: moveLines[0].id,
+                        peso_value: weight
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || "Erro ao atualizar o peso.");
+                }
+
+                inventory.showToast("Peso atualizado com sucesso!");
+
+            } catch (error) {
+                console.error("Erro ao atualizar peso:", error);
+                inventory.showToast(error.message || "Não foi possível atualizar o peso no Odoo.");
+            }
         });
     }
 
