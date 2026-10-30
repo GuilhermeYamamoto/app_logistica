@@ -10,7 +10,7 @@ services:
       - "8001:8000"
     environment:
       - ODOO_URL=${ODOO_URL:-https://serp.indufix.com.br}
-      - ODOO_DB=${ODOO_DB:?Defina ODOO_DB (banco de produção) no .env}
+      - ODOO_DB=${ODOO_DB:-odoo}
       - SESSION_COOKIE_NAME=${SESSION_COOKIE_NAME:-odoo_session}
       - SESSION_MAX_AGE=${SESSION_MAX_AGE:-28800}
     volumes:
