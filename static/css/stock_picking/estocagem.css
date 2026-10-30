@@ -1,0 +1,66 @@
+
+/* =========================================================
+   MODAL DE ADICIONAR PESO
+========================================================= */
+
+.weight-modal {
+    width: min(510px, 100%);
+}
+
+#weightForm {
+    padding: 0 26px;
+}
+
+#weightForm .form-group {
+    margin-bottom: 0;
+}
+
+#weightForm .modal-footer {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* =========================================================
+   CóÓDIGO PARA DEIXAR OS BOTÕES OCUPANDO TODA A LINHA
+========================================================= */
+
+.secondary-actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+}
+
+.picking-actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+}
+
+/* ADICIONAR PESO */
+.secondary-actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+}
+
+/* Todos os botões ocupam a largura disponível */
+.picking-actions button,
+.secondary-actions button {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   PADRONIZA A DIMENSÃO DOS TRÊS BOTÕES
+========================================================= */
+
+.picking-actions button {
+    min-height: 72px;
+    border-radius: 10px;
+    font-size: 16px;
+    gap: 9px;
+}
