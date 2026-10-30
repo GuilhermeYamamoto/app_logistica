@@ -384,7 +384,7 @@
             header.className = "delivery-batch-header";
             const title = document.createElement("span");
             title.className = "delivery-batch-title";
-            title.textContent = `${displayValue(firstRecord.pedido_venda_name, "Sem pedido de venda")} - ${displayValue(firstRecord.cliente, "Cliente não definido")}`;
+            title.textContent = `NF ${displayValue(firstRecord.invoiceNumber, "não informada")} - ${displayValue(firstRecord.cliente, "Cliente não definido")}`;
 
             const actions = document.createElement("div");
             actions.className = "delivery-batch-header-actions";
@@ -403,7 +403,7 @@
             const summary = document.createElement("div");
             summary.className = "delivery-summary";
             summary.append(
-                createField("Número da NF", firstRecord.invoiceNumber),
+                createField("Qtd. Volumes", firstRecord.invoiceVolumeCount),
                 createField("Endereço de entrega", firstRecord.deliveryAddress),
             );
 
