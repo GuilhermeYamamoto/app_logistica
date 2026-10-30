@@ -5,6 +5,7 @@
     // Módulo JS para a estocagem
 
     let weightModal = null;
+    let currentPicking = null;
 
     function createWeightModal() {
 
@@ -90,6 +91,8 @@
 
         weightModal = overlay;
 
+        overlay.addEventListener("weight:confirmed", handleWeightConfirmed);
+
         const input = overlay.querySelector("#itemWeight");
         const form = overlay.querySelector("#weightForm");
 
@@ -150,9 +153,72 @@
         return overlay;
     }
 
+    async function handleWeightConfirmed(event) {
+        const weight = Number(event.detail.weight);
+
+        if (!currentPicking) {
+            console.error("Nenhum picking selecionado para atualizar o peso.");
+            return;
+        }
+
+        const moveLines = currentPicking.move_lines || [];
+
+        if (!moveLines.length) {
+            inventory.showToast(
+                "Nenhuma linha de movimentação encontrada para este picking."
+            );
+            return;
+        }
+
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch("/api/peso-value", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        picking_id: currentPicking.id,
+                        move_line_id: moveLines[0].id,
+                        peso_value: weight
+                    })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.detail || "Erro ao atualizar o peso."
+                    );
+                }
+
+                // Atualiza o peso da primeira linha de movimentação.
+                moveLines[0].peso = weight;
+
+                // Recalcula o peso total do picking.
+                currentPicking.totalWeight = moveLines.reduce(
+                    (total, line) => total + Number(line.peso || 0),
+                    0
+                );
+
+                // Renderiza novamente os registros.
+                inventory.render();
+
+                inventory.showToast("Peso atualizado com sucesso!");
+            });
+
+        } catch (error) {
+            console.error("Erro ao atualizar peso:", error);
+
+            inventory.showToast(
+                error.message || "Não foi possível atualizar o peso no Odoo.",
+                "!"
+            );
+        }
+    }
+
     function enhanceCard(card, picking, context) {
 
-        let currentPicking = null;
         const addPeso = document.createElement("button");
 
         // LINHA DE INFORMAÇÕES — PESO
@@ -197,10 +263,16 @@
         addPeso.innerHTML =
             '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
 
+        // Trava do botão CONCLUÍDO conforme o peso do picking.
+        const validationAction = context.createValidationAction(
+            undefined,
+            totalWeight <= 1
+        );
+
         context.replacePrimaryActions([
             addPeso,
             context.createQualityAction(),
-            context.createValidationAction(),
+            validationAction,
         ]);
 
         // Abre o modal ao clicar
@@ -212,50 +284,6 @@
             modal.classList.remove("hidden");
 
             modal.querySelector("#itemWeight").focus();
-        });
-
-        const modal = createWeightModal();
-
-        modal.addEventListener("weight:confirmed", async function (event) {
-            const weight = event.detail.weight;
-
-            if (!currentPicking) {
-                console.error("Nenhum picking selecionado para atualizar o peso.");
-                return;
-            }
-
-            const moveLines = currentPicking.move_lines || [];
-
-            if (!moveLines.length) {
-                inventory.showToast("Nenhuma linha de movimentação encontrada para este picking.");
-                return;
-            }
-
-            try {
-                const response = await fetch("/api/peso-value", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        picking_id: currentPicking.id,
-                        move_line_id: moveLines[0].id,
-                        peso_value: weight
-                    })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.detail || "Erro ao atualizar o peso.");
-                }
-
-                inventory.showToast("Peso atualizado com sucesso!");
-
-            } catch (error) {
-                console.error("Erro ao atualizar peso:", error);
-                inventory.showToast(error.message || "Não foi possível atualizar o peso no Odoo.");
-            }
         });
     }
 

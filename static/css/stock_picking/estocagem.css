@@ -90,3 +90,12 @@
     font-weight: 680;
     line-height: 1.3;
 }
+
+/* =========================================================
+   TRAVA DO BOTÃO CONCLUÍDO — ESTOCAGEM
+========================================================= */
+
+.picking-actions .validation-action:disabled {
+    filter: grayscale(100%);
+    cursor: not-allowed;
+}
