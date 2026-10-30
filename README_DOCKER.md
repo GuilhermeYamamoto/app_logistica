@@ -127,6 +127,40 @@ Para debug interativo:
 docker-compose exec app python -m pdb app/main.py
 ```
 
+## Ambiente TRN (teste)
+
+Réplica isolada da aplicação para testes, apontando para o Odoo de TRN
+(`https://trn-serp.indufix.com.br`, banco `odoo-trn`). Definido em `docker-compose.trn.yml`.
+
+| Serviço | Porta no host |
+|---------|---------------|
+| App     | http://localhost:8003 |
+| Redis   | localhost:6381 |
+
+Não conflita com produção (8001) nem com dev (8002). Cookie de sessão próprio (`odoo_session_trn`).
+
+```bash
+# Build e subir em background
+docker compose -f docker-compose.trn.yml up -d --build
+
+# Logs
+docker compose -f docker-compose.trn.yml logs -f app
+
+# Parar
+docker compose -f docker-compose.trn.yml down
+
+# Parar e apagar dados do Redis (sessões)
+docker compose -f docker-compose.trn.yml down -v
+```
+
+Para apontar para outro Odoo, sobrescreva por variável de ambiente antes do `up`:
+
+```bash
+TRN_ODOO_URL=http://localhost:8069 TRN_ODOO_DB=test_db docker compose -f docker-compose.trn.yml up -d --build
+```
+
+O código é copiado para a imagem no build (sem hot-reload). Após alterar o código, rode novamente com `--build`.
+
 ## Produção
 
 ### Considerações de Segurança

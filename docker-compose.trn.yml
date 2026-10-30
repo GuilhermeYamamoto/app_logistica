@@ -1,0 +1,52 @@
+# Ambiente TRN (teste) - réplica isolada da aplicação apontando para o Odoo de TRN.
+# Uso: docker compose -f docker-compose.trn.yml up -d --build
+
+name: app_logistica_trn
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: app_logistica:trn
+    container_name: app_logistica_trn
+    ports:
+      - "8003:8000"
+    environment:
+      - ENVIRONMENT=trn
+      - DEBUG=false
+      - ODOO_URL=${TRN_ODOO_URL:-https://trn-serp.indufix.com.br}
+      - ODOO_DB=${TRN_ODOO_DB:-odoo-trn}
+      # Cookie próprio para não colidir com a sessão da produção/dev em localhost
+      - SESSION_COOKIE_NAME=odoo_session_trn
+      - SESSION_MAX_AGE=28800
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - app_trn_network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: app_logistica_redis_trn
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_trn_data:/data
+    networks:
+      - app_trn_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_trn_data:
+
+networks:
+  app_trn_network:
+    driver: bridge
