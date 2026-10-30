@@ -155,6 +155,37 @@
         let currentPicking = null;
         const addPeso = document.createElement("button");
 
+        // LINHA DE INFORMAÇÕES — PESO
+        const weightInfoRow = document.createElement("div");
+        weightInfoRow.className = "secondary-info-row";
+
+        // PESO
+        const weightBox = document.createElement("div");
+        weightBox.className = "weight-box";
+
+        const weightLabel = document.createElement("div");
+        weightLabel.className = "weight-label";
+        weightLabel.textContent = "Peso";
+
+        const weightValue = document.createElement("div");
+        weightValue.className = "weight-value";
+
+        const totalWeight = Number(picking.totalWeight || 0);
+
+        weightValue.textContent = `${totalWeight.toLocaleString("pt-BR", {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+        })} KG`;
+
+        weightBox.appendChild(weightLabel);
+        weightBox.appendChild(weightValue);
+
+        // Adiciona o campo à linha
+        weightInfoRow.appendChild(weightBox);
+
+        // Adiciona a nova linha ao card
+        context.main.appendChild(weightInfoRow);
+
         addPeso.type = "button";
 
         addPeso.classList.add(

@@ -1,4 +1,3 @@
-
 /* =========================================================
    MODAL DE ADICIONAR PESO
 ========================================================= */
@@ -21,7 +20,7 @@
 }
 
 /* =========================================================
-   CóÓDIGO PARA DEIXAR OS BOTÕES OCUPANDO TODA A LINHA
+   BOTÕES OCUPANDO TODA A LINHA
 ========================================================= */
 
 .secondary-actions {
@@ -32,14 +31,6 @@
 }
 
 .picking-actions {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 8px;
-}
-
-/* ADICIONAR PESO */
-.secondary-actions {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -63,4 +54,39 @@
     border-radius: 10px;
     font-size: 16px;
     gap: 9px;
+}
+
+/* =========================================================
+   CAMPO PESO — ESTOCAGEM
+========================================================= */
+
+.weight-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+.weight-label {
+    display: block;
+    margin-bottom: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 17.5px;
+    font-weight: 750;
+    color: var(--muted);
+    text-transform: none;
+}
+
+.weight-value {
+    margin-top: -7px;
+    width: 100%;
+    height: 48px;
+    min-height: 48px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    font-size: 18px;
+    font-weight: 680;
+    line-height: 1.3;
 }
