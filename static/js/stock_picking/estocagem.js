@@ -7,6 +7,44 @@
     let weightModal = null;
     let currentPicking = null;
 
+    async function refreshStageRecords() {
+        const stageKey = document.body.dataset.stageKey || "estocagem";
+        const response = await fetch(
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}?t=${Date.now()}`,
+            {
+                headers: { Accept: "application/json" },
+                cache: "no-store",
+            },
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !Array.isArray(data?.records)) {
+            throw new Error(
+                data?.detail || "Não foi possível atualizar os registros da estocagem.",
+            );
+        }
+
+        inventory.replaceRecords(data.records);
+    }
+
+    function getPickingMoveLineId(picking, fallbackId = null) {
+        const moveLines = Array.isArray(picking?.move_lines)
+            ? picking.move_lines
+            : [];
+
+        if (fallbackId !== null && fallbackId !== undefined) {
+            return Number(fallbackId);
+        }
+
+        if (!moveLines.length) {
+            return null;
+        }
+
+        const firstLine = moveLines[0];
+        return Number(firstLine?.id ?? firstLine?.move_line_id ?? 0) || null;
+    }
+
     function createWeightModal() {
 
         if (weightModal) {
@@ -162,8 +200,9 @@
         }
 
         const moveLines = currentPicking.move_lines || [];
+        const moveLineId = getPickingMoveLineId(currentPicking);
 
-        if (!moveLines.length) {
+        if (!moveLines.length || moveLineId === null) {
             inventory.showToast(
                 "Nenhuma linha de movimentação encontrada para este picking."
             );
@@ -179,7 +218,7 @@
                     },
                     body: JSON.stringify({
                         picking_id: currentPicking.id,
-                        move_line_id: moveLines[0].id,
+                        move_line_id: moveLineId,
                         peso_value: weight
                     })
                 });
@@ -192,18 +231,20 @@
                     );
                 }
 
-                // Atualiza o peso da primeira linha de movimentação.
-                moveLines[0].peso = weight;
-
-                // Recalcula o peso total do picking.
-                currentPicking.totalWeight = moveLines.reduce(
-                    (total, line) => total + Number(line.peso || 0),
-                    0
+                const targetLine = moveLines.find(
+                    (line) => Number(line.id) === Number(moveLineId),
                 );
 
-                // Renderiza novamente os registros.
-                inventory.render();
+                if (targetLine) {
+                    targetLine.peso = weight;
+                }
 
+                currentPicking.totalWeight = moveLines.reduce(
+                    (total, line) => total + Number(line.peso || 0),
+                    0,
+                );
+
+                await refreshStageRecords();
                 inventory.showToast("Peso atualizado com sucesso!");
             });
 
@@ -218,6 +259,12 @@
     }
 
     function enhanceCard(card, picking, context) {
+        const quantityInput = context.main.querySelector(".quantity-input");
+        if (quantityInput) {
+            quantityInput.disabled = true;
+            quantityInput.setAttribute("aria-disabled", "true");
+            quantityInput.title = "Quantidade recebida somente visualização.";
+        }
 
         const addPeso = document.createElement("button");
 
@@ -298,6 +345,33 @@
 
     inventory.configure({
         enhanceCard,
+        canEditQuantity: false,
+        refreshRecords: async ({ replaceRecords, showToast }) => {
+            try {
+                const response = await fetch(
+                    `/api/inventario/pickings/refresh/${encodeURIComponent(document.body.dataset.stageKey || "estocagem")}?t=${Date.now()}`,
+                    {
+                        headers: { Accept: "application/json" },
+                        cache: "no-store",
+                    },
+                );
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok || !Array.isArray(data?.records)) {
+                    throw new Error(
+                        data?.detail || "Não foi possível atualizar os registros da estocagem.",
+                    );
+                }
+
+                replaceRecords(data.records);
+            } catch (error) {
+                console.error("Erro ao atualizar registros da estocagem:", error);
+                showToast(
+                    error.message || "Não foi possível atualizar os registros da estocagem.",
+                    "!",
+                );
+            }
+        },
     });
 
 }());

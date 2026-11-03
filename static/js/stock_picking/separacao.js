@@ -286,16 +286,27 @@
        }, 0) > 0;
    }
 
+   function isStockPending(picking) {
+       return hasTag(picking, 29) && hasTag(picking, 37);
+   }
+
    // Personaliza o card padrão do inventário para a etapa de separação.
    // Aqui são criados os campos, botões, linhas de embalagem e eventos
    // específicos desta etapa.
    function enhanceCard(card, picking, context) {
        const correctionRequested = hasTag(picking, 34);
+       const stockPending = isStockPending(picking);
 
        if (correctionRequested) {
            card.classList.add("correction-requested");
        } else {
            card.classList.remove("correction-requested");
+       }
+
+       if (stockPending) {
+           card.classList.add("stock-pending");
+       } else {
+           card.classList.remove("stock-pending");
        }
 
        // Linhas do picking
@@ -617,7 +628,7 @@
                 "click",
                 () => openConferenciaSeparacaoModal(picking),
             );
-        }
+       }
 
        function atualizarPesoTotal() {
            const total = moveLines.reduce((total, line) => {
@@ -732,6 +743,14 @@
        });
 
        card.appendChild(detailsHint);
+
+       if (stockPending) {
+           card.querySelectorAll("button").forEach((button) => {
+               button.disabled = true;
+               button.setAttribute("aria-disabled", "true");
+               button.title = "Estoque pendente.";
+           });
+       }
 
        card.setAttribute("tabindex", "0");
        card.setAttribute("role", "button");
