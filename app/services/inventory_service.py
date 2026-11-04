@@ -1487,13 +1487,18 @@ class InventoryService:
             move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.picking_id)])
             if not move_lines:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
-            if len(move_lines) > 1:
-                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
-                move_line = [move_line for move_line in move_lines if data.move_line_id == move_line]
-                client.execute("stock.move.line", "write", move_line, {"qty_done": data.received_quantity})
-            else:
-                # Se tiver apenas uma move_line, atualiza diretamente.
-                client.execute("stock.move.line", "write", move_lines, {"qty_done": data.received_quantity})
+
+            target_move_lines = move_lines
+            if getattr(data, "move_line_id", None):
+                target_move_lines = [
+                    move_line_id for move_line_id in move_lines
+                    if move_line_id == data.move_line_id
+                ]
+
+            if not target_move_lines:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma move line foi encontrada para atualizar a quantidade.")
+
+            client.execute("stock.move.line", "write", target_move_lines, {"qty_done": data.received_quantity})
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error
@@ -1517,13 +1522,19 @@ class InventoryService:
             move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.get("picking_id"))])
             if not move_lines:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
-            if len(move_lines) > 1:
-                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
-                move_line = [move_line for move_line in move_lines if data.get("move_line_id") == move_line]
-                client.execute("stock.move.line", "write", move_line, {"peso": data.get("peso_value")})
-            else:
-                # Se tiver apenas uma move_line, atualiza diretamente.
-                client.execute("stock.move.line", "write", move_lines, {"peso": data.get("peso_value")})
+
+            target_move_lines = move_lines
+            move_line_id = data.get("move_line_id")
+            if move_line_id is not None:
+                target_move_lines = [
+                    move_line_id_value for move_line_id_value in move_lines
+                    if move_line_id_value == move_line_id
+                ]
+
+            if not target_move_lines:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma move line foi encontrada para atualizar o peso.")
+
+            client.execute("stock.move.line", "write", target_move_lines, {"peso": data.get("peso_value")})
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error

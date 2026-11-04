@@ -2,13 +2,188 @@
 (function () {
     "use strict";
 
-    // Módulo JS para a estocagem
+    const inventory = window.AppInventory;
 
+    if (!inventory) {
+        console.error("O controlador compartilhado do inventário não foi carregado.");
+        return;
+    }
+
+    // Módulo JS para a estocagem
     let weightModal = null;
     let currentPicking = null;
 
-    function createWeightModal() {
+    async function refreshStageRecords() {
+        const stageKey = document.body.dataset.stageKey || "estocagem";
+        const response = await fetch(
+            `/api/inventario/pickings/refresh/${encodeURIComponent(stageKey)}?t=${Date.now()}`,
+            {
+                headers: { Accept: "application/json" },
+                cache: "no-store",
+            },
+        );
 
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !Array.isArray(data?.records)) {
+            throw new Error(
+                data?.detail || "Não foi possível atualizar os registros da estocagem.",
+            );
+        }
+
+        inventory.replaceRecords(data.records);
+    }
+
+    function getPickingMoveLineId(picking, fallbackId = null) {
+        const moveLines = Array.isArray(picking?.move_lines)
+            ? picking.move_lines
+            : [];
+
+        if (fallbackId !== null && fallbackId !== undefined) {
+            return Number(fallbackId);
+        }
+
+        if (!moveLines.length) {
+            return null;
+        }
+
+        const firstLine = moveLines[0];
+        return Number(firstLine?.id ?? firstLine?.move_line_id ?? 0) || null;
+    }
+
+    function openPickingDetailsModal(pickingTarget) {
+        const rowsContainer = document.getElementById("pickingDetailsRows");
+        const title = document.getElementById("pickingDetailsTitle");
+        const subtitle = document.getElementById("pickingDetailsSubtitle");
+        const totalQty = document.getElementById("pickingDetailsTotalQty");
+        const totalWeight = document.getElementById("pickingDetailsTotalWeight");
+        const lotCount = document.getElementById("pickingDetailsLotCount");
+
+        if (!rowsContainer || !title || !subtitle || !totalQty || !totalWeight || !lotCount) {
+            return;
+        }
+
+        const targetMoveLines = pickingTarget.move_lines || [];
+        const totalEmbalagens = targetMoveLines.length;
+        const totalPeso = targetMoveLines.reduce(
+            (sum, line) => sum + (Number(line.peso) || 0),
+            0,
+        );
+        const uniqueLots = new Set(
+            targetMoveLines
+                .map((line) => line.lot_id ? String(line.lot_id[1] || "") : "")
+                .filter(Boolean),
+        );
+
+        title.textContent = `PV ${pickingTarget.pv || pickingTarget.reference || "-"}`;
+        subtitle.textContent = `${pickingTarget.pedido_venda_name || "Pedido"} / ${pickingTarget.cliente || "Cliente"}`;
+        totalQty.textContent = String(totalEmbalagens);
+        totalWeight.textContent = `${totalPeso.toFixed(2)} kg`;
+        lotCount.textContent = String(uniqueLots.size);
+        rowsContainer.innerHTML = "";
+
+        if (targetMoveLines.length === 0) {
+            rowsContainer.innerHTML = '<div class="picking-detail-empty">Nenhuma linha encontrada.</div>';
+            window.AppUI.openModal("pickingDetailsModal");
+            return;
+        }
+
+        targetMoveLines.forEach((line) => {
+            const row = document.createElement("div");
+            row.className = "picking-detail-row";
+
+            const quantity = Number(line.qty_done) || Number(line.product_qty) || 0;
+            const peso = Number(line.peso) || 0;
+            const lot = line.lot_id ? line.lot_id[1] : "Não definido";
+
+            row.innerHTML = `
+                <div class="picking-detail-field quantity-field">
+                    <input
+                        class="detail-quantity-input"
+                        type="number"
+                        value="${quantity}"
+                        step="0.01"
+                        min="0"
+                        disabled
+                        readonly
+                    >
+                    <span class="detail-unit">CT</span>
+                </div>
+                <div class="picking-detail-field weight-field">
+                    <input
+                        class="detail-peso-input"
+                        type="number"
+                        value="${peso}"
+                        step="0.01"
+                        min="0"
+                    >
+                    <span class="detail-unit">Kg</span>
+                </div>
+                <div class="picking-detail-lot">${lot}</div>
+            `;
+
+            const pesoInput = row.querySelector(".detail-peso-input");
+            const lineId = Number(line.id ?? line.move_line_id ?? getPickingMoveLineId(pickingTarget));
+
+            pesoInput.addEventListener("change", () => {
+                updatePesoValue(pickingTarget, pesoInput, lineId);
+            });
+
+            rowsContainer.appendChild(row);
+        });
+
+        window.AppUI.openModal("pickingDetailsModal");
+    }
+
+    async function updatePesoValue(picking, input, lineId = null) {
+        const value = Number(input.value);
+
+        if (!Number.isFinite(value) || value < 0) {
+            input.value = Number(input.defaultValue || 0);
+            return;
+        }
+
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch("/api/peso-value", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        picking_id: picking.id,
+                        move_line_id: lineId ?? getPickingMoveLineId(picking),
+                        peso_value: value,
+                    }),
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(data.detail || "Erro ao atualizar peso.");
+                }
+
+                await refreshStageRecords();
+
+                const updatedRecords = inventory.getRecords ? inventory.getRecords() : [];
+                const updatedPicking = updatedRecords.find(
+                    (record) => Number(record.id) === Number(picking.id),
+                );
+
+                if (updatedPicking) {
+                    openPickingDetailsModal(updatedPicking);
+                }
+
+                inventory.showToast("Peso atualizado.");
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar peso:", error);
+            inventory.showToast(
+                error.message || "Erro ao atualizar peso.",
+                "!",
+            );
+        }
+    }
+
+    function createWeightModal() {
         if (weightModal) {
             return weightModal;
         }
@@ -101,22 +276,18 @@
             form.reset();
         }
 
-        // Fechar pelo X
         overlay.querySelector("#closeWeightModal")
             .addEventListener("click", closeModal);
 
-        // Fechar pelo cancelar
         overlay.querySelector("#cancelWeight")
             .addEventListener("click", closeModal);
 
-        // Fechar clicando fora do modal
         overlay.addEventListener("click", function (event) {
             if (event.target === overlay) {
                 closeModal();
             }
         });
 
-        // Fechar pelo ESC
         document.addEventListener("keydown", function (event) {
             if (
                 event.key === "Escape" &&
@@ -126,7 +297,6 @@
             }
         });
 
-        // Confirmar peso
         form.addEventListener("submit", function (event) {
             event.preventDefault();
 
@@ -137,7 +307,6 @@
                 return;
             }
 
-            // Dispara evento para integração com a lógica da estocagem
             overlay.dispatchEvent(
                 new CustomEvent("weight:confirmed", {
                     bubbles: true,
@@ -162,8 +331,9 @@
         }
 
         const moveLines = currentPicking.move_lines || [];
+        const moveLineId = getPickingMoveLineId(currentPicking);
 
-        if (!moveLines.length) {
+        if (!moveLines.length || moveLineId === null) {
             inventory.showToast(
                 "Nenhuma linha de movimentação encontrada para este picking."
             );
@@ -179,7 +349,7 @@
                     },
                     body: JSON.stringify({
                         picking_id: currentPicking.id,
-                        move_line_id: moveLines[0].id,
+                        move_line_id: moveLineId,
                         peso_value: weight
                     })
                 });
@@ -192,18 +362,20 @@
                     );
                 }
 
-                // Atualiza o peso da primeira linha de movimentação.
-                moveLines[0].peso = weight;
-
-                // Recalcula o peso total do picking.
-                currentPicking.totalWeight = moveLines.reduce(
-                    (total, line) => total + Number(line.peso || 0),
-                    0
+                const targetLine = moveLines.find(
+                    (line) => Number(line.id) === Number(moveLineId),
                 );
 
-                // Renderiza novamente os registros.
-                inventory.render();
+                if (targetLine) {
+                    targetLine.peso = weight;
+                }
 
+                currentPicking.totalWeight = moveLines.reduce(
+                    (total, line) => total + Number(line.peso || 0),
+                    0,
+                );
+
+                await refreshStageRecords();
                 inventory.showToast("Peso atualizado com sucesso!");
             });
 
@@ -218,14 +390,18 @@
     }
 
     function enhanceCard(card, picking, context) {
+        const quantityInput = context.main.querySelector(".quantity-input");
+        if (quantityInput) {
+            quantityInput.disabled = true;
+            quantityInput.setAttribute("aria-disabled", "true");
+            quantityInput.title = "Quantidade recebida somente visualização.";
+        }
 
         const addPeso = document.createElement("button");
 
-        // LINHA DE INFORMAÇÕES — PESO
         const weightInfoRow = document.createElement("div");
         weightInfoRow.className = "secondary-info-row";
 
-        // PESO
         const weightBox = document.createElement("div");
         weightBox.className = "weight-box";
 
@@ -245,25 +421,17 @@
 
         weightBox.appendChild(weightLabel);
         weightBox.appendChild(weightValue);
-
-        // Adiciona o campo à linha
         weightInfoRow.appendChild(weightBox);
-
-        // Adiciona a nova linha ao card
         context.main.appendChild(weightInfoRow);
 
         addPeso.type = "button";
-
         addPeso.classList.add(
             "secondary-action",
             "package-action",
             "full-width-action"
         );
+        addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
 
-        addPeso.innerHTML =
-            '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
-
-        // Trava do botão CONCLUÍDO conforme o peso do picking.
         const validationAction = context.createValidationAction(
             undefined,
             totalWeight <= 1
@@ -275,29 +443,80 @@
             validationAction,
         ]);
 
-        // Abre o modal ao clicar
         addPeso.addEventListener("click", function () {
             currentPicking = picking;
-
             const modal = createWeightModal();
-
             modal.classList.remove("hidden");
-
             modal.querySelector("#itemWeight").focus();
         });
-    }
 
-    const inventory = window.AppInventory;
+        const detailsHint = document.createElement("button");
+        detailsHint.type = "button";
+        detailsHint.className = "picking-details-hint";
+        detailsHint.innerHTML = '<span>👁️</span>VER DETALHES';
+        detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
-    if (!inventory) {
-        console.error(
-            "O controlador compartilhado do inventário não foi carregado."
-        );
-        return;
+        detailsHint.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openPickingDetailsModal(picking);
+        });
+
+        card.appendChild(detailsHint);
+
+        card.setAttribute("tabindex", "0");
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openPickingDetailsModal(picking);
+            }
+        });
+
+        card.addEventListener("click", (event) => {
+            if (
+                event.target.closest("button") ||
+                event.target.closest("input") ||
+                event.target.closest("select") ||
+                event.target.closest("textarea") ||
+                event.target.closest("a")
+            ) {
+                return;
+            }
+
+            openPickingDetailsModal(picking);
+        });
     }
 
     inventory.configure({
         enhanceCard,
-    });
+        canEditQuantity: false,
+        refreshRecords: async ({ replaceRecords, showToast }) => {
+            try {
+                const response = await fetch(
+                    `/api/inventario/pickings/refresh/${encodeURIComponent(document.body.dataset.stageKey || "estocagem")}?t=${Date.now()}`,
+                    {
+                        headers: { Accept: "application/json" },
+                        cache: "no-store",
+                    },
+                );
+                const data = await response.json().catch(() => null);
 
+                if (!response.ok || !Array.isArray(data?.records)) {
+                    throw new Error(
+                        data?.detail || "Não foi possível atualizar os registros da estocagem.",
+                    );
+                }
+
+                replaceRecords(data.records);
+            } catch (error) {
+                console.error("Erro ao atualizar registros da estocagem:", error);
+                showToast(
+                    error.message || "Não foi possível atualizar os registros da estocagem.",
+                    "!",
+                );
+            }
+        },
+    });
 }());
