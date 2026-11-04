@@ -1450,6 +1450,13 @@ class InventoryService:
         """
         Cria um alerta de qualidade no Odoo.
         """
+        photos = list(getattr(quality_alert_data, "photos", []) or [])
+        image_fields = {
+            0: "image4_quality_point",
+            1: "image5_quality_point",
+            2: "image6_quality_point",
+        }
+
         vals = {
             "picking_id": quality_alert_data.picking_id,
             "reprovacao": quality_alert_data.reprovacao,
@@ -1459,6 +1466,13 @@ class InventoryService:
             "encontrado_quality": quality_alert_data.encontrado_quality,
             "causas_qa_id": [(6, 0, quality_alert_data.causas_qa_id)],
         }
+
+        for index in range(min(len(photos), 3)):
+            photo = photos[index] or ""
+            if "," in photo:
+                photo = photo.split(",", 1)[1]
+            if photo:
+                vals[image_fields[index]] = photo
 
         print(vals)
 

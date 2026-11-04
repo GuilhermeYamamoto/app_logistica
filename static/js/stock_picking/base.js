@@ -1017,6 +1017,16 @@
             return;
         }
 
+        const photos = await Promise.all(
+            qualityPhotos.map(async (photo) => {
+                if (!photo?.file) {
+                    return "";
+                }
+
+                return readFileAsDataUrl(photo.file);
+            }),
+        );
+
         const payload = {
             picking_id: record.id,
             causas_qa_id: [...selectedQualityCauses],
@@ -1034,6 +1044,7 @@
                 document.getElementById(
                     "encontrado_quality",
                 )?.value.trim() || "",
+            photos: photos.filter(Boolean).slice(0, MAX_QUALITY_PHOTOS),
         };
 
         try {
@@ -1189,6 +1200,16 @@
         renderQualityPhotoCounter();
     }
 
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+            reader.readAsDataURL(file);
+        });
+    }
+
     function selectQualityPhoto(input) {
         const files = Array.from(input.files || []);
 
@@ -1211,6 +1232,7 @@
 
             qualityPhotos.push({
                 id: `${Date.now()}-${Math.random()}`,
+                file,
                 url: URL.createObjectURL(file),
             });
         });
