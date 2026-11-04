@@ -1242,33 +1242,27 @@
     }
 
     function initializeQualityPhotos() {
-        const photoInput = document.getElementById("qualityPhotoInput");
-
-        const openPhotoPicker = (mode) => {
-            if (!photoInput) {
-                return;
-            }
-
-            photoInput.value = "";
-            photoInput.accept = "image/*";
-
-            if (mode === "camera") {
-                photoInput.setAttribute("capture", "environment");
-            } else {
-                photoInput.removeAttribute("capture");
-            }
-
-            photoInput.click();
-        };
+        const cameraInput = document.getElementById("qualityCameraInput");
+        const galleryInput = document.getElementById("qualityGalleryInput");
 
         document.querySelectorAll("[data-quality-photo-action]").forEach((button) => {
             button.addEventListener("click", () => {
                 const action = button.dataset.qualityPhotoAction;
-                openPhotoPicker(action === "camera" ? "camera" : "gallery");
+
+                if (action === "camera") {
+                    cameraInput?.click();
+                    return;
+                }
+
+                galleryInput?.click();
             });
         });
 
-        photoInput?.addEventListener("change", (event) => {
+        cameraInput?.addEventListener("change", (event) => {
+            selectQualityPhoto(event.target);
+        });
+
+        galleryInput?.addEventListener("change", (event) => {
             selectQualityPhoto(event.target);
         });
 
