@@ -89,6 +89,8 @@
     let loadingRequests = 0;
     let qualityCauses = [];
     let selectedQualityCauses = [];
+    let qualityPhotos = [];
+    const MAX_QUALITY_PHOTOS = 3;
 
     const conversations = new Map();
 
@@ -960,6 +962,7 @@
         elements.qualityForm.reset();
 
         selectedQualityCauses = [];
+        resetQualityPhotos();
 
         elements.partialQuantityGroup?.classList.add(
             "hidden",
@@ -1122,6 +1125,126 @@
             elements.qualityCausesList.textContent =
                 "Não foi possível carregar as causas.";
         }
+    }
+
+    function renderQualityPhotoCounter() {
+        const counter = document.getElementById("qualityPhotosCounter");
+
+        if (counter) {
+            counter.textContent = `(${qualityPhotos.length} de ${MAX_QUALITY_PHOTOS})`;
+        }
+    }
+
+    function resetQualityPhotos() {
+        qualityPhotos.forEach((photo) => {
+            if (photo.url) {
+                URL.revokeObjectURL(photo.url);
+            }
+        });
+
+        qualityPhotos = [];
+        renderQualityPhotoList();
+    }
+
+    function renderQualityPhotoList() {
+        const list = document.getElementById("qualityPhotoList");
+
+        if (!list) {
+            renderQualityPhotoCounter();
+            return;
+        }
+
+        list.replaceChildren(
+            ...qualityPhotos.map((photo) => {
+                const item = createElement("div", "quality-photo-item");
+                const image = document.createElement("img");
+                const removeButton = createElement("button", "quality-photo-remove");
+
+                image.className = "quality-photo-preview";
+                image.src = photo.url;
+                image.alt = "Foto adicionada ao alerta de qualidade";
+                image.loading = "lazy";
+
+                removeButton.type = "button";
+                removeButton.setAttribute("aria-label", "Remover foto");
+                removeButton.title = "Remover foto";
+                removeButton.textContent = "×";
+                removeButton.addEventListener("click", () => {
+                    if (photo.url) {
+                        URL.revokeObjectURL(photo.url);
+                    }
+
+                    qualityPhotos = qualityPhotos.filter(
+                        (current) => current.id !== photo.id,
+                    );
+
+                    renderQualityPhotoList();
+                });
+
+                item.append(image, removeButton);
+                return item;
+            }),
+        );
+
+        renderQualityPhotoCounter();
+    }
+
+    function selectQualityPhoto(input) {
+        const files = Array.from(input.files || []);
+
+        if (!files.length) {
+            return;
+        }
+
+        files.forEach((file) => {
+            if (!file || !file.type.startsWith("image/")) {
+                return;
+            }
+
+            if (qualityPhotos.length >= MAX_QUALITY_PHOTOS) {
+                showToast(
+                    "Você pode adicionar até 3 fotos.",
+                    "!",
+                );
+                return;
+            }
+
+            qualityPhotos.push({
+                id: `${Date.now()}-${Math.random()}`,
+                url: URL.createObjectURL(file),
+            });
+        });
+
+        input.value = "";
+        renderQualityPhotoList();
+    }
+
+    function initializeQualityPhotos() {
+        const cameraInput = document.getElementById("qualityCameraInput");
+        const galleryInput = document.getElementById("qualityGalleryInput");
+
+        document.querySelectorAll("[data-quality-photo-action]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const action = button.dataset.qualityPhotoAction;
+
+                if (action === "camera") {
+                    cameraInput?.click();
+                    return;
+                }
+
+                galleryInput?.click();
+            });
+        });
+
+        cameraInput?.addEventListener("change", (event) => {
+            selectQualityPhoto(event.target);
+        });
+
+        galleryInput?.addEventListener("change", (event) => {
+            selectQualityPhoto(event.target);
+        });
+
+        renderQualityPhotoList();
     }
 
     function renderQualityCauses() {
@@ -1614,6 +1737,7 @@
             submitQualityAlert,
         );
 
+        initializeQualityPhotos();
         loadQualityCauses();
     }
 
