@@ -1,7 +1,7 @@
 """Schemas Pydantic para validação de dados."""
 
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -37,6 +37,7 @@ class QualityAlert(BaseModel):
     descricao_geral: str
     especificado_quality: str
     encontrado_quality: str
+    photos: list[str] = Field(default_factory=list)
 
 class ReceivedQuantity(BaseModel):
     """Modelo para atualizar a quantidade recebida."""
