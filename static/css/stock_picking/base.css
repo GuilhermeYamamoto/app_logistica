@@ -1114,8 +1114,8 @@ html[data-theme="dark"] .quality-modal {
 }
 
 .quality-photo-button-red {
-   background: var(--red);
-   border-color: var(--red);
+   background: var(--light-blue);
+   border-color: var(--light-blue);
    color: white;
 }
 

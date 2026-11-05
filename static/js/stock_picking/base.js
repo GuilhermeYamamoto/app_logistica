@@ -1243,7 +1243,6 @@
 
     function initializeQualityPhotos() {
         const cameraInput = document.getElementById("qualityCameraInput");
-        const galleryInput = document.getElementById("qualityGalleryInput");
 
         document.querySelectorAll("[data-quality-photo-action]").forEach((button) => {
             button.addEventListener("click", () => {
@@ -1251,18 +1250,11 @@
 
                 if (action === "camera") {
                     cameraInput?.click();
-                    return;
                 }
-
-                galleryInput?.click();
             });
         });
 
         cameraInput?.addEventListener("change", (event) => {
-            selectQualityPhoto(event.target);
-        });
-
-        galleryInput?.addEventListener("change", (event) => {
             selectQualityPhoto(event.target);
         });
 
