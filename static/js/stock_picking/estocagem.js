@@ -389,6 +389,20 @@
         }
     }
 
+    function isWeightDivergenceActive(picking) {
+        const value = picking?.divergencia_peso_picking;
+
+        if (typeof value === "string") {
+            return ["1", "true", "yes", "y", "t"].includes(value.trim().toLowerCase());
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        return Boolean(value);
+    }
+
     function enhanceCard(card, picking, context) {
         const quantityInput = context.main.querySelector(".quantity-input");
         if (quantityInput) {
@@ -433,8 +447,8 @@
         addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
 
         const validationAction = context.createValidationAction(
-            undefined,
-            totalWeight <= 1
+            "main-action validation-action",
+            isWeightDivergenceActive(picking),
         );
 
         context.replacePrimaryActions([

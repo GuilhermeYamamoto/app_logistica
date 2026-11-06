@@ -200,12 +200,25 @@
         return button;
     }
 
+    function normalizeBooleanValue(value) {
+        if (typeof value === "string") {
+            return ["1", "true", "yes", "y", "t"].includes(value.trim().toLowerCase());
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        return Boolean(value);
+    }
+
     function updateValidationButtonsState(card, record) {
         const shouldDisable = Number(record.receivedQuantity) <= 0;
+        const hasWeightDivergence = normalizeBooleanValue(record.divergencia_peso_picking);
 
         card?.querySelectorAll(".validation-action").forEach((button) => {
             const baseDisabled = button.dataset.baseDisabled === "true";
-            button.disabled = baseDisabled || shouldDisable;
+            button.disabled = baseDisabled || shouldDisable || hasWeightDivergence;
         });
     }
 
