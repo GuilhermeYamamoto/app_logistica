@@ -580,3 +580,13 @@
     pointer-events: none;
     user-select: none;
 }
+
+html:not([data-theme="dark"]) .estoque-banner-clip .estoque-glass-banner {
+    background: rgba(60, 68, 77, 0.72);
+    border-top-color: rgba(255, 255, 255, 0.25);
+    border-bottom-color: rgba(255, 255, 255, 0.25);
+    color: #f5f7fb;
+    box-shadow: 0 0 18px rgba(30, 35, 42, 0.18);
+    backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
