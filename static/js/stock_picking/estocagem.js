@@ -389,6 +389,30 @@
         }
     }
 
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function hasTag(record, tagId) {
+        return normalizeTagIds(record).includes(Number(tagId));
+    }
+
     function isWeightDivergenceActive(picking) {
         const value = picking?.divergencia_peso_picking;
 
@@ -409,6 +433,15 @@
             quantityInput.disabled = true;
             quantityInput.setAttribute("aria-disabled", "true");
             quantityInput.title = "Quantidade recebida somente visualização.";
+        }
+
+        const correctionRequested = hasTag(picking, 34);
+        if (correctionRequested) {
+            card.classList.add("correction-requested");
+            card.dataset.correctionRequested = "true";
+        } else {
+            card.classList.remove("correction-requested");
+            delete card.dataset.correctionRequested;
         }
 
         const addPeso = document.createElement("button");
@@ -446,16 +479,101 @@
         );
         addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
 
+        const hasWeightDivergence = isWeightDivergenceActive(picking);
+
         const validationAction = context.createValidationAction(
             "main-action validation-action",
-            isWeightDivergenceActive(picking),
+            hasWeightDivergence,
         );
 
-        context.replacePrimaryActions([
-            addPeso,
-            context.createQualityAction(),
-            validationAction,
-        ]);
+        const qualityAction = context.createQualityAction();
+        const primaryActions = [addPeso, qualityAction, validationAction];
+
+        if (hasWeightDivergence) {
+            const corrigirPesoDivergente = document.createElement("button");
+
+            corrigirPesoDivergente.type = "button";
+            corrigirPesoDivergente.className = "main-action correction-action";
+            corrigirPesoDivergente.innerHTML =
+                '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
+
+            corrigirPesoDivergente.addEventListener(
+                "click",
+                async () => {
+                    const confirmed = await window.AppUI.confirmAction({
+                        kicker: "CORREÇÃO DE PESO",
+                        title: "CORRIGIR PESO DIVERGENTE",
+                        text: `Deseja solicitar a correção do peso divergente do picking ${picking.pv}?`,
+                        confirmLabel: "CORRIGIR PESO",
+                    });
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    try {
+                        await inventory.runAction(async () => {
+                            const response = await fetch(
+                                `/api/inventario/pickings/${picking.id}/corrigir-peso-divergente`,
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        picking_id: picking.id,
+                                    }),
+                                },
+                            );
+
+                            const data = await response.json().catch(() => ({}));
+
+                            if (!response.ok) {
+                                throw new Error(
+                                    data.detail ||
+                                        "Não foi possível abrir a solicitação de correção.",
+                                );
+                            }
+
+                            const cardElement = corrigirPesoDivergente.closest(".picking-card");
+                            if (cardElement) {
+                                cardElement.classList.add("correction-requested");
+                                cardElement.dataset.correctionRequested = "true";
+                            }
+
+                            if (!Array.isArray(picking.tagIds)) {
+                                picking.tagIds = [];
+                            }
+                            if (!picking.tagIds.includes(34)) {
+                                picking.tagIds.push(34);
+                            }
+
+                            picking.correcao_peso_solicitada = true;
+                            picking.correcaoPesoSolicitada = true;
+                            picking.peso_correcao_solicitada = true;
+
+                            inventory.showToast(
+                                `Solicitada Correção de peso do picking ${picking.pv} com sucesso!`,
+                            );
+                        });
+                    } catch (error) {
+                        console.error(
+                            "Erro ao solicitar correcao de peso:",
+                            error,
+                        );
+                        inventory.showToast(
+                            error.message ||
+                                "Não foi possível solicitar a correção do peso do produto.",
+                            "!",
+                        );
+                    }
+                },
+            );
+
+            primaryActions.splice(1, 0, corrigirPesoDivergente);
+        }
+
+        context.replacePrimaryActions(primaryActions);
 
         addPeso.addEventListener("click", function () {
             currentPicking = picking;
