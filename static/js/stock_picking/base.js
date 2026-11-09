@@ -197,7 +197,61 @@
 
         button.addEventListener("click", onClick);
 
+        if (className && className.includes("print-action")) {
+            startPrintButtonAttention(button);
+        }
+
         return button;
+    }
+
+    function triggerPrintButtonShake(button) {
+        if (!button || button.disabled || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        button.classList.remove("print-action-shaking");
+        void button.offsetWidth;
+        button.classList.add("print-action-shaking");
+
+        window.setTimeout(() => {
+            button.classList.remove("print-action-shaking");
+        }, 700);
+    }
+
+    function startPrintButtonAttention(button) {
+        if (!button || !button.classList.contains("print-action") || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        if (button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        button.dataset.printButtonShakeTimer = String(
+            window.setInterval(() => {
+                triggerPrintButtonShake(button);
+            }, 15000),
+        );
+    }
+
+    function stopPrintButtonAttention(button) {
+        if (!button || !button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        window.clearInterval(Number(button.dataset.printButtonShakeTimer));
+        delete button.dataset.printButtonShakeTimer;
+        button.classList.remove("print-action-shaking");
+    }
+
+    function markPrintButtonPrinted(button) {
+        if (!button || !button.classList.contains("print-action")) {
+            return;
+        }
+
+        button.dataset.printButtonPrinted = "true";
+        stopPrintButtonAttention(button);
+        button.classList.remove("print-action-shaking");
     }
 
     function normalizeBooleanValue(value) {
@@ -1873,14 +1927,17 @@
         hideLoading,
         initialize,
         isActionInProgress: () => actionInProgress,
+        markPrintButtonPrinted,
         openChat,
         openQuality,
         openValidation,
+        registerPrintButtonAttention: startPrintButtonAttention,
         render,
         replaceRecords,
         runAction,
         showLoading,
         showToast,
+        stopPrintButtonAttention,
         updateReceivedQuantity,
     });
 

@@ -772,6 +772,35 @@ body {
     background: #424b5a;
 }
 
+@keyframes print-label-shake {
+    0%,
+    100% {
+        transform: translateX(0) rotate(0deg);
+    }
+    20% {
+        transform: translateX(-2px) rotate(-1deg);
+    }
+    40% {
+        transform: translateX(2px) rotate(1deg);
+    }
+    60% {
+        transform: translateX(-2px) rotate(-0.8deg);
+    }
+    80% {
+        transform: translateX(2px) rotate(0.8deg);
+    }
+}
+
+.print-action-shaking {
+    animation: print-label-shake .7s ease-in-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .print-action-shaking {
+        animation: none;
+    }
+}
+
 .quality-action:disabled {
     background: #d7dce4;
     color: #8b929d;
