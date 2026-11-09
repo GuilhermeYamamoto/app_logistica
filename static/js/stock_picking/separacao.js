@@ -595,7 +595,7 @@
             // Solicita a impressão das etiquetas das embalagens deste picking.
             imprimirEtqPacotes.addEventListener(
                 "click",
-                () => printLabel(picking),
+                () => printLabel(picking, imprimirEtqPacotes),
             );
 
             context.addSecondaryAction(imprimirEtqPacotes);
@@ -779,7 +779,7 @@
 
         // Solicita ao FastAPI os dados da etiqueta e, em seguida,
         // envia esses dados para a impressora IoT.
-        async function printLabel(picking) {
+        async function printLabel(picking, button = null) {
             try {
                 await inventory.runAction(async () => {
                     const response = await fetch(
