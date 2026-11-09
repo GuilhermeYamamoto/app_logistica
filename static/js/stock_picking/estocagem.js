@@ -446,15 +446,17 @@
         );
         addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
 
+        const hasWeightDivergence = isWeightDivergenceActive(picking);
+
         const validationAction = context.createValidationAction(
             "main-action validation-action",
-            isWeightDivergenceActive(picking),
+            hasWeightDivergence,
         );
 
         const qualityAction = context.createQualityAction();
         const primaryActions = [addPeso, qualityAction, validationAction];
 
-        if (isWeightDivergenceActive(picking)) {
+        if (hasWeightDivergence) {
             const corrigirPesoDivergente = document.createElement("button");
 
             corrigirPesoDivergente.type = "button";
