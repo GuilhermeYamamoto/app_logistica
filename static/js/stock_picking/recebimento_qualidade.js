@@ -64,7 +64,7 @@
                 }
 
                 triggerPrintButtonShake(button);
-            }, 3000),
+            }, 2000),
         );
     }
 
