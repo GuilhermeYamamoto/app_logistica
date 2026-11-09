@@ -2172,6 +2172,19 @@ class InventoryService:
                 "peso_medido_cpp": context.get("default_peso_medido_cpp"),
                 "produto_cpp_id": context.get("default_produto_cpp_id"),
                 }])
+
+            client.execute(
+                "stock.picking",
+                "write",
+                [picking_id],
+                {"tag_ids": [(4, 34)]},
+            )
+
+            return {
+                "success": True,
+                "ticket_id": ticket_id,
+                "picking_id": picking_id,
+            }
         except Exception as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
 

@@ -389,6 +389,30 @@
         }
     }
 
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds.map((tag) => {
+            if (Array.isArray(tag)) {
+                return Number(tag[0]);
+            }
+
+            if (tag && typeof tag === "object") {
+                return Number(tag.id);
+            }
+
+            return Number(tag);
+        }).filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function hasTag(record, tagId) {
+        return normalizeTagIds(record).includes(Number(tagId));
+    }
+
     function isWeightDivergenceActive(picking) {
         const value = picking?.divergencia_peso_picking;
 
@@ -409,6 +433,15 @@
             quantityInput.disabled = true;
             quantityInput.setAttribute("aria-disabled", "true");
             quantityInput.title = "Quantidade recebida somente visualização.";
+        }
+
+        const correctionRequested = hasTag(picking, 34);
+        if (correctionRequested) {
+            card.classList.add("correction-requested");
+            card.dataset.correctionRequested = "true";
+        } else {
+            card.classList.remove("correction-requested");
+            delete card.dataset.correctionRequested;
         }
 
         const addPeso = document.createElement("button");
@@ -506,6 +539,13 @@
                             if (cardElement) {
                                 cardElement.classList.add("correction-requested");
                                 cardElement.dataset.correctionRequested = "true";
+                            }
+
+                            if (!Array.isArray(picking.tagIds)) {
+                                picking.tagIds = [];
+                            }
+                            if (!picking.tagIds.includes(34)) {
+                                picking.tagIds.push(34);
                             }
 
                             picking.correcao_peso_solicitada = true;
