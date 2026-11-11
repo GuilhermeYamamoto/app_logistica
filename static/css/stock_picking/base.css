@@ -49,6 +49,7 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
 
     /*
      * Altura base da topbar.
@@ -849,6 +850,270 @@ body {
 }
 
 /* ========================================================= */
+
+/* =========================================================
+   ASSISTENTE IA / WIDGET DE CHAT
+========================================================= */
+
+.assistant-chat-widget {
+   position: fixed;
+   top: 120px;
+   right: 18px;
+   bottom: 18px;
+   left: auto;
+   z-index: 1200;
+   display: flex;
+   flex-direction: column;
+   align-items: flex-end;
+   justify-content: flex-end;
+   gap: 12px;
+   pointer-events: none;
+   margin: 0;
+}
+
+.assistant-widget-toggle {
+   pointer-events: auto;
+   position: relative;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 72px;
+   height: 72px;
+   padding: 0;
+   border: none;
+   border-radius: 22px;
+   background: linear-gradient(135deg, #a44389 0%, #6d46d6 100%);
+   color: #ffffff;
+   box-shadow: 0 18px 40px rgba(26, 22, 58, .28);
+   transition: transform .2s ease, box-shadow .2s ease;
+   cursor: pointer;
+}
+
+.assistant-widget-toggle:hover {
+   transform: translateY(-2px);
+   box-shadow: 0 22px 48px rgba(26, 22, 58, .35);
+}
+
+.assistant-widget-badge {
+   position: absolute;
+   top: 8px;
+   left: 8px;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 22px;
+   height: 22px;
+   border-radius: 8px;
+   background: rgba(255, 255, 255, .18);
+   font-size: 10px;
+   font-weight: 900;
+   letter-spacing: .8px;
+}
+
+.assistant-widget-copy {
+   display: none;
+}
+
+.assistant-widget-icon {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 36px;
+   height: 36px;
+   border-radius: 50%;
+   background: rgba(255, 255, 255, .18);
+   font-size: 20px;
+   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15);
+}
+
+.assistant-chat-panel {
+   width: min(360px, calc(100vw - 24px));
+   max-height: min(72vh, 560px);
+   display: flex;
+   flex-direction: column;
+   background: rgba(15, 23, 42, .96);
+   border: 1px solid rgba(160, 174, 192, .22);
+   border-radius: 24px;
+   box-shadow: 0 25px 60px rgba(15, 23, 42, .4);
+   overflow: hidden;
+   opacity: 0;
+   transform: translate3d(30px, 24px, 0) scale(.96);
+   transform-origin: bottom right;
+   pointer-events: none;
+   transition:
+       transform .28s cubic-bezier(.2, .8, .2, 1),
+       opacity .28s ease,
+       visibility .28s ease;
+   visibility: hidden;
+   pointer-events: none;
+}
+
+.assistant-chat-widget.is-open .assistant-chat-panel {
+   opacity: 1;
+   transform: translate3d(0, 0, 0) scale(1);
+   visibility: visible;
+   pointer-events: auto;
+}
+
+.assistant-chat-header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+   padding: 18px 18px 12px;
+   background: linear-gradient(135deg, rgba(164, 67, 137, .35), rgba(108, 70, 214, .25));
+   border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.assistant-chat-brand {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   color: white;
+}
+
+.assistant-chat-avatar {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 36px;
+   height: 36px;
+   border-radius: 12px;
+   background: linear-gradient(135deg, #fff, rgba(255, 255, 255, .35));
+   color: #6d46d6;
+   font-size: 12px;
+   font-weight: 900;
+}
+
+.assistant-chat-brand strong {
+   display: block;
+   font-size: 14px;
+   font-weight: 900;
+}
+
+.assistant-chat-brand small {
+   color: rgba(255, 255, 255, .75);
+   font-size: 11px;
+}
+
+.assistant-chat-close {
+   width: 34px;
+   height: 34px;
+   border: 0;
+   border-radius: 10px;
+   background: rgba(255, 255, 255, .08);
+   color: white;
+   font-size: 24px;
+   line-height: 1;
+   cursor: pointer;
+}
+
+.assistant-chat-close:hover {
+   background: rgba(255, 255, 255, .16);
+}
+
+.assistant-chat-messages {
+   display: flex;
+   flex-direction: column;
+   gap: 12px;
+   padding: 18px 16px 12px;
+   overflow-y: auto;
+   background: rgba(15, 23, 42, .98);
+   scrollbar-width: thin;
+   scrollbar-color: rgba(164, 67, 137, .6) transparent;
+}
+
+.assistant-message {
+   max-width: 85%;
+   padding: 12px 14px;
+   border-radius: 16px;
+   font-size: 13px;
+   line-height: 1.5;
+   letter-spacing: .01em;
+   box-shadow: 0 10px 25px rgba(0, 0, 0, .12);
+}
+
+.assistant-message-bot {
+   align-self: flex-start;
+   border-bottom-left-radius: 6px;
+   background: rgba(255, 255, 255, .08);
+   color: #edf2ff;
+   border: 1px solid rgba(255, 255, 255, .06);
+}
+
+.assistant-message-user {
+   align-self: flex-end;
+   border-bottom-right-radius: 6px;
+   background: linear-gradient(135deg, #a44389 0%, #6d46d6 100%);
+   color: white;
+}
+
+.assistant-chat-form {
+   display: grid;
+   grid-template-columns: minmax(0, 1fr) auto;
+   gap: 10px;
+   padding: 12px 16px 16px;
+   background: rgba(15, 23, 42, .96);
+   border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.assistant-chat-input-wrap {
+   display: block;
+}
+
+.assistant-chat-input-wrap input {
+   width: 100%;
+   min-height: 46px;
+   border: 1px solid rgba(255, 255, 255, .12);
+   border-radius: 14px;
+   background: rgba(255, 255, 255, .06);
+   color: white;
+   padding: 0 14px;
+   font-size: 14px;
+   outline: none;
+}
+
+.assistant-chat-input-wrap input::placeholder {
+   color: rgba(255, 255, 255, .5);
+}
+
+.assistant-chat-input-wrap input:focus {
+   border-color: rgba(164, 67, 137, .85);
+   box-shadow: 0 0 0 3px rgba(164, 67, 137, .18);
+}
+
+.assistant-chat-send {
+   width: 46px;
+   height: 46px;
+   border: none;
+   border-radius: 14px;
+   background: linear-gradient(135deg, #a44389 0%, #6d46d6 100%);
+   color: white;
+   font-size: 18px;
+   font-weight: 900;
+   cursor: pointer;
+}
+
+.assistant-chat-send:hover {
+   filter: brightness(1.08);
+}
+
+@media (max-width: 480px) {
+   .assistant-chat-widget {
+       right: 12px;
+       bottom: 12px;
+   }
+
+   .assistant-widget-toggle {
+       width: 68px;
+       height: 68px;
+       border-radius: 20px;
+   }
+
+   .assistant-chat-panel {
+       width: min(320px, calc(100vw - 18px));
+   }
+}
 
 /* =========================================================
    MODAIS
