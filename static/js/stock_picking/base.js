@@ -306,6 +306,20 @@
         });
     }
 
+    function getQuantityUnit(record) {
+        const unit = record.uom || record.product_uom || record.product_uom_id || record.productUom || "UN";
+
+        if (Array.isArray(unit) && unit.length > 1) {
+            return String(unit[1] || "UN");
+        }
+
+        if (unit && typeof unit === "object") {
+            return String(unit.name || unit[1] || "UN");
+        }
+
+        return String(unit || "UN");
+    }
+
     function createCard(record) {
         const status = options.getStatus(record);
 
@@ -367,7 +381,7 @@
         quantityInput.disabled = !options.canEditQuantity;
 
         const expectedQuantity = createElement("span", "expected-quantity");
-        expectedQuantity.textContent = `Esperado: ${record.expectedQuantity} unidades`;
+        expectedQuantity.textContent = `Esperado: ${record.expectedQuantity} ${getQuantityUnit(record)}`;
 
         identification.append(
             reference,

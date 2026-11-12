@@ -380,6 +380,12 @@ class InventoryService:
             nf_number = picking["parent_dfe_nfe_infnfe_ide_nnf"]
 
             picking_move_lines = [move_lines_by_id[line_id] for line_id in picking.get("move_line_ids_without_package", []) if line_id in move_lines_by_id]
+            product_uom_name = None
+            for move_line in picking_move_lines:
+                product_uom = move_line.get("product_uom_id")
+                if isinstance(product_uom, (list, tuple)) and len(product_uom) > 1 and product_uom[1]:
+                    product_uom_name = product_uom[1]
+                    break
 
             volume_ids = {package[0] for move_line in picking_move_lines if (package := move_line.get("result_package_id"))}
             material_locations = []
@@ -426,6 +432,7 @@ class InventoryService:
                 "client": (partner[1] if partner else "Sem fornecedor"),
                 "partner": (cliente[1]) if cliente else "Sem cliente",
                 "product": (", ".join(product_names) or "Sem produtos"),
+                "product_uom": product_uom_name or "UN",
                 "expectedQuantity": expected_quantity,
                 "receivedQuantity": received_quantity,
                 "validated": (picking["state"] == "done"),
