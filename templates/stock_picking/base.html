@@ -329,6 +329,40 @@
 
                 </div>
 
+                <div class="form-group quality-photo-field">
+
+                    <label class="quality-photo-label" for="qualityCameraInput">
+                        Adicionar Fotos <span id="qualityPhotosCounter">(0 de 3)</span>
+                    </label>
+
+                    <div class="quality-photo-actions">
+
+                        <button
+                            type="button"
+                            class="quality-photo-button quality-photo-button-red"
+                            data-quality-photo-action="camera"
+                        >
+                            Tirar Foto
+                        </button>
+
+                    </div>
+
+                    <div
+                        id="qualityPhotoList"
+                        class="quality-photo-list"
+                        aria-live="polite"
+                    ></div>
+
+                    <input
+                        id="qualityCameraInput"
+                        class="quality-photo-input"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                    >
+
+                </div>
+
 
                 <div class="modal-footer">
 

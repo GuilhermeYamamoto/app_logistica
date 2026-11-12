@@ -46,6 +46,12 @@ class InventoryService:
                 "template": "stock_picking/separacao.html",
             },
             {
+                "key": "estocagem",
+                "name": "Estocagem",
+                "picking_type_id": 147,
+                "template": "stock_picking/estocagem.html",
+            },
+            {
                 "key": "conferencia-separacao",
                 "name": "Conferência Separação",
                 "picking_type_id": 1200, #Esse picking_type_id nao existe no Odoo, mas é usado no FastAPI para diferenciar a etapa de conferencia de separacao e separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
@@ -130,7 +136,7 @@ class InventoryService:
                     order="scheduled_date asc, id asc",
                 )
             elif picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
@@ -1444,6 +1450,13 @@ class InventoryService:
         """
         Cria um alerta de qualidade no Odoo.
         """
+        photos = list(getattr(quality_alert_data, "photos", []) or [])
+        image_fields = {
+            0: "image4_quality_point",
+            1: "image5_quality_point",
+            2: "image6_quality_point",
+        }
+
         vals = {
             "picking_id": quality_alert_data.picking_id,
             "reprovacao": quality_alert_data.reprovacao,
@@ -1453,6 +1466,13 @@ class InventoryService:
             "encontrado_quality": quality_alert_data.encontrado_quality,
             "causas_qa_id": [(6, 0, quality_alert_data.causas_qa_id)],
         }
+
+        for index in range(min(len(photos), 3)):
+            photo = photos[index] or ""
+            if "," in photo:
+                photo = photo.split(",", 1)[1]
+            if photo:
+                vals[image_fields[index]] = photo
 
         print(vals)
 
@@ -1481,13 +1501,18 @@ class InventoryService:
             move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.picking_id)])
             if not move_lines:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
-            if len(move_lines) > 1:
-                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
-                move_line = [move_line for move_line in move_lines if data.move_line_id == move_line]
-                client.execute("stock.move.line", "write", move_line, {"qty_done": data.received_quantity})
-            else:
-                # Se tiver apenas uma move_line, atualiza diretamente.
-                client.execute("stock.move.line", "write", move_lines, {"qty_done": data.received_quantity})
+
+            target_move_lines = move_lines
+            if getattr(data, "move_line_id", None):
+                target_move_lines = [
+                    move_line_id for move_line_id in move_lines
+                    if move_line_id == data.move_line_id
+                ]
+
+            if not target_move_lines:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma move line foi encontrada para atualizar a quantidade.")
+
+            client.execute("stock.move.line", "write", target_move_lines, {"qty_done": data.received_quantity})
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error
@@ -1511,13 +1536,19 @@ class InventoryService:
             move_lines = client.execute("stock.move.line", "search", [("picking_id", "=", data.get("picking_id"))])
             if not move_lines:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma linha de movimentação encontrada para o picking.")
-            if len(move_lines) > 1:
-                # Se tiver mais de uma move_line, faz o matching pelo ID da move_line específica.
-                move_line = [move_line for move_line in move_lines if data.get("move_line_id") == move_line]
-                client.execute("stock.move.line", "write", move_line, {"peso": data.get("peso_value")})
-            else:
-                # Se tiver apenas uma move_line, atualiza diretamente.
-                client.execute("stock.move.line", "write", move_lines, {"peso": data.get("peso_value")})
+
+            target_move_lines = move_lines
+            move_line_id = data.get("move_line_id")
+            if move_line_id is not None:
+                target_move_lines = [
+                    move_line_id_value for move_line_id_value in move_lines
+                    if move_line_id_value == move_line_id
+                ]
+
+            if not target_move_lines:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma move line foi encontrada para atualizar o peso.")
+
+            client.execute("stock.move.line", "write", target_move_lines, {"peso": data.get("peso_value")})
         except (KeyError, OSError, xmlrpc.client.Error) as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Erro ao atualizar a quantidade " "de itens recebidos")) from error
@@ -2141,6 +2172,19 @@ class InventoryService:
                 "peso_medido_cpp": context.get("default_peso_medido_cpp"),
                 "produto_cpp_id": context.get("default_produto_cpp_id"),
                 }])
+
+            client.execute(
+                "stock.picking",
+                "write",
+                [picking_id],
+                {"tag_ids": [(4, 34)]},
+            )
+
+            return {
+                "success": True,
+                "ticket_id": ticket_id,
+                "picking_id": picking_id,
+            }
         except Exception as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
 

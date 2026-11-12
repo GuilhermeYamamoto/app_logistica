@@ -89,6 +89,8 @@
     let loadingRequests = 0;
     let qualityCauses = [];
     let selectedQualityCauses = [];
+    let qualityPhotos = [];
+    const MAX_QUALITY_PHOTOS = 3;
 
     const conversations = new Map();
 
@@ -195,15 +197,82 @@
 
         button.addEventListener("click", onClick);
 
+        if (className && className.includes("print-action")) {
+            startPrintButtonAttention(button);
+        }
+
         return button;
+    }
+
+    function triggerPrintButtonShake(button) {
+        if (!button || button.disabled || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        button.classList.remove("print-action-shaking");
+        void button.offsetWidth;
+        button.classList.add("print-action-shaking");
+
+        window.setTimeout(() => {
+            button.classList.remove("print-action-shaking");
+        }, 700);
+    }
+
+    function startPrintButtonAttention(button) {
+        if (!button || !button.classList.contains("print-action") || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        if (button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        button.dataset.printButtonShakeTimer = String(
+            window.setInterval(() => {
+                triggerPrintButtonShake(button);
+            }, 15000),
+        );
+    }
+
+    function stopPrintButtonAttention(button) {
+        if (!button || !button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        window.clearInterval(Number(button.dataset.printButtonShakeTimer));
+        delete button.dataset.printButtonShakeTimer;
+        button.classList.remove("print-action-shaking");
+    }
+
+    function markPrintButtonPrinted(button) {
+        if (!button || !button.classList.contains("print-action")) {
+            return;
+        }
+
+        button.dataset.printButtonPrinted = "true";
+        stopPrintButtonAttention(button);
+        button.classList.remove("print-action-shaking");
+    }
+
+    function normalizeBooleanValue(value) {
+        if (typeof value === "string") {
+            return ["1", "true", "yes", "y", "t"].includes(value.trim().toLowerCase());
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        return Boolean(value);
     }
 
     function updateValidationButtonsState(card, record) {
         const shouldDisable = Number(record.receivedQuantity) <= 0;
+        const hasWeightDivergence = normalizeBooleanValue(record.divergencia_peso_picking);
 
         card?.querySelectorAll(".validation-action").forEach((button) => {
             const baseDisabled = button.dataset.baseDisabled === "true";
-            button.disabled = baseDisabled || shouldDisable;
+            button.disabled = baseDisabled || shouldDisable || hasWeightDivergence;
         });
     }
 
@@ -960,6 +1029,7 @@
         elements.qualityForm.reset();
 
         selectedQualityCauses = [];
+        resetQualityPhotos();
 
         elements.partialQuantityGroup?.classList.add(
             "hidden",
@@ -1014,6 +1084,16 @@
             return;
         }
 
+        const photos = await Promise.all(
+            qualityPhotos.map(async (photo) => {
+                if (!photo?.file) {
+                    return "";
+                }
+
+                return readFileAsDataUrl(photo.file);
+            }),
+        );
+
         const payload = {
             picking_id: record.id,
             causas_qa_id: [...selectedQualityCauses],
@@ -1031,6 +1111,7 @@
                 document.getElementById(
                     "encontrado_quality",
                 )?.value.trim() || "",
+            photos: photos.filter(Boolean).slice(0, MAX_QUALITY_PHOTOS),
         };
 
         try {
@@ -1122,6 +1203,129 @@
             elements.qualityCausesList.textContent =
                 "Não foi possível carregar as causas.";
         }
+    }
+
+    function renderQualityPhotoCounter() {
+        const counter = document.getElementById("qualityPhotosCounter");
+
+        if (counter) {
+            counter.textContent = `(${qualityPhotos.length} de ${MAX_QUALITY_PHOTOS})`;
+        }
+    }
+
+    function resetQualityPhotos() {
+        qualityPhotos.forEach((photo) => {
+            if (photo.url) {
+                URL.revokeObjectURL(photo.url);
+            }
+        });
+
+        qualityPhotos = [];
+        renderQualityPhotoList();
+    }
+
+    function renderQualityPhotoList() {
+        const list = document.getElementById("qualityPhotoList");
+
+        if (!list) {
+            renderQualityPhotoCounter();
+            return;
+        }
+
+        list.replaceChildren(
+            ...qualityPhotos.map((photo) => {
+                const item = createElement("div", "quality-photo-item");
+                const image = document.createElement("img");
+                const removeButton = createElement("button", "quality-photo-remove");
+
+                image.className = "quality-photo-preview";
+                image.src = photo.url;
+                image.alt = "Foto adicionada ao alerta de qualidade";
+                image.loading = "lazy";
+
+                removeButton.type = "button";
+                removeButton.setAttribute("aria-label", "Remover foto");
+                removeButton.title = "Remover foto";
+                removeButton.textContent = "×";
+                removeButton.addEventListener("click", () => {
+                    if (photo.url) {
+                        URL.revokeObjectURL(photo.url);
+                    }
+
+                    qualityPhotos = qualityPhotos.filter(
+                        (current) => current.id !== photo.id,
+                    );
+
+                    renderQualityPhotoList();
+                });
+
+                item.append(image, removeButton);
+                return item;
+            }),
+        );
+
+        renderQualityPhotoCounter();
+    }
+
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function selectQualityPhoto(input) {
+        const files = Array.from(input.files || []);
+
+        if (!files.length) {
+            return;
+        }
+
+        files.forEach((file) => {
+            if (!file || !file.type.startsWith("image/")) {
+                return;
+            }
+
+            if (qualityPhotos.length >= MAX_QUALITY_PHOTOS) {
+                showToast(
+                    "Você pode adicionar até 3 fotos.",
+                    "!",
+                );
+                return;
+            }
+
+            qualityPhotos.push({
+                id: `${Date.now()}-${Math.random()}`,
+                file,
+                url: URL.createObjectURL(file),
+            });
+        });
+
+        input.value = "";
+        renderQualityPhotoList();
+    }
+
+    function initializeQualityPhotos() {
+        const cameraInput = document.getElementById("qualityCameraInput");
+
+        document.querySelectorAll("[data-quality-photo-action]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const action = button.dataset.qualityPhotoAction;
+
+                if (action === "camera") {
+                    cameraInput?.click();
+                }
+            });
+        });
+
+        cameraInput?.addEventListener("change", (event) => {
+            selectQualityPhoto(event.target);
+        });
+
+        renderQualityPhotoList();
     }
 
     function renderQualityCauses() {
@@ -1614,6 +1818,7 @@
             submitQualityAlert,
         );
 
+        initializeQualityPhotos();
         loadQualityCauses();
     }
 
@@ -1722,14 +1927,17 @@
         hideLoading,
         initialize,
         isActionInProgress: () => actionInProgress,
+        markPrintButtonPrinted,
         openChat,
         openQuality,
         openValidation,
+        registerPrintButtonAttention: startPrintButtonAttention,
         render,
         replaceRecords,
         runAction,
         showLoading,
         showToast,
+        stopPrintButtonAttention,
         updateReceivedQuantity,
     });
 

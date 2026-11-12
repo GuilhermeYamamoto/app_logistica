@@ -17,6 +17,77 @@
     let currentPhotoPickingId = null;
     const printedLabels = new Set();
     let currentPhotoIndex = null;
+
+    function hasValidPrintLocation(localValue) {
+        const normalized = String(localValue ?? "").trim();
+        return Boolean(normalized) && normalized !== "Não definido" && normalized !== "CD/STO";
+    }
+
+    function triggerPrintButtonShake(button) {
+        if (!button || button.disabled || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        button.classList.remove("print-action-shaking");
+        void button.offsetWidth;
+        button.classList.add("print-action-shaking");
+
+        window.setTimeout(() => {
+            button.classList.remove("print-action-shaking");
+        }, 700);
+    }
+
+    function startPrintButtonAttention(button) {
+        if (!button || button.dataset.printButtonPrinted === "true") {
+            return;
+        }
+
+        if (button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        button.dataset.printButtonShakeTimer = String(
+            window.setInterval(() => {
+                if (!button || !button.isConnected) {
+                    stopPrintButtonAttention(button);
+                    return;
+                }
+
+                if (button.dataset.printButtonPrinted === "true") {
+                    stopPrintButtonAttention(button);
+                    return;
+                }
+
+                if (button.dataset.stopPrintShake === "true") {
+                    stopPrintButtonAttention(button);
+                    return;
+                }
+
+                triggerPrintButtonShake(button);
+            }, 2000),
+        );
+    }
+
+    function stopPrintButtonAttention(button) {
+        if (!button || !button.dataset.printButtonShakeTimer) {
+            return;
+        }
+
+        window.clearInterval(Number(button.dataset.printButtonShakeTimer));
+        delete button.dataset.printButtonShakeTimer;
+        button.classList.remove("print-action-shaking");
+    }
+
+    function markPrintButtonPrinted(button) {
+        if (!button) {
+            return;
+        }
+
+        button.dataset.printButtonPrinted = "true";
+        button.dataset.stopPrintShake = "true";
+        stopPrintButtonAttention(button);
+        button.classList.remove("print-action-shaking");
+    }
     let photoSession = [];
     let photosSaving = false;
     let barcodeScanner = null;
@@ -101,14 +172,24 @@
             ),
         );
 
-        context.addSecondaryAction(
-            context.createAction({
-                className: "secondary-action print-action",
-                label: "IMPRIMIR ETIQUETA",
-                icon: "🖨️",
-                onClick: () => printLabel(picking),
-            }),
-        );
+        const shouldAnimatePrintButton = hasValidPrintLocation(picking.local);
+
+        const printButton = context.createAction({
+            className: "secondary-action print-action",
+            label: "IMPRIMIR ETIQUETA",
+            icon: "🖨️",
+            onClick: () => printLabel(picking, printButton),
+        });
+
+        printButton.dataset.stopPrintShake = shouldAnimatePrintButton ? "false" : "true";
+        if (shouldAnimatePrintButton) {
+            stopPrintButtonAttention(printButton);
+            startPrintButtonAttention(printButton);
+        } else {
+            stopPrintButtonAttention(printButton);
+        }
+
+        context.addSecondaryAction(printButton);
 
         context.addSecondaryAction(
             context.createAction({
@@ -991,7 +1072,7 @@
         return "Não foi possível iniciar a câmera. Tente novamente.";
     }
 
-    async function printLabel(picking) {
+    async function printLabel(picking, button = null) {
         if (inventory.isActionInProgress()) {
             return;
         }
@@ -1022,6 +1103,9 @@
                     throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
                 }
                 printedLabels.add(picking.id);
+                if (button) {
+                    markPrintButtonPrinted(button);
+                }
 
                 inventory.render();
 
