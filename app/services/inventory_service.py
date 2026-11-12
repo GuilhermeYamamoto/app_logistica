@@ -374,6 +374,10 @@ class InventoryService:
                 if not local:
                     local = picking["x_studio_local_do_material"]
 
+            if picking_type_id == 119:
+                local = picking["x_studio_local_do_material"]
+
+
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
             cliente = picking["partner_id"]
