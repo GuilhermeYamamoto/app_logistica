@@ -2105,7 +2105,7 @@ class InventoryService:
         try:
             picking_id = data.get("picking_id")
             # Forma de executar uma ação no servidor do Odoo via XML-RPC:
-            result = client.execute("ir.actions.server", "run", [2238], context = {
+            result = client.execute("ir.actions.server", "run", [2226], context = {
                                                                     "active_model": "stock.picking",
                                                                     "active_ids": [picking_id],
                                                                     "active_id": picking_id})
