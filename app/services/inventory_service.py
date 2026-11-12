@@ -18,6 +18,28 @@ class InventoryService:
     READY_TO_PRINT_STAGE_ID = 1480
 
     @staticmethod
+    def get_required_photo_count(picking: Dict[str, Any] | None) -> int:
+        if not picking:
+            return 3
+
+        state = str(picking.get("state") or "").strip().lower()
+        if state != "assigned":
+            return 3
+
+        picking_type_id = picking.get("picking_type_id")
+        if isinstance(picking_type_id, (list, tuple)) and picking_type_id:
+            picking_type_id = picking_type_id[0]
+
+        if int(picking_type_id or 0) != 137:
+            return 3
+
+        beneficio = picking.get("x_studio_possui_beneficiamento")
+        if beneficio in (True, 1, "1", "true", "True"):
+            return 2
+
+        return 3
+
+    @staticmethod
     def get_inventory_stages() -> List[Dict[str, Any]]:
         """Retorna as etapas de inventário."""
         return [
@@ -132,11 +154,13 @@ class InventoryService:
                         "user_id",
                         "tag_ids",
                         "batch_id",
+                        "picking_type_id",
+                        "x_studio_possui_beneficiamento",
                     ],
                     order="scheduled_date asc, id asc",
                 )
             elif picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking", "x_studio_local_do_material", "picking_type_id", "x_studio_possui_beneficiamento"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
@@ -426,7 +450,9 @@ class InventoryService:
                 photo_count = len(photo_relation)
             else:
                 photo_count = int(photo_relation or 0)
-            
+
+            required_photo_count = InventoryService.get_required_photo_count(picking)
+
             record = {
                 "nf_number": nf_number,
                 "id": picking["id"],
@@ -441,9 +467,17 @@ class InventoryService:
                 "receivedQuantity": received_quantity,
                 "validated": (picking["state"] == "done"),
                 "state": picking["state"],
+                "picking_type_id": (
+                    picking["picking_type_id"][0]
+                    if picking.get("picking_type_id")
+                    and isinstance(picking.get("picking_type_id"), (list, tuple))
+                    else picking.get("picking_type_id")
+                ),
+                "x_studio_possui_beneficiamento": picking.get("x_studio_possui_beneficiamento", False),
                 "scheduledDate": picking["scheduled_date"],
                 "photoCount": photo_count,
-                "photosRegistered": photo_count >= 3,
+                "requiredPhotoCount": required_photo_count,
+                "photosRegistered": photo_count >= required_photo_count,
                 "barcodeRegistered": bool(barcode_registered),
                 "local": local,
                 "cliente": (cliente[1] if cliente else "Cliente não definido"),
@@ -1581,8 +1615,23 @@ class InventoryService:
     def save_picking_photos(client, data):
         if not data.photos:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhuma foto foi enviada.")
-        if len(data.photos) < 3:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="É necessário registrar pelo menos 3 fotos.")
+
+        picking_info = client.execute(
+            "stock.picking",
+            "search_read",
+            [("id", "=", data.picking_id)],
+            fields=["state", "picking_type_id", "x_studio_possui_beneficiamento"],
+            limit=1,
+        )
+        required_photo_count = InventoryService.get_required_photo_count(
+            picking_info[0] if picking_info else {}
+        )
+
+        if len(data.photos) < required_photo_count:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"É necessário registrar pelo menos {required_photo_count} fotos.",
+            )
         try:
             created_ids = []
             for photo in data.photos:
@@ -1602,8 +1651,11 @@ class InventoryService:
                 }
                 created_id = client.execute("stock.picking.picture", "create", [vals],)
                 created_ids.append(created_id)
-            if len(created_ids) < 3:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="É necessário registrar pelo menos 3 fotos válidas.")
+            if len(created_ids) < required_photo_count:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"É necessário registrar pelo menos {required_photo_count} fotos válidas.",
+                )
             return {
                 "success": True,
                 "message": "Fotos registradas com sucesso.",
