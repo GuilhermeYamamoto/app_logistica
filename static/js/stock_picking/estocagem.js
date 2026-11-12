@@ -94,6 +94,9 @@
 
             const quantity = Number(line.qty_done) || Number(line.product_qty) || 0;
             const peso = Number(line.peso) || 0;
+            const productUom = Array.isArray(line.product_uom_id)
+                ? (line.product_uom_id[1] || "UN")
+                : (line.product_uom || line.uom || "UN");
             const lot = line.lot_id ? line.lot_id[1] : "Não definido";
 
             row.innerHTML = `
@@ -107,7 +110,7 @@
                         disabled
                         readonly
                     >
-                    <span class="detail-unit">CT</span>
+                    <span class="detail-unit">${productUom}</span>
                 </div>
                 <div class="picking-detail-field weight-field">
                     <input
