@@ -374,6 +374,10 @@ class InventoryService:
                 if not local:
                     local = picking["x_studio_local_do_material"]
 
+            if picking_type_id == 119:
+                local = picking["x_studio_local_do_material"]
+
+
             barcode_registered = bool(local)
             partner = picking["pedido_compra_id"]
             cliente = picking["partner_id"]
@@ -2136,7 +2140,7 @@ class InventoryService:
         try:
             picking_id = data.get("picking_id")
             # Forma de executar uma ação no servidor do Odoo via XML-RPC:
-            result = client.execute("ir.actions.server", "run", [2226], context = {
+            result = client.execute("ir.actions.server", "run", [2238], context = {
                                                                     "active_model": "stock.picking",
                                                                     "active_ids": [picking_id],
                                                                     "active_id": picking_id})
