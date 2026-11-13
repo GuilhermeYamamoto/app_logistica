@@ -1623,20 +1623,31 @@ class InventoryService:
             fields=["state", "picking_type_id", "x_studio_possui_beneficiamento"],
             limit=1,
         )
-        required_photo_count = InventoryService.get_required_photo_count(
-            picking_info[0] if picking_info else {}
-        )
+        picking_data = picking_info[0] if picking_info else {}
+        required_photo_count = InventoryService.get_required_photo_count(picking_data)
 
-        if len(data.photos) < required_photo_count:
+        valid_photos = [photo for photo in data.photos if photo]
+        if not valid_photos:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhuma foto válida foi enviada.")
+
+        if len(valid_photos) < required_photo_count:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"É necessário registrar pelo menos {required_photo_count} fotos.",
             )
+
+        if (
+            required_photo_count == 2
+            and str(picking_data.get("state") or "").strip().lower() == "assigned"
+            and int(picking_data.get("picking_type_id", [0])[0] if isinstance(picking_data.get("picking_type_id"), (list, tuple)) else picking_data.get("picking_type_id") or 0) == 137
+            and picking_data.get("x_studio_possui_beneficiamento") in (True, 1, "1", "true", "True")
+            and len(valid_photos) == 2
+        ):
+            valid_photos = [valid_photos[0], valid_photos[1], valid_photos[1]]
+
         try:
             created_ids = []
-            for photo in data.photos:
-                if not photo:
-                    continue
+            for photo in valid_photos:
                 image_base64 = photo
                 # Remove o prefixo:
                 # data:image/jpeg;base64,...
