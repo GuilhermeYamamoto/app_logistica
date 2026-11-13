@@ -638,19 +638,52 @@
            pesoTotalValue.textContent = total.toFixed(2);
        }
 
+       function formatProductIdValue(value) {
+           if (value === null || value === undefined || value === "") {
+               return "Produto não informado";
+           }
+
+           if (Array.isArray(value)) {
+               if (value.length > 1 && value[1]) {
+                   return String(value[1]);
+               }
+               if (value.length > 0 && value[0] !== null && value[0] !== undefined) {
+                   return String(value[0]);
+               }
+               return "Produto não informado";
+           }
+
+           if (typeof value === "object") {
+               if (value.name) {
+                   return String(value.name);
+               }
+               if (value.code) {
+                   return String(value.code);
+               }
+               if (value.id !== null && value.id !== undefined) {
+                   return String(value.id);
+               }
+               return "Produto não informado";
+           }
+
+           return String(value);
+       }
+
        function openPickingDetailsModal(pickingTarget) {
            const rowsContainer = document.getElementById("pickingDetailsRows");
            const title = document.getElementById("pickingDetailsTitle");
+           const productIdEl = document.getElementById("pickingDetailsProductId");
            const subtitle = document.getElementById("pickingDetailsSubtitle");
            const totalQty = document.getElementById("pickingDetailsTotalQty");
            const totalWeight = document.getElementById("pickingDetailsTotalWeight");
            const lotCount = document.getElementById("pickingDetailsLotCount");
 
-           if (!rowsContainer || !title || !subtitle || !totalQty || !totalWeight || !lotCount) {
+           if (!rowsContainer || !title || !productIdEl || !subtitle || !totalQty || !totalWeight || !lotCount) {
                return;
            }
 
            const targetMoveLines = pickingTarget.move_lines || [];
+           const targetProductId = pickingTarget.product_id || targetMoveLines.find((line) => line?.product_id)?.product_id || null;
            const totalEmbalagens = targetMoveLines.length;
            const totalPeso = targetMoveLines.reduce(
                (sum, line) => sum + (Number(line.peso) || 0),
@@ -663,7 +696,8 @@
            );
 
            title.textContent = `PV ${pickingTarget.pv || pickingTarget.reference || "-"}`;
-           subtitle.textContent = `${pickingTarget.pedido_venda_name || "Pedido"} / ${pickingTarget.cliente || "Cliente"}`;
+           productIdEl.textContent = `${formatProductIdValue(targetProductId)}`;
+           subtitle.textContent = `Pedido de venda: ${pickingTarget.pedido_venda_name || "Não informado"}`;
            totalQty.textContent = String(totalEmbalagens);
            totalWeight.textContent = `${totalPeso.toFixed(2)} kg`;
            lotCount.textContent = String(uniqueLots.size);
@@ -681,7 +715,9 @@
 
                const quantity = Number(line.qty_done) || 0;
                const peso = Number(line.peso) || 0;
-               const productUom = line.product_uom_id ? line.product_uom_id[1] : "";
+               const productUom = Array.isArray(line.product_uom_id)
+                   ? (line.product_uom_id[1] || "UN")
+                   : (line.product_uom || line.uom || "UN");
                const lot = line.lot_id ? line.lot_id[1] : "Não definido";
 
                row.innerHTML = `
@@ -693,7 +729,7 @@
                            step="0.01"
                            min="0"
                        >
-                       <span class="detail-unit">CT</span>
+                       <span class="detail-unit">${productUom}</span>
                    </div>
                    <div class="picking-detail-field weight-field">
                        <input

@@ -7,11 +7,20 @@
         return;
     }
 
-    const photoInstructions = [
-        "Tirar foto da EMBALAGEM",
-        "Tirar foto do PRODUTO",
-        "Tirar foto da AMOSTRAGEM",
-    ];
+    function getPhotoInstructions(picking) {
+        if (getRequiredPhotoCount(picking) === 2) {
+            return [
+                "Tirar foto do PRODUTO DENTRO DA EMBALAGEM",
+                "Tirar foto da AMOSTRAGEM",
+            ];
+        }
+
+        return [
+            "Tirar foto da EMBALAGEM",
+            "Tirar foto do PRODUTO",
+            "Tirar foto da AMOSTRAGEM",
+        ];
+    }
 
     let filteredPickingIds = null;
     let currentPhotoPickingId = null;
@@ -108,14 +117,35 @@
         };
     }
 
+    function getRequiredPhotoCount(picking) {
+        const isAssignedPicking = String(picking?.state ?? "").trim().toLowerCase() === "assigned";
+        const isQualityPicking = Number(picking?.picking_type_id ?? 137) === 137;
+        const rawBeneficiamento = picking?.x_studio_possui_beneficiamento;
+        const hasBeneficiamento =
+            rawBeneficiamento === true ||
+            rawBeneficiamento === 1 ||
+            rawBeneficiamento === "true" ||
+            rawBeneficiamento === "1";
+
+        if (isQualityPicking && isAssignedPicking && hasBeneficiamento) {
+            return 2;
+        }
+
+        return 3;
+    }
+
     function getPickingStatus(picking) {
+        const requiredPhotoCount = getRequiredPhotoCount(picking);
+
         if (picking.validated) {
             return { label: "CONCLUÍDO", className: "status-completed" };
         }
-        if (picking.photos?.length >= 3 && picking.photos.every((photo) => photo !== null)) {
+
+        const photoCount = Number(picking.photoCount || picking.photos?.length || 0);
+        if (photoCount >= requiredPhotoCount && (!picking.photos || picking.photos.every((photo) => photo !== null))) {
             return { label: "PRONTO PARA VALIDAR", className: "status-ready" };
         }
-        if (picking.photos?.length || picking.photosRegistered) {
+        if (photoCount > 0 || picking.photosRegistered) {
             return { label: "FOTOS CONCLUÍDAS", className: "status-photos" };
         }
         return { label: "AGUARDANDO FOTOS", className: "status-waiting" };
@@ -262,6 +292,7 @@
     async function beforeValidate(picking) {
         const hasValidLocation =
             picking.local && picking.local !== "CD/STO";
+        const requiredPhotoCount = getRequiredPhotoCount(picking);
 
         if (picking.photosRegistered && hasValidLocation) {
             return true;
@@ -271,7 +302,7 @@
 
         if (!picking.photosRegistered) {
             inventory.showToast(
-                "É necessário registrar pelo menos 3 fotos antes de validar o pedido.",
+                `É necessário registrar pelo menos ${requiredPhotoCount} fotos antes de validar o pedido.`,
                 "!",
             );
             return false;
@@ -453,13 +484,16 @@
         });
         grid.append(addPhotoButton);
 
+        const picking = inventory.getRecord(currentPhotoPickingId) || {};
+        const requiredPhotoCount = getRequiredPhotoCount(picking);
+        const photoInstructions = getPhotoInstructions(picking);
         const count = photoSession.length;
         progressText.textContent = `${count} FOTOS`;
         photoInstruction.textContent = photoInstructions[count] || "Tirar fotos adicionais, se necessário";
-        progressBar.style.width = `${Math.min((count / 3) * 100, 100)}%`;
-        finishButton.disabled = count < 3 || photosSaving;
-        photoMessage.textContent = count < 3
-            ? `Faltam ${3 - count} foto(s). É necessário registrar pelo menos 3 fotos.`
+        progressBar.style.width = `${Math.min((count / requiredPhotoCount) * 100, 100)}%`;
+        finishButton.disabled = count < requiredPhotoCount || photosSaving;
+        photoMessage.textContent = count < requiredPhotoCount
+            ? `Faltam ${requiredPhotoCount - count} foto(s). É necessário registrar pelo menos ${requiredPhotoCount} fotos.`
             : `✓ ${count} fotos adicionadas. Você pode registrar as fotos.`;
     }
 
@@ -478,8 +512,10 @@
         if (!picking || photosSaving || inventory.isActionInProgress()) {
             return;
         }
-        if (photoSession.length < 3) {
-            inventory.showToast("É necessário registrar pelo menos 3 fotos.", "!");
+
+        const requiredPhotoCount = getRequiredPhotoCount(picking);
+        if (photoSession.length < requiredPhotoCount) {
+            inventory.showToast(`É necessário registrar pelo menos ${requiredPhotoCount} fotos.`, "!");
             return;
         }
 
@@ -517,7 +553,7 @@
         } finally {
             photosSaving = false;
             if (finishButton) {
-                finishButton.disabled = photoSession.length < 3;
+                finishButton.disabled = photoSession.length < requiredPhotoCount;
                 finishButton.textContent = originalText;
             }
         }
