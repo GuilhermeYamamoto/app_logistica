@@ -357,66 +357,6 @@
         gestureCaptured = Boolean(value);
     }
 
-    function initializeAssistantChat() {
-        const widget = getElement("assistantChatWidget");
-        const toggle = getElement("assistantWidgetToggle");
-        const panel = getElement("assistantChatPanel");
-        const closeButton = getElement("assistantChatClose");
-        const form = getElement("assistantChatForm");
-        const input = getElement("assistantChatInput");
-        const messages = getElement("assistantChatMessages");
-
-        if (!widget || !toggle || !panel || !closeButton || !form || !input || !messages) {
-            return;
-        }
-
-        function setOpen(isOpen) {
-            widget.classList.toggle("is-open", isOpen);
-            toggle.setAttribute("aria-expanded", String(isOpen));
-            panel.setAttribute("aria-hidden", String(!isOpen));
-
-            if (isOpen) {
-                window.setTimeout(() => input.focus(), 120);
-            }
-        }
-
-        toggle.addEventListener("click", () => {
-            setOpen(!widget.classList.contains("is-open"));
-        });
-
-        closeButton.addEventListener("click", () => setOpen(false));
-
-        form.addEventListener("submit", (event) => {
-            event.preventDefault();
-
-            const text = input.value.trim();
-            if (!text) {
-                return;
-            }
-
-            const userMessage = document.createElement("div");
-            userMessage.className = "assistant-message assistant-message-user";
-            userMessage.textContent = text;
-            messages.appendChild(userMessage);
-            messages.scrollTop = messages.scrollHeight;
-            input.value = "";
-
-            window.setTimeout(() => {
-                const botMessage = document.createElement("div");
-                botMessage.className = "assistant-message assistant-message-bot";
-                botMessage.textContent = "Entendi. Posso ajudar a priorizar os itens, revisar pendências e orientar a próxima ação com base no contexto da etapa.";
-                messages.appendChild(botMessage);
-                messages.scrollTop = messages.scrollHeight;
-            }, 350);
-        });
-
-        document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape" && widget.classList.contains("is-open")) {
-                setOpen(false);
-            }
-        });
-    }
-
     function createBarcodeScanner({ video, onResult, onError }) {
         let controls = null;
         let reader = null;
@@ -453,7 +393,6 @@
     window.AppUI = Object.freeze({
         createBarcodeScanner,
         hideLoading,
-        initializeAssistantChat,
         initializeModals,
         initializeTheme,
         initializePullToRefresh,
@@ -467,7 +406,6 @@
     });
 
     initializeTheme();
-    initializeAssistantChat();
     initializeModals();
     initializePullToRefresh();
 }());

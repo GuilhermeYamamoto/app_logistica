@@ -63,67 +63,6 @@
             <span id="toastMessage">Operação realizada.</span>
         </div>
 
-        {% if stage is defined %}
-        <div class="assistant-chat-widget" id="assistantChatWidget">
-            <button
-                type="button"
-                id="assistantWidgetToggle"
-                class="assistant-widget-toggle"
-                aria-expanded="false"
-                aria-controls="assistantChatPanel"
-                aria-label="Abrir assistente de IA"
-            >
-                <span class="assistant-widget-badge">AI</span>
-                <span class="assistant-widget-icon">💬</span>
-            </button>
-
-            <aside id="assistantChatPanel" class="assistant-chat-panel" aria-hidden="true">
-                <header class="assistant-chat-header">
-                    <div class="assistant-chat-brand">
-                        <span class="assistant-chat-avatar">AI</span>
-                        <div>
-                            <strong>Assistente</strong>
-                            <small>Disponível agora</small>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        id="assistantChatClose"
-                        class="assistant-chat-close"
-                        aria-label="Fechar assistente"
-                    >×</button>
-                </header>
-
-                <div class="assistant-chat-messages" id="assistantChatMessages">
-                    <div class="assistant-message assistant-message-bot">
-                        Olá! Posso ajudar com dúvidas rápidas da operação, status de processos e próximos passos da etapa.
-                    </div>
-                    <div class="assistant-message assistant-message-user">
-                        Quero conferir o andamento da separação.
-                    </div>
-                    <div class="assistant-message assistant-message-bot">
-                        Claro! Acompanhe os registros pendentes, em andamento e concluídos pela etapa para priorizar a fila.
-                    </div>
-                </div>
-
-                <form class="assistant-chat-form" id="assistantChatForm">
-                    <label class="assistant-chat-input-wrap" for="assistantChatInput">
-                        <input
-                            id="assistantChatInput"
-                            type="text"
-                            maxlength="500"
-                            placeholder="Pergunte algo..."
-                            autocomplete="off"
-                        >
-                    </label>
-                    <button type="submit" class="assistant-chat-send" aria-label="Enviar mensagem">
-                        ➤
-                    </button>
-                </form>
-            </aside>
-        </div>
-        {% endif %}
-
         <script
             src="{{ url_for('static', path='js/base/base.js') }}?v={{ static_asset_version('js/base/base.js') }}"
         ></script>

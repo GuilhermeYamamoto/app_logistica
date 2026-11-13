@@ -15,12 +15,6 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-#assistantChatWidget {
-    position: fixed !important;
-    inset: auto 24px 24px auto !important;
-    z-index: 1200 !important;
-}
-
 .home-page {
     min-height: 100vh;
     padding: 0 32px 48px;
