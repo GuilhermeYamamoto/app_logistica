@@ -462,6 +462,16 @@ class InventoryService:
                 "client": (partner[1] if partner else "Sem fornecedor"),
                 "partner": (cliente[1]) if cliente else "Sem cliente",
                 "product": (", ".join(product_names) or "Sem produtos"),
+                "product_id": (
+                    next(
+                        (
+                            move_line.get("product_id")
+                            for move_line in picking_move_lines
+                            if move_line.get("product_id")
+                        ),
+                        None,
+                    )
+                ),
                 "product_uom": product_uom_name or "UN",
                 "expectedQuantity": expected_quantity,
                 "receivedQuantity": received_quantity,

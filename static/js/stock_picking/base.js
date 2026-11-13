@@ -355,7 +355,7 @@
         );
 
         const supplier = createElement("div", "client-info");
-        const product = createElement("div", "product-info");
+        const product = createElement("div", "product-info");  //Variável que indica o código do produto
         const quantity = createElement("div", "quantity-box");
         const primaryActions = createElement("div", "picking-actions");
         const secondaryActions = createElement(
