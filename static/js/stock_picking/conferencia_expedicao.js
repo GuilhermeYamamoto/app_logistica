@@ -84,6 +84,16 @@
                 ),
             ),
         );
+        const carriers = Array.from(
+            new Set(
+                group.records.flatMap((record) => {
+                    const carrier = record.carrier || record.carrierName || record.carrier_id;
+                    return carrier !== null && carrier !== undefined && carrier !== ""
+                        ? [String(carrier)]
+                        : [];
+                }),
+            ),
+        );
 
         return {
             volumeCount,
@@ -91,6 +101,7 @@
             stagePickingCount,
             totalPickingCount,
             locations,
+            carriers,
         };
     }
 
@@ -326,6 +337,12 @@
                     summary.locations.length
                         ? summary.locations.join(", ")
                         : "Não definido",
+                ),
+                createSummaryField(
+                    "Transportadora",
+                    summary.carriers.length
+                        ? summary.carriers.join(", ")
+                        : "Não definida",
                 ),
             );
 
