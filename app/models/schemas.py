@@ -39,6 +39,16 @@ class QualityAlert(BaseModel):
     encontrado_quality: str
     photos: list[str] = Field(default_factory=list)
 
+class MissingMaterialHelpdesk(BaseModel):
+    """Dados do ticket de falta de material."""
+
+    picking_id: int
+    qtd_demanda_fms: float
+    qtd_separada_fms: float
+    qtd_falta_fms: float
+    disposicao_falta_fms: str
+
+
 class ReceivedQuantity(BaseModel):
     """Modelo para atualizar a quantidade recebida."""
 

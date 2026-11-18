@@ -389,6 +389,71 @@
 
     </div>
 
+    <!-- MISSING MATERIAL HELPDESK MODAL -->
+    <div id="missingMaterialModal" class="modal-overlay hidden">
+        <div class="modal missing-material-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker quality-kicker">FALTA DE MATERIAL</span>
+                    <h2>RESOLVER OCORRÊNCIA</h2>
+                    <p>Informações para abertura no Helpdesk</p>
+                </div>
+                <button class="close-modal" type="button" data-close="missingMaterialModal">×</button>
+            </div>
+
+            <form id="missingMaterialForm">
+                <div class="form-group">
+                    <label for="missingMaterialPicking">Picking</label>
+                    <input id="missingMaterialPicking" type="text" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="missingMaterialQtdDemanda">Quantidade da Demanda</label>
+                    <input id="missingMaterialQtdDemanda" type="number" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="missingMaterialQtdSeparada">Quantidade Separada</label>
+                    <input id="missingMaterialQtdSeparada" type="number" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="missingMaterialQtdFalta">Quantidade Faltante</label>
+                    <input id="missingMaterialQtdFalta" type="number" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="missingMaterialDisposicao">Disposição da Falta</label>
+                    <input id="missingMaterialDisposicao" type="hidden" value="">
+                    <button
+                        id="missingMaterialDispositionSelector"
+                        class="missing-material-disposition-selector"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                    >
+                        <span id="missingMaterialDispositionSelected">Selecione uma opção</span>
+                        <span class="missing-material-disposition-arrow">▾</span>
+                    </button>
+                    <div
+                        id="missingMaterialDispositionDropdown"
+                        class="missing-material-disposition-dropdown hidden"
+                        role="listbox"
+                    >
+                        <button type="button" role="option" data-value="abrir_alerta_qualidade">Abrir Alerta de Qualidade</button>
+                        <button type="button" role="option" data-value="liberar_qtd_faltante">Liberar Quantidade Faltante</button>
+                        <button type="button" role="option" data-value="solicitar_estoque">Solicitar Estoque</button>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="secondary-button" data-close="missingMaterialModal">CANCELAR</button>
+                    <button type="submit" class="quality-button">ABRIR TICKET</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {% block inventory_modals %}{% endblock %}
 {% endblock %}
 
