@@ -3,6 +3,7 @@
 
     const inventory = window.AppInventory;
     let activePVKey = null;
+    let selectedMissingMaterialPicking = null;
 
     if (!inventory) {
         console.error(
@@ -88,6 +89,145 @@
         return button;
     }
 
+    function normalizeTagIds(record) {
+        const rawTagIds = Array.isArray(record?.tagIds)
+            ? record.tagIds
+            : Array.isArray(record?.tag_ids)
+                ? record.tag_ids
+                : [];
+
+        return rawTagIds
+            .map((tag) => {
+                if (Array.isArray(tag)) {
+                    return Number(tag[0]);
+                }
+
+                if (tag && typeof tag === "object") {
+                    return Number(tag.id ?? tag.value ?? tag.tag_id ?? 0);
+                }
+
+                return Number(tag);
+            })
+            .filter((tagId) => Number.isFinite(tagId));
+    }
+
+    function hasMissingMaterialTag(record) {
+        return normalizeTagIds(record).includes(38);
+    }
+
+    function openMissingMaterialModal(picking) {
+        selectedMissingMaterialPicking = picking;
+
+        const pickingName = document.getElementById("missingMaterialPicking");
+        const qtdDemanda = document.getElementById("missingMaterialQtdDemanda");
+        const qtdSeparada = document.getElementById("missingMaterialQtdSeparada");
+        const qtdFalta = document.getElementById("missingMaterialQtdFalta");
+        const disposicao = document.getElementById("missingMaterialDisposicao");
+        const dispositionSelected = document.getElementById("missingMaterialDispositionSelected");
+
+        if (pickingName) {
+            pickingName.value = picking?.reference || picking?.name || `Picking ${picking?.id || ""}`;
+        }
+        if (qtdDemanda) {
+            qtdDemanda.value = String(Number(picking?.expectedQuantity || 0));
+        }
+        if (qtdSeparada) {
+            qtdSeparada.value = String(Number(picking?.receivedQuantity || 0));
+        }
+        if (qtdFalta) {
+            const demanda = Number(picking?.expectedQuantity || 0);
+            const separada = Number(picking?.receivedQuantity || 0);
+            qtdFalta.value = String(Math.max(0, demanda - separada));
+        }
+        if (disposicao) {
+            disposicao.value = "";
+        }
+        if (dispositionSelected) {
+            dispositionSelected.textContent = "Selecione uma opção";
+        }
+
+        closeMissingMaterialDispositionDropdown();
+
+        window.AppUI.openModal("missingMaterialModal");
+    }
+
+    function closeMissingMaterialDispositionDropdown() {
+        const selector = document.getElementById("missingMaterialDispositionSelector");
+        const dropdown = document.getElementById("missingMaterialDispositionDropdown");
+
+        dropdown?.classList.add("hidden");
+        selector?.classList.remove("open");
+        selector?.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleMissingMaterialDispositionDropdown() {
+        const selector = document.getElementById("missingMaterialDispositionSelector");
+        const dropdown = document.getElementById("missingMaterialDispositionDropdown");
+
+        if (!selector || !dropdown) {
+            return;
+        }
+
+        const willOpen = dropdown.classList.contains("hidden");
+        dropdown.classList.toggle("hidden", !willOpen);
+        selector.classList.toggle("open", willOpen);
+        selector.setAttribute("aria-expanded", String(willOpen));
+    }
+
+    function initializeMissingMaterialDispositionSelector() {
+        const selector = document.getElementById("missingMaterialDispositionSelector");
+        const dropdown = document.getElementById("missingMaterialDispositionDropdown");
+        const dispositionInput = document.getElementById("missingMaterialDisposicao");
+        const dispositionSelected = document.getElementById("missingMaterialDispositionSelected");
+
+        selector?.addEventListener("click", toggleMissingMaterialDispositionDropdown);
+
+        dropdown?.querySelectorAll("[data-value]").forEach((option) => {
+            option.addEventListener("click", () => {
+                if (dispositionInput) {
+                    dispositionInput.value = option.dataset.value || "";
+                }
+                if (dispositionSelected) {
+                    dispositionSelected.textContent = option.textContent.trim();
+                }
+                closeMissingMaterialDispositionDropdown();
+            });
+        });
+
+        document.addEventListener("click", (event) => {
+            if (!event.target.closest(".missing-material-disposition-selector") &&
+                !event.target.closest(".missing-material-disposition-dropdown")) {
+                closeMissingMaterialDispositionDropdown();
+            }
+        });
+    }
+
+    initializeMissingMaterialDispositionSelector();
+
+    function createMissingMaterialBanner(picking) {
+        const banner = createElement("div", "missing-material-banner");
+        const label = createElement(
+            "strong",
+            "missing-material-label",
+            "FALTA DE MATERIAL",
+        );
+        const action = createElement(
+            "button",
+            "missing-material-action",
+            "RESOLVA",
+        );
+
+        action.type = "button";
+        action.setAttribute("aria-label", "Resolver falta de material");
+        action.dataset.picking = JSON.stringify(picking);
+        action.addEventListener("click", () => {
+            openMissingMaterialModal(action.dataset.picking ? JSON.parse(action.dataset.picking) : null);
+        });
+
+        banner.append(label, action);
+        return banner;
+    }
+
     function enhanceCard(card, picking, context) {
         // Herda o Card base e adiciona funcionalidades específicas para a separacao
         const clientInfo = context.main.querySelector(".client-info");
@@ -116,6 +256,34 @@
 
             packageInfo.append(packageLabel, packageValue);
             clientInfo.replaceWith(packageInfo);
+        }
+
+        const existingMissingMaterialBanner = card.querySelector(
+            ".missing-material-banner",
+        );
+        const hasMissingMaterial = hasMissingMaterialTag(picking);
+
+        card.classList.toggle("missing-material", hasMissingMaterial);
+
+        if (hasMissingMaterial) {
+            if (!existingMissingMaterialBanner) {
+                card.appendChild(createMissingMaterialBanner(picking));
+            }
+
+            card
+                .querySelectorAll("button, input, select, textarea")
+                .forEach((control) => {
+                    if (!control.classList.contains("missing-material-action")) {
+                        control.disabled = true;
+                    }
+                });
+        } else {
+            existingMissingMaterialBanner?.remove();
+            card
+                .querySelectorAll("button, input, select, textarea")
+                .forEach((control) => {
+                    control.disabled = false;
+                });
         }
 
         // Substitui as ações originais pelas específicas desta tela
@@ -413,6 +581,53 @@
             }),
         );
     }
+
+    async function submitMissingMaterialTicket(event) {
+        event.preventDefault();
+
+        const picking = selectedMissingMaterialPicking;
+        const qtdDemanda = document.getElementById("missingMaterialQtdDemanda")?.value;
+        const qtdSeparada = document.getElementById("missingMaterialQtdSeparada")?.value;
+        const qtdFalta = document.getElementById("missingMaterialQtdFalta")?.value;
+        const disposicao = document.getElementById("missingMaterialDisposicao")?.value;
+
+        if (!picking || qtdDemanda === undefined || qtdSeparada === undefined || qtdFalta === undefined || !disposicao) {
+            inventory.showToast("Preencha todos os campos antes de abrir o ticket.", "⚠️");
+            return;
+        }
+
+        try {
+            await inventory.runAction(async () => {
+                const response = await fetch("/api/inventario/helpdesk/falta-material", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        picking_id: picking.id,
+                        qtd_demanda_fms: Number(qtdDemanda),
+                        qtd_separada_fms: Number(qtdSeparada),
+                        qtd_falta_fms: Number(qtdFalta),
+                        disposicao_falta_fms: disposicao,
+                    }),
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || "Não foi possível abrir o ticket.");
+                }
+
+                window.AppUI.closeModal("missingMaterialModal");
+                selectedMissingMaterialPicking = null;
+                inventory.showToast(`Ticket de falta de material aberto: ${data.ticket_id}`, "✓");
+            });
+        } catch (error) {
+            console.error("Erro ao abrir ticket de falta de material:", error);
+            inventory.showToast(error.message || "Não foi possível abrir o ticket.", "✗");
+        }
+    }
+
+    document
+        .getElementById("missingMaterialForm")
+        ?.addEventListener("submit", submitMissingMaterialTicket);
 
     inventory.configure({
         enhanceCard,
