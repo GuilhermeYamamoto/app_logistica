@@ -165,7 +165,7 @@ class InventoryService:
                 if picking_type_id == 120: # Separação
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 139: # Conferencia da Expedicao
                     pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1390: # Etapa criada apenas para diferenciar a conferencia da expedicao da armazenagem, que no Odoo são realizadas no mesmo picking_type_id (139)
@@ -2271,6 +2271,85 @@ class InventoryService:
             }
         except Exception as error:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error))
+
+    def action_missing_material_helpdesk(client, data):
+        """Cria o ticket de falta de material no helpdesk do Odoo."""
+        try:
+            picking_id = data.get("picking_id")
+            qtd_demanda = data.get("qtd_demanda_fms")
+            qtd_separada = data.get("qtd_separada_fms")
+            qtd_falta = data.get("qtd_falta_fms")
+            disposicao = data.get("disposicao_falta_fms")
+
+            allowed_dispositions = {
+                "abrir_alerta_qualidade",
+                "liberar_qtd_faltante",
+                "solicitar_estoque",
+            }
+
+            if not picking_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Picking obrigatório.",
+                )
+
+            if disposicao not in allowed_dispositions:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Disposição da falta inválida.",
+                )
+
+            if not isinstance(qtd_demanda, (int, float)) or qtd_demanda < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Quantidade da demanda inválida.",
+                )
+
+            if not isinstance(qtd_separada, (int, float)) or qtd_separada < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Quantidade separada inválida.",
+                )
+
+            quantidade_calculada = max(0.0, float(qtd_demanda) - float(qtd_separada))
+            if not isinstance(qtd_falta, (int, float)):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Quantidade faltante inválida.",
+                )
+
+            if abs(float(qtd_falta) - quantidade_calculada) > 0.0001:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Quantidade faltante inconsistente.",
+                )
+
+            ticket_id = client.execute("helpdesk.ticket", "create", [{
+                "name": "Falta de Material",
+                "team_id": 20,
+                "picking_fms_id": picking_id,
+                "qtd_demanda_fms": qtd_demanda,
+                "qtd_separada_fms": qtd_separada,
+                "qtd_falta_fms": qtd_falta,
+                "disposicao_falta_fms": disposicao,
+            }])
+
+            if isinstance(ticket_id, (list, tuple)):
+                ticket_id = ticket_id[0]
+
+            return {
+                "success": True,
+                "ticket_id": ticket_id,
+                "picking_id": picking_id,
+            }
+
+        except HTTPException:
+            raise
+        except Exception as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Não foi possível criar o ticket de falta de material: {error}",
+            )
 
     def action_local_definido(client, data):
         try:

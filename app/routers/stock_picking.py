@@ -16,6 +16,7 @@ from app.models.schemas import (
     QualityAlert,
     ReceivedQuantity,
     SavePickingPhotos,
+    MissingMaterialHelpdesk,
 )
 
 router = APIRouter(tags=["inventario"])
@@ -691,6 +692,18 @@ async def refresh_pickings(stage_key: str,client: OdooClient = Depends(get_odoo_
 ####################################
 #  Ação para replicar peso nos pickings da Separação
 ####################################
+
+@router.post("/api/inventario/helpdesk/falta-material")
+def action_missing_material_helpdesk(
+    picking_data: MissingMaterialHelpdesk,
+    client: OdooClient = Depends(get_odoo_client),
+):
+    """Cria um ticket de falta de material no helpdesk do Odoo."""
+    return InventoryService.action_missing_material_helpdesk(
+        client,
+        picking_data.model_dump(),
+    )
+
 
 @router.post("/api/replicar-peso")
 def action_replicar_peso(picking_data=Body(...), client=Depends(get_odoo_client)):

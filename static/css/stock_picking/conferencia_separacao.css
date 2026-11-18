@@ -23,6 +23,173 @@
     background: var(--green);
 }
 
+.picking-card.missing-material {
+    filter: saturate(0.9);
+}
+
+.picking-card.missing-material > *:not(.missing-material-banner) {
+    opacity: 0.58;
+}
+
+
+.picking-card.missing-material::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(2px) saturate(1.05);
+    -webkit-backdrop-filter: blur(2px) saturate(1.05);
+}
+
+.missing-material-banner {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    z-index: 4;
+    transform: translateY(-50%);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 10px;
+    min-height: 88px;
+    padding: 14px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    pointer-events: auto;
+}
+
+.missing-material-label {
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.missing-material-action {
+    min-width: 180px;
+    min-height: 42px;
+    padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--red) !important;
+  color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    box-shadow: 0 6px 16px rgba(229, 57, 53, 0.22);
+    pointer-events: auto;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.missing-material-action:hover {
+    background: var(--red) !important;
+    color: #ffffff !important;
+    filter: brightness(1.08);
+}
+
+.missing-material-action:active {
+    transform: scale(0.98);
+}
+
+.missing-material-banner,
+.missing-material-action {
+    opacity: 1 !important;
+}
+
+.missing-material-action:focus-visible {
+    outline: 3px solid rgba(229, 57, 53, 0.35);
+    outline-offset: 2px;
+}
+
+.missing-material-modal {
+    width: min(700px, 100%);
+}
+
+.missing-material-modal #missingMaterialForm {
+    padding: 0 26px;
+}
+
+.missing-material-modal .form-group input[readonly] {
+    background: var(--surface-secondary);
+    color: var(--muted);
+    cursor: default;
+}
+
+.missing-material-disposition-selector {
+    position: relative;
+    width: 100%;
+    min-height: 62px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 10px 48px 10px 16px;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.missing-material-disposition-selector:hover,
+.missing-material-disposition-selector:focus,
+.missing-material-disposition-selector.open {
+    border-color: var(--blue);
+}
+
+.missing-material-disposition-arrow {
+    position: absolute;
+    right: 18px;
+    font-size: 18px;
+}
+
+.missing-material-disposition-dropdown {
+    margin-top: 8px;
+    border: 2px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.missing-material-disposition-dropdown button {
+    width: 100%;
+    min-height: 68px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.missing-material-disposition-dropdown button:last-child {
+    border-bottom: none;
+}
+
+.missing-material-disposition-dropdown button:hover,
+.missing-material-disposition-dropdown button:focus {
+    background: rgba(164, 67, 137, 0.10);
+    color: var(--blue);
+}
+
+.missing-material-modal .quality-button {
+    background: var(--red);
+    color: #fff;
+}
+
 /* Agrupamento da conferência: responsável, pedido de venda e pickings. */
 .conference-user-group {
     margin-bottom: 20px;
