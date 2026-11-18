@@ -154,22 +154,23 @@ class InventoryService:
                         "user_id",
                         "tag_ids",
                         "batch_id",
+                        "carrier_id",
                         "picking_type_id",
                         "x_studio_possui_beneficiamento",
                     ],
                     order="scheduled_date asc, id asc",
                 )
             elif picking_type_id not in [120, 1200, 139, 1390]: # As etapas listadas tem particularidades (são divididas em duas etapas no FastAPI, mas no Odoo são realizadas no mesmo picking_type_id)
-                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking", "x_studio_local_do_material", "picking_type_id", "x_studio_possui_beneficiamento"], order="scheduled_date asc, id asc")
+                pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "=", "assigned")], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking", "x_studio_local_do_material", "carrier_id", "picking_type_id", "x_studio_possui_beneficiamento"], order="scheduled_date asc, id asc")
             else:
                 if picking_type_id == 120: # Separação
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("tag_ids", "not ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "divergencia_peso_picking","x_studio_local_do_material", "carrier_id"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1200: # Etapa criada apenas para diferenciar a conferencia de separacao da separacao, que no Odoo são realizadas no mesmo picking_type_id (120)
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 120), ("state", "in", ["assigned"]), ("tag_ids", "ilike", [32])], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids", "x_studio_local_do_material", "carrier_id"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 139: # Conferencia da Expedicao
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", picking_type_id), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", True)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material", "carrier_id"], order="scheduled_date asc, id asc")
                 elif picking_type_id == 1390: # Etapa criada apenas para diferenciar a conferencia da expedicao da armazenagem, que no Odoo são realizadas no mesmo picking_type_id (139)
-                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 139), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", False)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material"], order="scheduled_date asc, id asc")
+                    pickings = client.execute("stock.picking", "search_read", [("picking_type_id", "=", 139), ("state", "in", ["assigned"]), ("x_studio_local_definido", "=", False)], fields=["name", "origin", "partner_id", "state", "scheduled_date", "move_ids_without_package", "move_line_ids_without_package", "fotos_count", "pedido_compra_id", "pedido_venda_id", "parent_dfe_nfe_infnfe_ide_nnf", "user_id", "tag_ids","x_studio_local_do_material", "carrier_id"], order="scheduled_date asc, id asc")
 
             batch_ids = list({
                 picking["batch_id"][0]
@@ -451,6 +452,16 @@ class InventoryService:
             else:
                 photo_count = int(photo_relation or 0)
 
+            carrier_data = picking.get("carrier_id")
+            carrier_id = None
+            carrier_name = None
+            if isinstance(carrier_data, (list, tuple)):
+                if carrier_data:
+                    carrier_id = carrier_data[0]
+                    carrier_name = carrier_data[1] if len(carrier_data) > 1 else None
+            elif carrier_data:
+                carrier_name = str(carrier_data)
+
             required_photo_count = InventoryService.get_required_photo_count(picking)
 
             record = {
@@ -530,7 +541,8 @@ class InventoryService:
                 "invoiceWeight": batch.get("x_studio_peso_nf"),
                 "invoiceVolumeCount": batch.get("x_studio_volumes_nf"),
                 "invoiceIssueDate": batch.get("x_studio_data_emissao_nf"),
-                "carrier": batch.get("x_studio_transportadora_nf"),
+                "carrier_id": carrier_id,
+                "carrier": carrier_name or batch.get("x_studio_transportadora_nf"),
                 "deliveryAddress": batch.get("x_studio_endereco_entrega_nf"),
                 "deliveryCity": batch.get("x_studio_municipio_nf"),
                 "deliveryState": batch.get("x_studio_uf_nf"),
