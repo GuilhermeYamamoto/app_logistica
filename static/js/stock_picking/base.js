@@ -15,6 +15,7 @@
         validationButton: document.getElementById("confirmValidation"),
         chatPanel: document.getElementById("chatPanel"),
         chatInfo: document.getElementById("chatPickingInfo"),
+        chatHeaderLabel: document.getElementById("chatHeaderLabel"),
         chatMessages: document.getElementById("chatMessages"),
         chatForm: document.getElementById("chatForm"),
         chatInput: document.getElementById("chatInput"),
@@ -1477,6 +1478,178 @@
     // # CHAT DO RECEBIMENTO
     // ####################################
 
+    // Picking com pedido de venda: o chat vira o follow-up do pedido.
+    function isFollowupRecord(record) {
+        return Boolean(record?.pedido_venda_id);
+    }
+
+    function setChatMode(record) {
+        const followup = isFollowupRecord(record);
+
+        if (elements.chatHeaderLabel) {
+            elements.chatHeaderLabel.textContent = followup
+                ? "FOLLOW-UP DO PEDIDO"
+                : "CHAT DA ETAPA";
+        }
+
+        if (elements.chatInput) {
+            elements.chatInput.placeholder = followup
+                ? "Escreva o follow-up para o pedido..."
+                : "Digite uma mensagem...";
+        }
+
+        if (elements.chatInfo) {
+            elements.chatInfo.textContent = followup
+                ? `${record.pedido_venda_name || ""} • ${record.product || ""}`
+                : `${record.pv || record.reference || ""} • ${record.product || ""}`;
+        }
+    }
+
+    // Converte o HTML do histórico do Odoo em texto puro, igual ao chatter.
+    function followupHtmlToText(element) {
+        const template = document.createElement("template");
+        template.innerHTML = element.innerHTML
+            .replace(/<br\s*\/?>/gi, " ")
+            .replace(/<\/(p|div)>/gi, " ");
+
+        return template.content.textContent.replace(/\s+/g, " ").trim();
+    }
+
+    // Cada bloco do histórico do Odoo é um <div> com cabeçalho (autor) e corpo.
+    // Blocos sem essa estrutura (ex.: "Nenhum follow-up...") viram aviso vazio.
+    function parseFollowupHistory(html) {
+        const template = document.createElement("template");
+        template.innerHTML = html || "";
+
+        return [...template.content.children].map((block) => {
+            const [header, body] = block.children;
+
+            if (block.tagName === "DIV" && header && body) {
+                return {
+                    empty: false,
+                    author: header.querySelector("strong")?.textContent.trim() || "Sistema",
+                    text: followupHtmlToText(body),
+                };
+            }
+
+            return { empty: true, text: followupHtmlToText(block) };
+        });
+    }
+
+    function renderFollowupHistory(html) {
+        if (!elements.chatMessages) {
+            return;
+        }
+
+        const nodes = parseFollowupHistory(html).map((entry) => {
+            if (entry.empty) {
+                return createElement("div", "chat-empty", entry.text);
+            }
+
+            const item = createElement("div", "chat-message received");
+
+            item.append(
+                createElement("span", "chat-message-author", entry.author),
+                createElement("span", "chat-message-text", entry.text),
+            );
+
+            return item;
+        });
+
+        if (nodes.length === 0) {
+            nodes.push(
+                createElement("div", "chat-empty", "Nenhuma mensagem ainda. Inicie uma conversa sobre este registro."),
+            );
+        }
+
+        elements.chatMessages.replaceChildren(...nodes);
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    }
+
+    async function loadFollowupChat(record) {
+        try {
+            await runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${record.id}/followup`,
+                    {
+                        method: "GET",
+                        headers: { Accept: "application/json" },
+                        cache: "no-store",
+                    },
+                );
+
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(
+                        data?.detail ||
+                        "Não foi possível carregar o follow-up.",
+                    );
+                }
+
+                if (selectedChatRecord?.id === record.id) {
+                    renderFollowupHistory(data?.historico_html);
+                }
+            });
+        } catch (error) {
+            console.error("Erro ao carregar follow-up:", error);
+
+            if (elements.chatMessages) {
+                elements.chatMessages.replaceChildren(
+                    createElement("div", "chat-empty", error.message || "Não foi possível carregar o follow-up."),
+                );
+            }
+        }
+    }
+
+    async function sendFollowupMessage(text) {
+        const pickingId = selectedChatRecord.id;
+
+        elements.chatInput.disabled = true;
+
+        try {
+            await runAction(async () => {
+                const response = await fetch(
+                    `/api/inventario/pickings/${pickingId}/followup`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Accept: "application/json",
+                        },
+                        body: JSON.stringify({ mensagem: text }),
+                    },
+                );
+
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(
+                        data?.detail ||
+                        "Não foi possível registrar o follow-up.",
+                    );
+                }
+
+                elements.chatInput.value = "";
+
+                if (selectedChatRecord?.id === pickingId) {
+                    renderFollowupHistory(data?.historico_html);
+                }
+            });
+        } catch (error) {
+            console.error("Erro ao enviar follow-up:", error);
+
+            showToast(
+                error.message ||
+                "Não foi possível registrar o follow-up.",
+                "!",
+            );
+        } finally {
+            elements.chatInput.disabled = false;
+            elements.chatInput.focus();
+        }
+    }
+
     async function openChat(record) {
         if (!record || !elements.chatPanel) {
             return;
@@ -1484,10 +1657,7 @@
 
         selectedChatRecord = record;
 
-        if (elements.chatInfo) {
-            elements.chatInfo.textContent =
-                `${record.pv || record.reference || ""} • ${record.product || ""}`;
-        }
+        setChatMode(record);
 
         if (elements.chatMessages) {
             elements.chatMessages.replaceChildren(
@@ -1507,6 +1677,16 @@
             "aria-hidden",
             "false",
         );
+
+        if (isFollowupRecord(record)) {
+            await loadFollowupChat(record);
+
+            setTimeout(() => {
+                elements.chatInput?.focus();
+            }, 100);
+
+            return;
+        }
 
         try {
             await runAction(async () => {
@@ -1676,6 +1856,11 @@
         }
 
         if (actionInProgress) {
+            return;
+        }
+
+        if (isFollowupRecord(selectedChatRecord)) {
+            await sendFollowupMessage(text);
             return;
         }
 
