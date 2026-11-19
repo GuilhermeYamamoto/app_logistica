@@ -11,6 +11,7 @@ from app.config import settings, static_asset_version
 from app.core.auth import OdooClient, OdooCredentials
 from app.core.security import get_odoo_client, get_odoo_credentials
 from app.services.inventory_service import InventoryService
+from app.services.followup_service import FollowupService
 from app.models.schemas import (
     BarcodeScan,
     QualityAlert,
@@ -658,6 +659,33 @@ def post_picking_chat(picking_id: int,data: Dict[str, Any] = Body(...),client: O
     message = data.get("message", "")
 
     return InventoryService.post_chat_message(client,picking_id,message)
+
+
+####################################
+#  FOLLOW-UP DO PEDIDO DE VENDA
+####################################
+
+@router.get("/api/inventario/pickings/{picking_id}/followup")
+def get_picking_followup(picking_id: int, client: OdooClient = Depends(get_odoo_client),):
+
+    """
+    Retorna o histórico de follow-up do pedido de venda ligado ao picking.
+    Usado quando o picking possui pedido de venda; caso contrário use o chat.
+    """
+
+    return FollowupService.get_history(client, picking_id)
+
+
+@router.post("/api/inventario/pickings/{picking_id}/followup")
+def post_picking_followup(picking_id: int, data: Dict[str, Any] = Body(...), client: OdooClient = Depends(get_odoo_client),):
+
+    """
+    Registra uma mensagem de follow-up no pedido de venda ligado ao picking.
+    """
+
+    message = data.get("mensagem", data.get("message", ""))
+
+    return FollowupService.post_message(client, picking_id, message)
 
 
 
