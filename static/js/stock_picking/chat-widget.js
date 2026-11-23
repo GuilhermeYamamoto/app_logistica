@@ -218,6 +218,11 @@
             button.setAttribute("aria-checked", String(active));
         });
 
+        // No T.I., o nome do assistente passa a ser o da pessoa selecionada.
+        if (currentMode === "ti") {
+            chatTitle.textContent = name;
+        }
+
         // Enquanto a saudação do T.I. estiver visível, ela passa a indicar com quem o usuário está falando.
         const welcomeTitle = messages.querySelector(".hw-welcome-title");
 
@@ -230,6 +235,7 @@
 
     function resetRecipients(mode) {
         selectedRecipient = null;
+        chatTitle.textContent = "Assistente";
         recipientButtons.forEach(function (button) {
             button.classList.remove("is-selected");
             button.setAttribute("aria-checked", "false");
