@@ -6,6 +6,7 @@
 
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/base.css') }}?v={{ static_asset_version('css/stock_picking/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/stock_picking/chat-widget.css') }}?v={{ static_asset_version('css/stock_picking/chat-widget.css') }}">
     {% block inventory_head %}{% endblock %}
 {% endblock %}
 
@@ -96,6 +97,112 @@
             <button id="chatSendButton" class="chat-send-button" type="submit" aria-label="Enviar mensagem">➤</button>
         </form>
     </aside>
+
+    <!-- HELP WIDGET (ASSISTENTE) -->
+    <div id="helpWidget" class="hw-root">
+        <button
+            id="helpWidgetLauncher"
+            class="hw-launcher"
+            type="button"
+            aria-label="Abrir assistente"
+            aria-expanded="false"
+            aria-controls="helpWidgetPanel"
+        >
+            <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path d="M11 24v-3a13 13 0 0 1 26 0v3" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                <rect x="7.5" y="22" width="6" height="11" rx="3" fill="#ffffff"/>
+                <rect x="34.5" y="22" width="6" height="11" rx="3" fill="#ffffff"/>
+                <ellipse cx="24" cy="24" rx="9" ry="10.5" fill="#ffffff"/>
+                <path d="M10.5 31.5c0 5 3.5 6.5 9 6.5h3" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+                <rect x="20" y="36.5" width="5" height="3.5" rx="1.75" fill="#ffffff"/>
+            </svg>
+        </button>
+
+        <section
+            id="helpWidgetPanel"
+            class="hw-panel"
+            role="dialog"
+            aria-label="Assistente de auxílio"
+            aria-hidden="true"
+        >
+            <!-- Etapa 1: retângulo pequeno com os quadradinhos IA e T.I. -->
+            <div id="helpWidgetMenu" class="hw-menu">
+                <button class="hw-tile" type="button" data-hw-mode="ia" aria-label="Assistente de IA">
+                    <span>IA</span>
+                </button>
+                <button class="hw-tile" type="button" data-hw-mode="ti" aria-label="Suporte de T.I.">
+                    <span>T.I.</span>
+                </button>
+            </div>
+
+            <!-- Quadrado que cresce a partir da opção clicada e vira o chat -->
+            <div id="helpWidgetBurst" class="hw-burst" aria-hidden="true"></div>
+
+            <!-- Etapa 2: chat -->
+            <div id="helpWidgetChat" class="hw-chat" aria-hidden="true">
+            <header class="hw-header">
+                <button
+                    id="helpWidgetBack"
+                    class="hw-back"
+                    type="button"
+                    aria-label="Voltar às opções"
+                >‹</button>
+                <div class="hw-avatar" aria-hidden="true">
+                    <svg viewBox="0 0 48 48" focusable="false">
+                        <path d="M17 22.5a7 7 0 0 1 14 0" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+                        <rect x="14.5" y="21" width="3.8" height="6.5" rx="1.9" fill="#ffffff"/>
+                        <rect x="29.7" y="21" width="3.8" height="6.5" rx="1.9" fill="#ffffff"/>
+                        <circle cx="24" cy="20.5" r="4.6" fill="#ffffff"/>
+                        <path d="M16.5 31.5c.9-3.4 3.7-5 7.5-5s6.6 1.6 7.5 5z" fill="#ffffff"/>
+                        <path d="M33.5 26.5c0 2.6-1.8 3.8-4.6 3.8" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+                        <circle cx="28.4" cy="30.3" r="1.5" fill="#ffffff"/>
+                    </svg>
+                </div>
+                <div class="hw-title">
+                    <strong id="helpWidgetChatTitle">Assistente</strong>
+                    <span class="hw-status">Online · Auxílio operacional</span>
+                </div>
+                <button
+                    id="helpWidgetClose"
+                    class="hw-close"
+                    type="button"
+                    aria-label="Fechar assistente"
+                >×</button>
+            </header>
+
+            <!-- Seleção de destinatário (somente T.I.) -->
+            <div id="helpWidgetRecipients" class="hw-recipients" role="radiogroup" aria-label="Pessoa para quem enviar a mensagem" hidden>
+                <button class="hw-recipient" type="button" role="radio" aria-checked="false" data-hw-recipient="Guilherme">Guilherme</button>
+                <button class="hw-recipient" type="button" role="radio" aria-checked="false" data-hw-recipient="Gabriel">Gabriel</button>
+                <button class="hw-recipient" type="button" role="radio" aria-checked="false" data-hw-recipient="Fernando">Fernando</button>
+            </div>
+
+            <!-- Aviso sobreposto quando nenhuma pessoa foi selecionada -->
+            <div id="helpWidgetAlert" class="hw-alert" role="alert">Selecione a pessoa a quem você quer enviar mensagem</div>
+
+            <div id="helpWidgetMessages" class="hw-messages" aria-live="polite"></div>
+
+            <form id="helpWidgetForm" class="hw-composer" autocomplete="off">
+                <div class="hw-input-wrap">
+                    <textarea
+                        id="helpWidgetInput"
+                        class="hw-input"
+                        rows="1"
+                        maxlength="1000"
+                        placeholder="Pergunte alguma coisa..."
+                        aria-label="Mensagem para o assistente"
+                    ></textarea>
+                    <button id="helpWidgetSend" class="hw-send" type="submit" aria-label="Enviar mensagem">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="hw-footer">O assistente pode cometer erros. Confira informações importantes.</p>
+            </form>
+            </div>
+        </section>
+    </div>
 
     <!-- ****MODALS**** -->
 
@@ -465,4 +572,6 @@
         ></script>
     {% endblock %}
     {% block inventory_scripts %}{% endblock %}
+    <script src="{{ url_for('static', path='js/stock_picking/chat-faq.js') }}?v={{ static_asset_version('js/stock_picking/chat-faq.js') }}"></script>
+    <script src="{{ url_for('static', path='js/stock_picking/chat-widget.js') }}?v={{ static_asset_version('js/stock_picking/chat-widget.js') }}"></script>
 {% endblock %}
