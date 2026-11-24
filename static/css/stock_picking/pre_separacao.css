@@ -444,7 +444,7 @@
     border-radius: 50%;
     background: transparent;
     color: transparent;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
 }
 
@@ -529,7 +529,7 @@
    padding: 28px 16px;
    text-align: center;
    color: var(--app-muted);
-   font-size: 13px;
+   font-size: 14px;
    font-weight: 700;
 }
 
@@ -583,7 +583,7 @@
     align-items: center;
     justify-content: center;
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: 14px;
     z-index: 60;
     box-shadow: 0 -3px 10px rgba(0,0,0,0.14);
     transform: translateY(-10px);
@@ -680,7 +680,7 @@
     }
 
     .responsible-action-label {
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .responsible-search {

@@ -13,16 +13,39 @@
     font-size: 18px;
 }
 
+/* Tipografia: pilha de fontes do sistema, nítida em tablets e celulares Android. */
 :root {
-    --blue: #A44389;
-    --blue-dark: #003db5;
-    --green: #00b85a;
-    --green-dark: #008d46;
-    --yellow: #ffc400;
-    --orange: #ff8a00;
-    --red: #e53935;
-    --purple: #7048e8;
-    --light-blue: #009dff;
+    --font-ui: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Paleta do design: mesma linguagem visual do widget de auxílio (violeta → rosa → laranja). */
+:root {
+    --blue: #6d28d9;
+    --blue-dark: #4c1d95;
+    --green: #059669;
+    --green-dark: #047857;
+    --yellow: #f59e0b;
+    --orange: #f97316;
+    --red: #e11d48;
+    --purple: #7c3aed;
+    --light-blue: #0284c7;
+
+    --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #fdba74 100%);
+    --topbar-gradient: linear-gradient(120deg, #4c1d95 0%, #9d174d 60%, #c2410c 100%);
+    --grad-violet: linear-gradient(135deg, #8b5cf6, #c026d3);
+    --grad-blue: linear-gradient(135deg, #0ea5e9, #2563eb);
+    --grad-green: linear-gradient(135deg, #10b981, #059669);
+    --grad-red: linear-gradient(135deg, #f43f5e, #e11d48);
+    --grad-orange: linear-gradient(135deg, #fb923c, #f97316);
+    --hw-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --app-background: #f5f3fb;
+    --app-surface-secondary: #f1eef9;
+    --app-border: #e6e1f3;
+    --app-text: #1e1b2e;
+    --app-muted: #6b6780;
+    --app-shadow: 0 10px 30px rgba(76, 29, 149, 0.10);
+
     --background: var(--app-background);
     --white: var(--app-surface);
     --surface: var(--app-surface);
@@ -39,7 +62,7 @@
     --muted: var(--app-muted);
     --border: var(--app-border);
     --shadow: var(--app-shadow);
-    --radius: 14px;
+    --radius: 20px;
 
     /*
      * Área segura do dispositivo.
@@ -59,7 +82,7 @@
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-ui);
     background: var(--background);
     color: var(--text);
     min-height: 100vh;
@@ -118,8 +141,9 @@ button {
 
     height: auto;
 
-    background: var(--blue);
+    background: var(--topbar-gradient);
     color: white;
+    box-shadow: 0 8px 28px rgba(76, 29, 149, 0.25);
 
     display: flex;
     align-items: center;
@@ -171,7 +195,7 @@ button {
 }
 
 .brand span {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     opacity: .9;
 }
@@ -401,7 +425,7 @@ body {
         transform:
             translateY(-58px);
 
-        font-size: 13px;
+        font-size: 14px;
     }
 
 }
@@ -427,12 +451,14 @@ body {
     display: none !important;
 }
 
+/* Mesmo spinner colorido do chat (gradiente da marca), sobre o fundo escurecido. */
 .loading-spinner {
     width: 58px;
     height: 58px;
-    border: 6px solid rgba(255, 255, 255, .35);
-    border-top-color: white;
     border-radius: 50%;
+    background: conic-gradient(#8b5cf6, #ec4899, #fdba74, #8b5cf6);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
     animation: loading-spin .75s linear infinite;
 }
 
@@ -460,45 +486,53 @@ body {
 
 .dashboard-card {
     display: flex;
-    min-height: 105px;
+    min-height: 112px;
     align-items: center;
     justify-content: center;
     border: 0;
-    border-radius: 12px;
+    border-radius: 24px;
     color: white;
     cursor: pointer;
     flex-direction: column;
-    box-shadow: var(--app-shadow);
+    box-shadow: 0 14px 30px rgba(30, 27, 46, .18);
+    transition: transform .2s ease, box-shadow .2s ease, outline-color .2s ease;
 }
 
 .dashboard-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px rgba(30, 27, 46, .24);
+}
+
+.dashboard-card:active {
+    transform: scale(.98);
 }
 
 .dashboard-card.active {
-    outline: 5px solid rgba(0, 87, 255, .16);
+    outline: 4px solid rgba(124, 58, 237, .28);
+    outline-offset: 2px;
 }
 
 .dashboard-card.total {
-    background: var(--light-blue);
+    background: var(--grad-blue);
 }
 
 .dashboard-card.pending {
-    background: var(--orange);
+    background: var(--grad-orange);
 }
 
 .dashboard-card.progress {
-    background: var(--purple);
+    background: var(--grad-violet);
 }
 
 .dashboard-card.completed {
-    background: var(--green);
+    background: var(--grad-green);
 }
 
 .dashboard-label {
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: .5px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    opacity: .92;
 }
 
 .dashboard-card strong {
@@ -600,7 +634,7 @@ body {
 
 .product-info span {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .client-info strong {
@@ -612,7 +646,7 @@ body {
 
 .client-info span {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .quantity-box {
@@ -622,7 +656,7 @@ body {
 }
 
 .quantity-box label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     color: var(--muted);
 }
@@ -643,7 +677,7 @@ body {
 }
 
 .expected-quantity {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--muted);
 }
 
@@ -652,7 +686,7 @@ body {
     width: fit-content;
     padding: 8px 11px;
     border-radius: 7px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     margin-top: 7px;
 }
@@ -667,10 +701,7 @@ body {
     color: #125ae0 !important;
 }
 
-.status-package {
-    background: #eee8ff;
-    color: #5030b0 !important;
-}
+
 
 .status-progress {
     background: #eee8ff;
@@ -701,38 +732,45 @@ body {
 
 .main-action {
     min-height: 72px;
-    border-radius: 10px;
+    border-radius: 18px;
     color: white;
     font-size: 16px;
-    font-weight: 900;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 9px;
-    transition: .15s ease;
+    box-shadow: 0 10px 22px rgba(30, 27, 46, .16);
+    transition: transform .15s ease, filter .15s ease;
 }
 
-.main-action:hover {
-    filter: brightness(.94);
+.main-action:not(:disabled):hover {
+    filter: brightness(1.05);
+}
+
+.main-action:not(:disabled):active {
+    transform: scale(.97);
 }
 
 .photo-action {
-    background: var(--light-blue);
+    background: var(--grad-blue);
 }
 
 .package-action {
-    background: var(--purple);
+    background: var(--grad-violet);
 }
 
 .validation-action {
-    background: var(--green);
+    background: var(--grad-green);
 }
 
 .main-action.disabled,
 .main-action:disabled {
-    background: #d7dce4;
-    color: #8b929d;
+    background: #e4e1ee;
+    color: #8c88a0;
     cursor: not-allowed;
+    box-shadow: none;
     filter: none;
 }
 
@@ -858,20 +896,40 @@ body {
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: rgba(13, 22, 38, .66);
+    background: rgba(24, 16, 48, .55);
+    backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
+    animation: hw-fade-in .22s ease;
 }
 
+/* O modal "nasce" do centro da tela, com leve subida e aumento de escala. */
 .modal {
     width: min(760px, 100%);
     max-height: 94vh;
     overflow-y: auto;
     background: var(--surface);
-    border-radius: 18px;
-    box-shadow: 0 25px 70px rgba(0, 0, 0, .30);
+    border-radius: 26px;
+    box-shadow: 0 30px 80px rgba(40, 16, 90, .35);
+    animation: hw-modal-in .38s var(--hw-ease);
+}
+
+@keyframes hw-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes hw-modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(.96);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 .modal-header {
@@ -884,7 +942,7 @@ body {
 .modal-kicker {
     display: block;
     color: var(--blue);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     letter-spacing: 1px;
     margin-bottom: 5px;
@@ -930,14 +988,28 @@ body {
 .secondary-button,
 .quality-button {
     min-height: 60px;
-    border-radius: 10px;
+    border-radius: 18px;
     font-size: 16px;
-    font-weight: 900;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    transition: transform .15s ease, filter .15s ease;
+}
+
+.primary-button:not(:disabled):hover,
+.quality-button:not(:disabled):hover {
+    filter: brightness(1.06);
+}
+
+.primary-button:not(:disabled):active,
+.secondary-button:active,
+.quality-button:not(:disabled):active {
+    transform: scale(.97);
 }
 
 .primary-button {
-    background: var(--blue);
+    background: var(--brand-gradient);
     color: white;
+    box-shadow: 0 10px 24px rgba(219, 39, 119, .28);
 }
 
 .primary-button:disabled {
@@ -952,8 +1024,9 @@ body {
 }
 
 .quality-button {
-    background: var(--red);
+    background: var(--grad-red);
     color: white;
+    box-shadow: 0 10px 24px rgba(225, 29, 72, .25);
 }
 
 /* =========================================================
@@ -977,9 +1050,7 @@ body {
     font-size: 39px;
 }
 
-.package-icon {
-    background: #eee8ff;
-}
+
 
 .validation-icon {
     background: #dff8ea;
@@ -1056,7 +1127,7 @@ html[data-theme="dark"] .quality-modal {
 .form-group > label {
     display: block;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
 }
 
@@ -1074,7 +1145,7 @@ html[data-theme="dark"] .quality-modal {
     align-items: center;
     padding: 0 14px;
     gap: 10px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     cursor: pointer;
 }
@@ -1121,7 +1192,7 @@ html[data-theme="dark"] .quality-modal {
    align-items: center;
    gap: 6px;
    margin-bottom: 10px;
-   font-size: 13px;
+   font-size: 14px;
    font-weight: 900;
 }
 
@@ -1152,36 +1223,13 @@ html[data-theme="dark"] .quality-modal {
    filter: brightness(1.06);
 }
 
-.quality-photo-button-secondary {
-   background: transparent;
-   color: var(--text);
-   border-color: var(--border);
-}
 
-.quality-photo-button-secondary:hover {
-   border-color: var(--blue);
-   color: var(--blue);
-   background: rgba(164, 67, 137, .04);
-}
 
-.quality-photo-divider {
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   gap: 8px;
-   color: var(--muted);
-   font-size: 12px;
-   font-weight: 800;
-   text-transform: lowercase;
-}
 
-.quality-photo-divider::before,
-.quality-photo-divider::after {
-   content: "";
-   width: 42%;
-   height: 1px;
-   background: var(--border);
-}
+
+
+
+
 
 .quality-photo-list {
    display: grid;
@@ -1283,7 +1331,7 @@ html[data-theme="dark"] .quality-modal {
     border-radius: 7px;
     background: #eee8ff;
     color: #6040c5;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     line-height: 1.2;
 }
@@ -1383,19 +1431,9 @@ html[data-theme="dark"] .quality-modal {
     line-height: 1.3;
 }
 
-.causes-loading,
-.causes-empty,
-.causes-error {
-    padding: 18px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
-    font-weight: 700;
-}
 
-.causes-error {
-    color: var(--red);
-}
+
+
 
 
 /* =========================================================
@@ -1410,12 +1448,13 @@ html[data-theme="dark"] .quality-modal {
     bottom: auto;
 
     min-width: 310px;
-    padding: 17px 20px;
-    border-radius: 11px;
+    padding: 16px 20px;
+    border-radius: 20px;
 
-    background: #172033;
+    background: rgba(30, 27, 46, .94);
+    backdrop-filter: blur(8px);
     color: white;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, .25);
+    box-shadow: 0 16px 40px rgba(30, 27, 46, .32);
 
     display: flex;
     align-items: center;
@@ -1429,7 +1468,7 @@ html[data-theme="dark"] .quality-modal {
 
     pointer-events: none;
 
-    transition: .25s ease;
+    transition: transform .3s var(--hw-ease), opacity .25s ease;
 }
 
 .toast.show {
@@ -1440,10 +1479,10 @@ html[data-theme="dark"] .quality-modal {
 }
 
 .toast span:first-child {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--grad-green);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1569,7 +1608,7 @@ html[data-theme="dark"] .quality-modal {
     }
 
     .dashboard-label {
-        font-size: 12px;
+        font-size: 14px;
     }
 
     .picking-identification strong {
@@ -1636,85 +1675,6 @@ html[data-theme="dark"] .quality-modal {
 }
 
 
-/* =========================================================
-   IMPORTANTE PARA TOUCH
-========================================================= */
-
-/*
- * Permite que o navegador continue tratando o scroll
- * normalmente, enquanto o JS decide quando iniciar
- * o Pull to Refresh.
- */
-html,
-body {
-    overscroll-behavior-y: contain;
-}
-
-
-/*
- * Evita seleção acidental durante o gesto.
- */
-.pull-to-refresh,
-.pull-refresh-icon {
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 760px) {
-
-    .pull-to-refresh {
-        height: 58px;
-
-        transform:
-            translateY(-58px);
-
-        font-size: 13px;
-    }
-
-}
-
-
-
-/* =========================================================
-   LOADING GLOBAL
-========================================================= */
-
-.loading-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 5000;
-    background: rgba(13, 22, 38, .58);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: wait;
-}
-
-.loading-overlay.hidden {
-    display: none !important;
-}
-
-.loading-spinner {
-    width: 58px;
-    height: 58px;
-    border: 6px solid rgba(255, 255, 255, .35);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: loading-spin .75s linear infinite;
-}
-
-@keyframes loading-spin {
-
-    to {
-        transform: rotate(360deg);
-    }
-
-}
     .secondary-actions {
         grid-template-columns: 1fr;
     }
@@ -1926,7 +1886,7 @@ body {
 
 .chat-header-label {
 
-    font-size: 11px;
+    font-size: 13px;
 
     font-weight: 700;
 
@@ -2024,7 +1984,7 @@ body {
 
     text-align: center;
 
-    font-size: 13px;
+    font-size: 14px;
 
     line-height: 1.5;
 
@@ -2086,7 +2046,7 @@ body {
 
     margin-bottom: 3px;
 
-    font-size: 10px;
+    font-size: 13px;
 
     font-weight: 700;
 
@@ -2188,7 +2148,7 @@ body {
 
     background: #ffffff;
 
-    color: #003db5;
+    color: var(--blue);
 
     cursor: pointer;
 
@@ -2505,7 +2465,7 @@ body {
 .search-options-title {
     margin: 0 0 10px;
     color: #596273;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
 }
 
@@ -2544,14 +2504,14 @@ body {
 }
 
 .search-option.selected {
-    color: #703568;
-    background: #f8eaf4;
-    border-color: #A44389;
+    color: var(--blue-dark);
+    background: #f3efff;
+    border-color: var(--purple);
     font-weight: 700;
 }
 
 .search-option:focus-visible {
-    outline: 2px solid #A44389;
+    outline: 2px solid var(--purple);
     outline-offset: 2px;
 }
 
@@ -2578,4 +2538,136 @@ body {
 
 .picking-card:has(.estoque-glass-banner) {
     position: relative;
+}
+
+
+/* =========================================================
+   ÍCONES
+========================================================= */
+
+.ui-icon {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    flex: 0 0 auto;
+    vertical-align: -0.18em;
+}
+
+.action-icon-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3em;
+    height: 1.3em;
+    flex: 0 0 auto;
+}
+
+.brand-icon .ui-icon,
+.search-button .ui-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.empty-icon-svg {
+    width: 56px;
+    height: 56px;
+    color: var(--green);
+}
+
+.quantity-warning-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--orange);
+    vertical-align: -4px;
+}
+
+.toast > span:first-child .ui-icon {
+    width: 18px;
+    height: 18px;
+    color: white;
+}
+
+
+/* =========================================================
+   TARJAS DE STATUS
+   A tarja é um elemento real dentro do card (ícone e texto lado a lado).
+   Só o picking fica apagado; a tarja permanece brilhante e colorida.
+========================================================= */
+
+.picking-card.correction-requested > :not(.picking-tarja),
+.picking-card.stock-pending > :not(.picking-tarja) {
+    opacity: .72;
+    filter: blur(2px) saturate(.85);
+    pointer-events: none;
+    user-select: none;
+    transition: filter .3s ease, opacity .3s ease;
+}
+
+.picking-tarja {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-sizing: border-box;
+    min-height: 58px;
+    padding: 12px 22px;
+
+    background:
+        linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
+        var(--tarja-gradient);
+    background-size: 240% 100%, 100% 100%;
+    animation: tarja-sheen 3.6s linear infinite;
+
+    border-top: 1px solid rgba(255, 255, 255, .4);
+    border-bottom: 1px solid rgba(255, 255, 255, .4);
+    box-shadow: 0 12px 28px rgba(30, 27, 46, .3), inset 0 1px 0 rgba(255, 255, 255, .45);
+
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+
+    pointer-events: none;
+    user-select: none;
+}
+
+.picking-tarja .ui-icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
+.picking-tarja--correction {
+    --tarja-gradient: var(--brand-gradient);
+}
+
+.picking-tarja--estoque {
+    --tarja-gradient: var(--grad-violet);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .picking-tarja {
+        animation: none;
+    }
+}
+
+/* Brilho que atravessa as tarjas de status. */
+@keyframes tarja-sheen {
+    from {
+        background-position: 150% 0, 0 0;
+    }
+    to {
+        background-position: -150% 0, 0 0;
+    }
 }
