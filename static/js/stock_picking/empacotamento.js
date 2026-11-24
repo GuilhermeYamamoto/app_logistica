@@ -979,8 +979,7 @@
         actionIcon.className =
             "action-icon validation-icon";
 
-        actionIcon.textContent =
-            "✓";
+        actionIcon.innerHTML = AppIcons.svg("check");
 
 
         // =========================================
@@ -1792,7 +1791,7 @@
             );
 
             packageButton.innerHTML = `
-                <span class="pv-action-icon">📦</span>
+                <span class="pv-action-icon">${AppIcons.svg("package")}</span>
                 <span>EMPACOTAR</span>
             `;
 
@@ -1821,7 +1820,7 @@
             );
 
             finishButton.innerHTML = `
-                <span class="pv-action-icon">✓</span>
+                <span class="pv-action-icon">${AppIcons.svg("check")}</span>
                 <span>FINALIZAR</span>
             `;
 
@@ -1852,7 +1851,7 @@
                     expandedCompletedButton.disabled = !hasGeneratedPackage;
 
                     expandedCompletedButton.innerHTML = `
-                        <span class="pv-completed-icon">✓</span>
+                        <span class="pv-completed-icon">${AppIcons.svg("check")}</span>
                         <span>CONCLUÍDO</span>
                     `;
 
@@ -1881,7 +1880,7 @@
                     );
 
                     expandedGeneratePackageButton.innerHTML = `
-                        <span class="pv-action-icon">📦</span>
+                        <span class="pv-action-icon">${AppIcons.svg("package")}</span>
                         <span>GERAR PACOTE</span>
                     `;
 
@@ -1916,7 +1915,7 @@
                 "Imprimir pacotes",
             );
             printPackagesButton.innerHTML = `
-                <span class="pv-action-icon">🖨️</span>
+                <span class="pv-action-icon">${AppIcons.svg("print")}</span>
                 <span>IMPRIMIR PACOTES</span>
             `;
             printPackagesButton.disabled =
@@ -2180,7 +2179,7 @@
                     printPackageButton.className =
                         "secondary-action print-action emp-package-print-button";
                     printPackageButton.innerHTML =
-                        '<span class="action-icon-small">🖨️</span>Imprimir Pacote';
+                        AppIcons.svg("print", "action-icon-small") + 'Imprimir Pacote';
                     const shouldRenderPackageButton =
                         isFirstPickingForPackage(
                             picking,

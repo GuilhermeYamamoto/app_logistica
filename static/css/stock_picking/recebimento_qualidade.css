@@ -219,7 +219,7 @@
 
     color: var(--muted);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     text-align: center;
@@ -236,7 +236,7 @@
 
 .photo-progress > span {
     display: block;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     margin-bottom: 7px;
 }

@@ -189,7 +189,7 @@
             context.createAction({
                 className: "main-action photo-action",
                 label: picking.photosRegistered ? "FOTOS REGISTRADAS" : "FOTOS",
-                icon: "📷",
+                icon: AppIcons.svg("camera"),
                 disabled: picking.photosRegistered,
                 onClick: () => openPhotoModal(picking),
             }),
@@ -207,7 +207,7 @@
         const printButton = context.createAction({
             className: "secondary-action print-action",
             label: "IMPRIMIR ETIQUETA",
-            icon: "🖨️",
+            icon: AppIcons.svg("print"),
             onClick: () => printLabel(picking, printButton),
         });
 
@@ -225,7 +225,7 @@
             context.createAction({
                 className: "main-action barcode-scanner-action",
                 label: "LER CÓDIGO",
-                icon: "▥",
+                icon: AppIcons.svg("scan"),
                 ariaLabel: "Ler código de barras",
                 disabled: !picking.photosRegistered,
                 onClick: () => openBarcodeScanner(picking.id),
@@ -475,7 +475,7 @@
         addPhotoButton.htmlFor = "photoCameraInput";
         const icon = document.createElement("div");
         icon.className = "camera-icon";
-        icon.textContent = "📷";
+        icon.innerHTML = AppIcons.svg("camera");
         addPhotoButton.append(icon, document.createTextNode("TIRAR FOTO"));
         addPhotoButton.addEventListener("click", (event) => {
             if (!preparePhotoSelection(cameraInput)) {
@@ -494,7 +494,7 @@
         finishButton.disabled = count < requiredPhotoCount || photosSaving;
         photoMessage.textContent = count < requiredPhotoCount
             ? `Faltam ${requiredPhotoCount - count} foto(s). É necessário registrar pelo menos ${requiredPhotoCount} fotos.`
-            : `✓ ${count} fotos adicionadas. Você pode registrar as fotos.`;
+            : `${count} fotos adicionadas. Você pode registrar as fotos.`;
     }
 
     function removePhoto(index) {
@@ -760,7 +760,7 @@
 
                 const check = document.createElement("span");
                 check.className = "location-option-check";
-                check.textContent = "✓";
+                check.innerHTML = AppIcons.svg("check");
 
                 button.append(name, check);
 

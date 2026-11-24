@@ -514,7 +514,7 @@
             "package-action",
             "full-width-action"
         );
-        addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
+        addPeso.innerHTML = AppIcons.svg("scale", "action-icon-small") + 'ADICIONAR PESO';
 
         const hasWeightDivergence = isWeightDivergenceActive(picking);
 
@@ -532,7 +532,7 @@
             corrigirPesoDivergente.type = "button";
             corrigirPesoDivergente.className = "main-action correction-action";
             corrigirPesoDivergente.innerHTML =
-                '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
+                AppIcons.svg("tool", "action-icon-small") + 'SOLICITAR CORREÇÃO DE PESO';
 
             corrigirPesoDivergente.addEventListener(
                 "click",
@@ -622,7 +622,7 @@
         const detailsHint = document.createElement("button");
         detailsHint.type = "button";
         detailsHint.className = "picking-details-hint";
-        detailsHint.innerHTML = '<span>👁️</span>VER DETALHES';
+        detailsHint.innerHTML = AppIcons.svg("eye") + 'VER DETALHES';
         detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
         detailsHint.addEventListener("click", (event) => {

@@ -479,7 +479,7 @@
                 "full-width-action",
             );
             addPesoPacotes.innerHTML =
-                '<span class="action-icon-small">⚖️</span>REPLICAR PESO DOS PACOTES';
+                AppIcons.svg("layers", "action-icon-small") + 'REPLICAR PESO DOS PACOTES';
 
             context.addSecondaryAction(addPesoPacotes);
 
@@ -500,7 +500,7 @@
                     "correction-action",
                 );
                 corrigirPesoDivergente.innerHTML =
-                    '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
+                    AppIcons.svg("tool", "action-icon-small") + 'SOLICITAR CORREÇÃO DE PESO';
 
                 context.addSecondaryAction(corrigirPesoDivergente);
 
@@ -591,7 +591,7 @@
                     "Preencha e corrija o peso antes de imprimir.";
             }
             imprimirEtqPacotes.innerHTML =
-                '<span class="action-icon-small">🖨️</span>IMPRIMIR ETIQUETA';
+                AppIcons.svg("print", "action-icon-small") + 'IMPRIMIR ETIQUETA';
             // Solicita a impressão das etiquetas das embalagens deste picking.
             imprimirEtqPacotes.addEventListener(
                 "click",
@@ -618,7 +618,7 @@
                     "Imprima a etiqueta antes de solicitar a conferência.";
             }
             conferirSeparacao.innerHTML =
-                '<span class="action-icon-small">✓</span>SOLICITAR CONFERÊNCIA';
+                AppIcons.svg("check", "action-icon-small") + 'SOLICITAR CONFERÊNCIA';
 
             context.addSecondaryAction(conferirSeparacao);
 
@@ -770,7 +770,7 @@
        const detailsHint = document.createElement("button");
        detailsHint.type = "button";
        detailsHint.className = "picking-details-hint";
-       detailsHint.innerHTML = '<span>👁️</span>VER DETALHES';
+       detailsHint.innerHTML = AppIcons.svg("eye") + 'VER DETALHES';
        detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
        detailsHint.addEventListener("click", (event) => {

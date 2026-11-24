@@ -104,7 +104,7 @@
     background: var(--app-surface);
     color: var(--text);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1;
 
@@ -321,7 +321,7 @@
 }
 
 .emp-select-all-label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     color: var(--muted);
@@ -460,7 +460,7 @@
 /* LABEL */
 
 .emp-picking-label {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
 
     color: var(--app-muted);
@@ -566,11 +566,11 @@
 }
 
 .emp-picking-label {
-    font-size: 10px;
+    font-size: 13px;
 }
 
 .emp-picking-value {
-    font-size: 13px;
+    font-size: 14px;
 }
 
     .pv-generate-package-button {
@@ -789,7 +789,7 @@ body.emp-modal-open {
 
     color: var(--text);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     text-align: left;
@@ -832,7 +832,7 @@ body.emp-modal-open {
 
     border-radius: 8px;
 
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
 
     cursor: pointer;
@@ -950,7 +950,7 @@ body.emp-modal-open {
 .modal-kicker {
     display: block;
     color: var(--blue);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     letter-spacing: 1px;
     margin-bottom: 5px;
@@ -1055,9 +1055,7 @@ body.emp-modal-open {
 }
 
 
-.package-icon {
-    background: #eee8ff;
-}
+
 
 
 .validation-icon {

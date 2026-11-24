@@ -48,7 +48,7 @@
     border-radius: 8px;
     background: #ffffff;
     color: var(--blue);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     cursor: pointer;
 }
@@ -63,10 +63,7 @@
     font-weight: 900;
 }
 
-.delivery-batch-toggle {
-    font-size: 14px;
-    font-weight: 900;
-}
+
 
 .delivery-summary {
     display: grid;
@@ -85,7 +82,7 @@
 
 .delivery-summary-label {
     color: var(--app-muted);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
     text-transform: uppercase;
 }
@@ -138,7 +135,7 @@
 .delivery-line-header {
     border-top: 0;
     color: var(--app-muted);
-    font-size: 12px;
+    font-size: 14px;
     text-transform: uppercase;
 }
 
@@ -358,11 +355,11 @@
     .delivery-line {
         gap: 6px;
         padding: 10px 8px;
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .delivery-line-header {
-        font-size: 10px;
+        font-size: 13px;
     }
 
     .delivery-summary {
@@ -371,11 +368,11 @@
     }
 
     .delivery-summary-label {
-        font-size: 10px;
+        font-size: 13px;
     }
 
     .delivery-summary-value {
-        font-size: 13px;
+        font-size: 14px;
     }
 
     .delivery-modal-summary {

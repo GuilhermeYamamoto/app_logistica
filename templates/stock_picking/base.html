@@ -15,7 +15,7 @@
     <!-- TOP BAR -->
     <header class="topbar inventory-topbar">
         <div class="brand">
-            <a class="brand-icon" href="/inventario" aria-label="Voltar às etapas">↩</a>
+            <a class="brand-icon" href="/inventario" aria-label="Voltar às etapas"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6L8.5 12l6 6"/></svg></a>
             <div>
                 <h1>{{ stage.name | upper }}</h1>
                 <span>INVENTÁRIO</span>
@@ -30,7 +30,7 @@
                     autocomplete="off"
                 >
                 <button id="clearSearch" class="clear-search" type="button">×</button>
-                <button id="searchButton" class="search-button" type="button">🔍</button>
+                <button id="searchButton" class="search-button" type="button" aria-label="Pesquisar"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
             </div>
 
             {% block inventory_header_actions %}{% endblock %}
@@ -71,7 +71,7 @@
         </div>
         <section id="pickingsContainer" class="pickings-container" aria-live="polite"></section>
         <div id="emptyState" class="empty-state hidden">
-            <div class="empty-icon">✓</div>
+            <div class="empty-icon"><svg class="ui-icon empty-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16 9.5"/></svg></div>
             <h3>NENHUM REGISTRO ENCONTRADO</h3>
             <p>Não existem registros nesta categoria.</p>
         </div>
@@ -94,7 +94,7 @@
         <div id="chatMessages" class="chat-messages"></div>
         <form id="chatForm" class="chat-input-area">
             <input id="chatInput" class="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Digite uma mensagem...">
-            <button id="chatSendButton" class="chat-send-button" type="submit" aria-label="Enviar mensagem">➤</button>
+            <button id="chatSendButton" class="chat-send-button" type="submit" aria-label="Enviar mensagem"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
         </form>
     </aside>
 
@@ -213,7 +213,7 @@
             <h2>FINALIZAR REGISTRO</h2>
             <p id="validationText">Deseja realmente validar este registro?</p>
             <div id="quantityWarning" class="quantity-warning hidden">
-                ⚠️ A quantidade recebida é menor que a quantidade esperada.
+                <svg class="ui-icon quantity-warning-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4L12 4z"/><path d="M12 10v4.5M12 17.2v.1"/></svg> A quantidade recebida é menor que a quantidade esperada.
                 <strong>Tem certeza que deseja prosseguir com a quantidade menor?</strong>
             </div>
             {% block inventory_validation_content %}{% endblock %}
