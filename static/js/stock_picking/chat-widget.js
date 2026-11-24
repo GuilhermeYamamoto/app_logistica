@@ -64,6 +64,14 @@
     let isChatVisible = false;
     let currentMode = null;
     let selectedRecipient = null;
+    let currentRecipientName = null;
+    let historyTimer = null;
+    let historyController = null;
+    let historyLoadingForced = false;
+    let lastHistoryKey = null;
+
+    const CHAT_API = "/api/chat";
+    const HISTORY_INTERVAL_MS = 5000;
     let alertTimer = null;
 
     /* ---------- Integração (ponto de extensão) ---------- */
@@ -111,6 +119,7 @@
 
     /* Volta ao estado inicial, sem animação (usado ao fechar o widget). */
     function resetToMenu() {
+        stopTiHistory();
         burst.getAnimations().forEach(function (animation) {
             animation.cancel();
         });
@@ -211,6 +220,7 @@
 
     function selectRecipient(name) {
         selectedRecipient = name;
+        currentRecipientName = name;
 
         recipientButtons.forEach(function (button) {
             const active = button.getAttribute("data-hw-recipient") === name;
@@ -231,10 +241,16 @@
         }
 
         hideRecipientAlert();
+
+        if (currentMode === "ti") {
+            startTiHistory();
+        }
     }
 
     function resetRecipients(mode) {
         selectedRecipient = null;
+        currentRecipientName = null;
+        stopTiHistory();
         chatTitle.textContent = "Assistente";
         recipientButtons.forEach(function (button) {
             button.classList.remove("is-selected");
@@ -314,6 +330,7 @@
             return;
         }
 
+        stopTiHistory();
         isAnimating = true;
         chat.classList.remove("is-visible");
         chat.setAttribute("aria-hidden", "true");
@@ -325,6 +342,180 @@
             isAnimating = false;
             tiles[0].focus({ preventScroll: true });
         }, GROW_DURATION);
+    }
+
+    /* ---------- Chat privado com a equipe de T.I. (Odoo) ---------- */
+
+    async function apiRequest(url, options = {}) {
+        const response = await fetch(url, {
+            credentials: "same-origin",
+            ...options,
+            headers: {
+                Accept: "application/json",
+                ...(options.body ? { "Content-Type": "application/json" } : {}),
+                ...(options.headers || {}),
+            },
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Não foi possível concluir a ação.");
+        }
+
+        return data;
+    }
+
+    function applyWelcomeTitle() {
+        const title = messages.querySelector(".hw-welcome-title");
+
+        if (title && currentRecipientName) {
+            title.textContent = "Você está falando com o " + currentRecipientName;
+        }
+    }
+
+    function appendHistoryMessage(item) {
+        const bubble = document.createElement("div");
+        bubble.className = "hw-msg " + (item.eu ? "hw-msg-user" : "hw-msg-bot");
+
+        if (!item.eu && item.autor) {
+            const author = document.createElement("span");
+            author.className = "hw-msg-author";
+            author.textContent = item.autor;
+            bubble.appendChild(author);
+        }
+
+        bubble.appendChild(document.createTextNode(item.texto));
+        messages.appendChild(bubble);
+        scrollToBottom();
+    }
+
+    /* Indicador de carregamento no meio do chat, enquanto o histórico é buscado. */
+    function showHistoryLoading() {
+        historyLoadingForced = true;
+
+        const loader = document.createElement("div");
+        loader.className = "hw-loading";
+        loader.setAttribute("role", "status");
+        loader.innerHTML = '<span class="hw-spinner" aria-hidden="true"></span><span>Carregando mensagens...</span>';
+        messages.replaceChildren(loader);
+    }
+
+    function currentHistoryKey() {
+        return selectedRecipient ? selectedRecipient.toLowerCase() : null;
+    }
+
+    /*
+     * Carrega as mensagens de hoje com a pessoa selecionada.
+     * - showLoading: troca de pessoa; mostra o carregamento e sempre renderiza o resultado.
+     * - sem showLoading: atualização periódica; só redesenha se houver mudança.
+     * Cada chamada cancela a anterior, para que a resposta de uma pessoa nunca apareça na conversa de outra.
+     */
+    async function loadTiHistory({ showLoading = false } = {}) {
+        const key = currentHistoryKey();
+
+        if (!key || currentMode !== "ti" || isBusy) {
+            return;
+        }
+
+        // Uma atualização periódica não interrompe o carregamento de uma troca de pessoa.
+        if (!showLoading && historyLoadingForced) {
+            return;
+        }
+
+        historyController?.abort();
+        const controller = new AbortController();
+        historyController = controller;
+
+        if (showLoading) {
+            showHistoryLoading();
+        }
+
+        try {
+            const data = await apiRequest(`${CHAT_API}/conversas/${key}`, { signal: controller.signal });
+
+            if (controller.signal.aborted || key !== currentHistoryKey()) {
+                return;
+            }
+
+            const historyKey = data.mensagens.map((item) => item.id).join(",");
+
+            if (!showLoading && historyKey === lastHistoryKey) {
+                return;
+            }
+
+            lastHistoryKey = historyKey;
+            messages.replaceChildren();
+
+            if (data.mensagens.length === 0) {
+                renderWelcome("ti");
+                applyWelcomeTitle();
+                return;
+            }
+
+            data.mensagens.forEach(appendHistoryMessage);
+        } catch (error) {
+            if (error.name === "AbortError") {
+                return;
+            }
+
+            // Falha na atualização em segundo plano: mantém o que já está na tela.
+            if (showLoading && key === currentHistoryKey()) {
+                messages.replaceChildren();
+                renderWelcome("ti");
+                applyWelcomeTitle();
+            }
+        } finally {
+            if (historyController === controller) {
+                historyController = null;
+                historyLoadingForced = false;
+            }
+        }
+    }
+
+    function startTiHistory() {
+        stopTiHistory();
+        lastHistoryKey = null;
+        loadTiHistory({ showLoading: true });
+
+        historyTimer = window.setInterval(function () {
+            if (!document.hidden) {
+                loadTiHistory();
+            }
+        }, HISTORY_INTERVAL_MS);
+    }
+
+    function stopTiHistory() {
+        window.clearInterval(historyTimer);
+        historyTimer = null;
+        historyController?.abort();
+        historyController = null;
+        historyLoadingForced = false;
+    }
+
+    async function sendTiMessage(text) {
+        removeWelcome();
+        input.value = "";
+        resizeInput();
+        setBusy(true);
+
+        const typing = showTyping();
+
+        try {
+            const data = await apiRequest(
+                `${CHAT_API}/conversas/${selectedRecipient.toLowerCase()}/mensagens`,
+                { method: "POST", body: JSON.stringify({ texto: text }) },
+            );
+            typing.remove();
+            appendHistoryMessage({ ...data, autor: "", eu: true });
+            lastHistoryKey = null;
+        } catch (error) {
+            typing.remove();
+            addMessage(error.message || "Não foi possível enviar a mensagem.", "bot");
+        } finally {
+            setBusy(false);
+            input.focus({ preventScroll: true });
+        }
     }
 
     /* ---------- Mensagens ---------- */
@@ -375,6 +566,11 @@
 
         if (currentMode === "ti" && !selectedRecipient) {
             showRecipientAlert();
+            return;
+        }
+
+        if (currentMode === "ti") {
+            await sendTiMessage(text);
             return;
         }
 

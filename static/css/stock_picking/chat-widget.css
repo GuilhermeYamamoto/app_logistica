@@ -282,35 +282,39 @@
     transform: translateY(-1px);
 }
 
-/* Aviso sobreposto ao topo do chat. */
+/* Aviso exibido logo abaixo dos nomes, quando nenhuma pessoa foi selecionada. */
 .hw-alert {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    z-index: 10;
-    width: calc(100% - 32px);
-    max-width: 330px;
-    padding: 10px 14px;
-    border: 1.5px solid transparent;
+    flex: 0 0 auto;
+    max-height: 0;
+    margin: 0 16px;
+    padding: 0 14px;
+    border: 0 solid transparent;
     border-radius: 14px;
     background:
         linear-gradient(var(--app-surface, #ffffff), var(--app-surface, #ffffff)) padding-box,
         var(--hw-gradient) border-box;
-    box-shadow: 0 12px 30px rgba(60, 20, 110, 0.22);
+    box-shadow: 0 10px 24px rgba(60, 20, 110, 0.14);
     color: var(--app-text, #172033);
     font-size: 13px;
     font-weight: 600;
     line-height: 1.4;
     text-align: center;
+    overflow: hidden;
     pointer-events: none;
     opacity: 0;
-    transform: translate(-50%, -10px);
-    transition: opacity 0.25s ease, transform 0.3s var(--hw-ease);
+    transition:
+        opacity 0.25s ease,
+        max-height 0.35s var(--hw-ease),
+        margin 0.35s var(--hw-ease),
+        padding 0.35s var(--hw-ease);
 }
 
 .hw-alert.is-visible {
+    max-height: 80px;
+    margin: 10px 16px 0;
+    padding: 10px 14px;
+    border: 1.5px solid transparent;
     opacity: 1;
-    transform: translate(-50%, 0);
 }
 
 .hw-back {
@@ -439,6 +443,43 @@
     align-self: flex-start;
     color: var(--app-text, #172033);
     padding: 2px 2px;
+}
+
+/* Carregamento do histórico no meio do chat. */
+.hw-loading {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--app-muted, #6c7485);
+    animation: hw-message-in 0.3s var(--hw-ease);
+}
+
+.hw-spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: conic-gradient(#8b5cf6, #ec4899, #fdba74, #8b5cf6);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    animation: hw-spin 0.9s linear infinite;
+}
+
+@keyframes hw-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.hw-msg-author {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--app-muted, #6c7485);
 }
 
 .hw-msg-user {
