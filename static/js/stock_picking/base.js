@@ -44,6 +44,41 @@
         span: iconSpan,
     });
 
+    /* Tarjas de status sobre o card (ícone e texto lado a lado). */
+    const TARJA_VARIANTS = {
+        correction: { text: "CORREÇÃO DE PESO SOLICITADA", icon: "tool" },
+        estoque: { text: "ESTOQUE PENDENTE", icon: "package" },
+    };
+
+    function setTarja(card, variant) {
+        card.querySelector(":scope > .picking-tarja")?.remove();
+
+        const config = TARJA_VARIANTS[variant];
+        if (!config) {
+            return;
+        }
+
+        const band = document.createElement("div");
+        band.className = `picking-tarja picking-tarja--${variant}`;
+        band.setAttribute("role", "status");
+        band.innerHTML = `${iconSvg(config.icon)}<span>${config.text}</span>`;
+        card.appendChild(band);
+    }
+
+    // Card com tarja ativa não abre detalhes nem recebe ações.
+    function isTarjaLocked(card) {
+        return Boolean(
+            card &&
+            (card.classList.contains("correction-requested") ||
+                card.classList.contains("stock-pending")),
+        );
+    }
+
+    window.AppTarja = Object.freeze({
+        set: setTarja,
+        isLocked: isTarjaLocked,
+    });
+
 
     const elements = {
         records: document.getElementById("inventoryStageRecords"),

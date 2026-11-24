@@ -309,6 +309,11 @@
            card.classList.remove("stock-pending");
        }
 
+       window.AppTarja.set(
+           card,
+           correctionRequested ? "correction" : stockPending ? "estoque" : null,
+       );
+
        // Linhas do picking
        const moveLines = picking.move_lines || [];
        const conferido = isConferido(picking);
@@ -544,6 +549,7 @@
                                if (card) {
                                    card.classList.add("correction-requested");
                                    card.dataset.correctionRequested = "true";
+                                   window.AppTarja.set(card, "correction");
                                }
 
                                picking.correcao_peso_solicitada = true;
@@ -774,6 +780,9 @@
        detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
        detailsHint.addEventListener("click", (event) => {
+           if (window.AppTarja.isLocked(card)) {
+               return;
+           }
            event.stopPropagation();
            openPickingDetailsModal(picking);
        });
@@ -793,6 +802,9 @@
        card.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
        card.addEventListener("keydown", (event) => {
+           if (window.AppTarja.isLocked(card)) {
+               return;
+           }
            if (event.key === "Enter" || event.key === " ") {
                event.preventDefault();
                openPickingDetailsModal(picking);
@@ -800,6 +812,9 @@
        });
 
        card.addEventListener("click", (event) => {
+           if (window.AppTarja.isLocked(card)) {
+               return;
+           }
            if (
                event.target.closest("button") ||
                event.target.closest("input") ||

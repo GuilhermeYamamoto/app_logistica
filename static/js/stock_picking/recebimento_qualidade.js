@@ -167,7 +167,7 @@
 
             const estoqueBanner = document.createElement("div");
             estoqueBanner.className = "estoque-glass-banner";
-            estoqueBanner.textContent = "ESTOQUE";
+            estoqueBanner.innerHTML = `${AppIcons.svg("package")}<span>ESTOQUE</span>`;
             estoqueBanner.setAttribute("aria-label", "Picking de estoque");
 
             // Permite posicionar a tarja em relação ao picking.

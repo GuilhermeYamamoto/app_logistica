@@ -541,52 +541,65 @@
     border-radius: inherit;
 }
 
-/* Tarja diagonal */
+/* Tarja diagonal: faixa em gradiente da marca, com brilho que passa lentamente. */
 .estoque-banner-clip .estoque-glass-banner {
     position: absolute;
-    top: 38px;
-    right: -48px;
+    top: 34px;
+    right: -54px;
 
-    width: 250px;
-    min-height: 46px;
+    width: 260px;
+    min-height: 34px;
     box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 7px 12px;
 
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
 
     transform: rotate(45deg);
     transform-origin: center;
 
-    color: var(--muted-text, var(--text));
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: .08em;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .14em;
     line-height: 1.2;
     text-transform: uppercase;
-    text-align: center;
     white-space: nowrap;
 
-    background: rgba(255, 255, 255, 0.18);
-    border-top: 1px solid rgba(255, 255, 255, 0.35);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    background:
+        linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
+        var(--brand-gradient);
+    background-size: 240% 100%, 100% 100%;
+    animation: estoque-sheen 3.6s linear infinite;
 
-    box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
-
-    backdrop-filter: blur(10px) saturate(1.2);
-    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    box-shadow:
+        0 8px 18px rgba(219, 39, 119, .32),
+        inset 0 1px 0 rgba(255, 255, 255, .45);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .18);
 
     pointer-events: none;
     user-select: none;
 }
 
-html:not([data-theme="dark"]) .estoque-banner-clip .estoque-glass-banner {
-    background: rgba(60, 68, 77, 0.72);
-    border-top-color: rgba(255, 255, 255, 0.25);
-    border-bottom-color: rgba(255, 255, 255, 0.25);
-    color: #f5f7fb;
-    box-shadow: 0 0 18px rgba(30, 35, 42, 0.18);
-    backdrop-filter: blur(10px) saturate(1.2);
-    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+.estoque-glass-banner .ui-icon {
+    width: 16px;
+    height: 16px;
+}
+
+@keyframes estoque-sheen {
+    from {
+        background-position: 150% 0, 0 0;
+    }
+    to {
+        background-position: -150% 0, 0 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .estoque-glass-banner {
+        animation: none;
+    }
 }

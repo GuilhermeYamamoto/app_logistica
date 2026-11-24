@@ -2584,3 +2584,88 @@ html[data-theme="dark"] .quality-modal {
     height: 18px;
     color: white;
 }
+
+
+/* =========================================================
+   TARJAS DE STATUS
+   A tarja é um elemento real dentro do card (ícone e texto lado a lado).
+   Só o picking fica apagado; a tarja permanece brilhante e colorida.
+========================================================= */
+
+.picking-card.correction-requested > :not(.picking-tarja),
+.picking-card.stock-pending > :not(.picking-tarja) {
+    opacity: .72;
+    filter: blur(2px) saturate(.85);
+    pointer-events: none;
+    user-select: none;
+    transition: filter .3s ease, opacity .3s ease;
+}
+
+.picking-tarja {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-sizing: border-box;
+    min-height: 58px;
+    padding: 12px 22px;
+
+    background:
+        linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
+        var(--tarja-gradient);
+    background-size: 240% 100%, 100% 100%;
+    animation: tarja-sheen 3.6s linear infinite;
+
+    border-top: 1px solid rgba(255, 255, 255, .4);
+    border-bottom: 1px solid rgba(255, 255, 255, .4);
+    box-shadow: 0 12px 28px rgba(30, 27, 46, .3), inset 0 1px 0 rgba(255, 255, 255, .45);
+
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+
+    pointer-events: none;
+    user-select: none;
+}
+
+.picking-tarja .ui-icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
+.picking-tarja--correction {
+    --tarja-gradient: var(--brand-gradient);
+}
+
+.picking-tarja--estoque {
+    --tarja-gradient: var(--grad-violet);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .picking-tarja {
+        animation: none;
+    }
+}
+
+/* Brilho que atravessa as tarjas de status. */
+@keyframes tarja-sheen {
+    from {
+        background-position: 150% 0, 0 0;
+    }
+    to {
+        background-position: -150% 0, 0 0;
+    }
+}

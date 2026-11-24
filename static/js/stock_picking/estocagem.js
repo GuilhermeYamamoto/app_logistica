@@ -480,6 +480,7 @@
             card.classList.remove("correction-requested");
             delete card.dataset.correctionRequested;
         }
+        window.AppTarja.set(card, correctionRequested ? "correction" : null);
 
         const addPeso = document.createElement("button");
 
@@ -576,6 +577,7 @@
                             if (cardElement) {
                                 cardElement.classList.add("correction-requested");
                                 cardElement.dataset.correctionRequested = "true";
+                                window.AppTarja.set(cardElement, "correction");
                             }
 
                             if (!Array.isArray(picking.tagIds)) {
@@ -626,6 +628,9 @@
         detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
         detailsHint.addEventListener("click", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             event.stopPropagation();
             openPickingDetailsModal(picking);
         });
@@ -637,6 +642,9 @@
         card.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
         card.addEventListener("keydown", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 openPickingDetailsModal(picking);
@@ -644,6 +652,9 @@
         });
 
         card.addEventListener("click", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             if (
                 event.target.closest("button") ||
                 event.target.closest("input") ||
