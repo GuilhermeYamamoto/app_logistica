@@ -18,7 +18,7 @@
 
         button.type = "button";
         button.className = "main-action conference-action";
-        button.textContent = "✓ CONFERIR";
+        button.innerHTML = AppIcons.svg("check", "action-icon-small") + "CONFERIR";
 
         button.addEventListener("click", async () => {
             if (inventory.isActionInProgress()) {

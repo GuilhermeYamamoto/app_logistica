@@ -51,7 +51,7 @@
                 className: "main-action validation-action",
                 label: "SOLICITAR CONFERÊNCIA",
                 arialLabel: "SOLICITAR CONFERÊNCIA",
-                icon: "✓",
+                icon: AppIcons.svg("check"),
                 disabled: !hasValidLocation,
                 onClick: () => enviarParaConferenciaExpedicao(picking.id)
             }),
@@ -340,7 +340,7 @@
 
             const check = document.createElement("span");
             check.className = "location-option-check";
-            check.textContent = "✔";
+            check.innerHTML = AppIcons.svg("check");
 
             button.append(name, check);
 

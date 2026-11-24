@@ -160,11 +160,7 @@
                     user.name || "Usuário sem nome",
                 );
 
-                const check = createElement(
-                    "span",
-                    "responsible-user-check",
-                    "✓",
-                );
+                const check = AppIcons.span("check", "responsible-user-check");
 
                 button.append(
                     icon,
@@ -329,11 +325,7 @@
             "responsible-action-content",
         );
 
-        const icon = createElement(
-            "span",
-            "responsible-action-icon",
-            "🧑",
-        );
+        const icon = AppIcons.span("user", "responsible-action-icon");
 
         const label = createElement(
             "span",
@@ -1895,7 +1887,7 @@
                                 name.textContent = user.name || 'Usuário sem nome';
                                 const check = document.createElement('span');
                                 check.className = 'responsible-user-check';
-                                check.textContent = '✓';
+                                check.innerHTML = AppIcons.svg('check');
                                 btn.appendChild(icon);
                                 btn.appendChild(name);
                                 btn.appendChild(check);
