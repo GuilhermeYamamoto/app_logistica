@@ -573,6 +573,7 @@
         linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
         var(--brand-gradient);
     background-size: 240% 100%, 100% 100%;
+    background-repeat: no-repeat;
     animation: estoque-sheen 3.6s linear infinite;
 
     box-shadow:

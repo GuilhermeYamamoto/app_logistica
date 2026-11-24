@@ -18,6 +18,18 @@ async def list_team(client: OdooClient = Depends(get_odoo_client)) -> List[Dict[
     return ChatService.get_team()
 
 
+@router.get("/resumo")
+async def list_summary(client: OdooClient = Depends(get_odoo_client)) -> Dict[str, Any]:
+    """IDs das mensagens recebidas hoje de cada pessoa da equipe (para o aviso de não lidas)."""
+    pessoas: Dict[str, Dict[str, List[int]]] = {}
+    for member in ChatService.get_team():
+        data = ChatService.list_today_messages(client, member["key"])
+        pessoas[member["key"]] = {
+            "recebidas": [item["id"] for item in data["mensagens"] if not item["eu"]],
+        }
+    return {"pessoas": pessoas}
+
+
 @router.get("/conversas/{pessoa}")
 async def list_messages(
     pessoa: str,

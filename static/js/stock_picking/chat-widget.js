@@ -72,7 +72,16 @@
 
     const CHAT_API = "/api/chat";
     const HISTORY_INTERVAL_MS = 5000;
+    const SEEN_STORAGE_KEY = "hwChatSeen";
     let alertTimer = null;
+
+    const badge = document.getElementById("helpWidgetBadge");
+    // Último ID lido de cada pessoa (por usuário do navegador).
+    let seenIds = loadSeen();
+    let unreadTotal = 0;
+    // Não lidas por pessoa (chave em minúsculas, como no backend).
+    let unreadByPerson = {};
+    let summaryBusy = false;
 
     /* ---------- Integração (ponto de extensão) ---------- */
 
@@ -130,6 +139,7 @@
         root.classList.remove("is-chat");
         isChatVisible = false;
         isAnimating = false;
+        renderBadge();
     }
 
     /* ---------- Animações ---------- */
@@ -317,6 +327,7 @@
                 });
                 isChatVisible = true;
                 isAnimating = false;
+                renderBadge();
                 input.focus({ preventScroll: true });
             }, GROW_DURATION);
         }).catch(function () {
@@ -340,6 +351,7 @@
         window.setTimeout(function () {
             isChatVisible = false;
             isAnimating = false;
+            renderBadge();
             tiles[0].focus({ preventScroll: true });
         }, GROW_DURATION);
     }
@@ -604,6 +616,123 @@
         sendButton.disabled = isBusy || !input.value.trim();
     }
 
+    /* ---------- Mensagens não lidas (aviso no widget fechado) ---------- */
+
+    function loadSeen() {
+        try {
+            return JSON.parse(window.localStorage.getItem(SEEN_STORAGE_KEY)) || {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function saveSeen() {
+        try {
+            window.localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(seenIds));
+        } catch (error) {
+            // Sem armazenamento disponível, o controle vale só enquanto a página estiver aberta.
+        }
+    }
+
+    /* Contador vermelho sobre o widget. Some com o chat aberto. */
+    function renderBadge() {
+        const show = unreadTotal > 0 && !isChatVisible;
+
+        badge.hidden = !show;
+        badge.textContent = unreadTotal > 99 ? "99+" : String(unreadTotal);
+    }
+
+    /* Contador vermelho dentro da caixa de cada pessoa do T.I. */
+    function renderRecipientBadges() {
+        recipientButtons.forEach(function (button) {
+            const key = button.getAttribute("data-hw-recipient").toLowerCase();
+            const count = unreadByPerson[key] || 0;
+            const counter = button.querySelector(".hw-recipient-badge");
+
+            if (!counter) {
+                return;
+            }
+
+            counter.hidden = count === 0;
+            counter.textContent = count > 99 ? "99+" : String(count);
+        });
+    }
+
+    /* Tremida leve do widget quando chega mensagem nova. */
+    function shakeLauncher() {
+        launcher.classList.remove("is-shaking");
+        void launcher.offsetWidth;
+        launcher.classList.add("is-shaking");
+        launcher.addEventListener("animationend", function () {
+            launcher.classList.remove("is-shaking");
+        }, { once: true });
+    }
+
+    /*
+     * Consulta as mensagens recebidas de hoje e conta as que ainda não foram lidas.
+     * Lido = a conversa com a pessoa estava aberta, ou a mensagem já existia antes
+     * do widget começar a acompanhar a conversa.
+     */
+    async function loadSummary() {
+        if (document.hidden || summaryBusy) {
+            return;
+        }
+
+        summaryBusy = true;
+
+        try {
+            const data = await apiRequest(`${CHAT_API}/resumo`);
+            const pessoas = data.pessoas || {};
+            const viewingKey = isChatVisible && currentMode === "ti" ? currentHistoryKey() : null;
+            const previousTotal = unreadTotal;
+            let changed = false;
+            let total = 0;
+            unreadByPerson = {};
+
+            Object.keys(pessoas).forEach(function (key) {
+                const ids = pessoas[key].recebidas || [];
+                const maxId = ids.reduce(function (max, id) {
+                    return Math.max(max, id);
+                }, 0);
+
+                // Primeira vez que a pessoa aparece: o que já existe conta como lido.
+                if (!(key in seenIds)) {
+                    seenIds[key] = maxId;
+                    changed = true;
+                }
+
+                // Conversa aberta na tela: tudo que chegou fica como lido.
+                if (key === viewingKey && maxId > seenIds[key]) {
+                    seenIds[key] = maxId;
+                    changed = true;
+                }
+
+                const count = ids.filter(function (id) {
+                    return id > seenIds[key];
+                }).length;
+
+                unreadByPerson[key] = count;
+                total += count;
+            });
+
+            if (changed) {
+                saveSeen();
+            }
+
+            unreadTotal = total;
+            renderBadge();
+            renderRecipientBadges();
+
+            if (total > previousTotal && !isChatVisible) {
+                shakeLauncher();
+            }
+        } catch (error) {
+            // Falha silenciosa: o aviso tenta de novo na próxima consulta.
+        } finally {
+            summaryBusy = false;
+        }
+    }
+
     /* ---------- Eventos ---------- */
 
     launcher.addEventListener("click", function () {
@@ -658,6 +787,11 @@
     });
 
     sendButton.disabled = true;
+
+    renderBadge();
+    renderRecipientBadges();
+    loadSummary();
+    window.setInterval(loadSummary, HISTORY_INTERVAL_MS);
 
     window.HelpWidget = {
         open: function () {

@@ -396,6 +396,7 @@
        linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
        var(--grad-green);
    background-size: 240% 100%, 100% 100%;
+   background-repeat: no-repeat;
    animation: tarja-sheen 3.6s linear infinite;
    border-top: 1px solid rgba(255, 255, 255, .4);
    border-bottom: 1px solid rgba(255, 255, 255, .4);
