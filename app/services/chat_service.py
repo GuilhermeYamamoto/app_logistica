@@ -1,9 +1,15 @@
-"""Chat privado com a equipe de T.I., usando as conversas do Odoo.
+"""Chat do suporte de T.I., usando as conversas do Odoo.
 
-Cada pessoa da equipe tem uma conversa privada (``mail.channel`` do tipo
-``chat``) com o usuário logado. Os métodos usados são os mesmos que o
-frontend do Odoo 15 chama (``channel_get``, ``message_post``), executados
-no servidor via XML-RPC com as credenciais da sessão.
+Quando o usuário envia a primeira mensagem para o T.I., é criado no Odoo um
+grupo (``mail.channel`` privado) com o usuário e todas as pessoas do
+departamento de T.I. (``hr.employee.department_id``). O grupo não é apagado:
+as próximas mensagens do mesmo usuário vão para ele.
+
+O histórico mostrado no widget reinicia todo dia às 00:00 (horário de
+Brasília): só aparecem as mensagens do dia. As mensagens antigas continuam no
+Odoo, visíveis para a equipe de T.I. no Discuss.
+
+As chamadas são feitas via XML-RPC com as credenciais da sessão do usuário.
 """
 
 import html
@@ -14,26 +20,24 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
 
+from app.config import settings
 from app.core.auth import OdooClient
 
 
 # Fuso de Brasília (UTC-3, sem horário de verão desde 2019).
 BRAZIL_TZ = timezone(timedelta(hours=-3))
 
-# Pessoas disponíveis no chat de T.I.: chave usada pelo frontend -> dados no Odoo.
-TI_TEAM: Dict[str, Dict[str, str]] = {
-    "guilherme": {"name": "Guilherme", "login": "guilherme.yamamoto@indufix.com.br"},
-    "gabriel": {"name": "Gabriel", "login": "gabriel.rodrigues@indufix.com.br"},
-    "fernando": {"name": "Fernando", "login": "fernando.ribeiro@indufix.com.br"},
-}
+# Prefixo do nome do grupo no Odoo (ex.: "Suporte T.I. - João Silva").
+GROUP_NAME_PREFIX = "Suporte T.I."
 
 
 class ChatService:
-    """Operações de chat privado no Odoo."""
+    """Operações do chat de suporte de T.I. no Odoo."""
 
     CHANNEL_MODEL = "mail.channel"
     MESSAGE_MODEL = "mail.message"
     USER_MODEL = "res.users"
+    EMPLOYEE_MODEL = "hr.employee"
 
     @staticmethod
     def _odoo_error(error: xmlrpc.client.Fault) -> HTTPException:
@@ -43,65 +47,127 @@ class ChatService:
         )
 
     @staticmethod
-    def get_team() -> List[Dict[str, str]]:
-        """Lista as pessoas disponíveis para conversa."""
-        return [{"key": key, "name": data["name"]} for key, data in TI_TEAM.items()]
+    def _execute(client: OdooClient, model: str, method: str, *args, **kwargs) -> Any:
+        try:
+            return client.execute(model, method, *args, **kwargs)
+        except xmlrpc.client.Fault as error:
+            raise ChatService._odoo_error(error)
 
     @staticmethod
-    def get_team_member(key: str) -> Dict[str, str]:
-        member = TI_TEAM.get(key)
-        if member is None:
+    def _group_marker(uid: int) -> str:
+        """Texto gravado na descrição do grupo, usado para reencontrá-lo depois."""
+        return f"Atendimento de T.I. aberto pelo app de logística (usuário {uid})."
+
+    # ---------- Pessoas ----------
+
+    @staticmethod
+    def get_me(client: OdooClient) -> Dict[str, Any]:
+        """Partner e nome do usuário logado."""
+        users = ChatService._execute(
+            client,
+            ChatService.USER_MODEL,
+            "read",
+            [client.uid],
+            fields=["name", "partner_id"],
+        )
+        return {
+            "name": users[0].get("name") or "",
+            "partner_id": int(users[0]["partner_id"][0]),
+        }
+
+    @staticmethod
+    def get_ti_partner_ids(client: OdooClient) -> List[int]:
+        """Partners de todos os usuários cujo funcionário está no departamento de T.I."""
+        employees = ChatService._execute(
+            client,
+            ChatService.EMPLOYEE_MODEL,
+            "search_read",
+            [
+                ("department_id", "=", settings.TI_DEPARTMENT_ID),
+                ("user_id", "!=", False),
+            ],
+            fields=["user_id"],
+        )
+        user_ids = sorted({int(item["user_id"][0]) for item in employees if item.get("user_id")})
+
+        if not user_ids:
+            return []
+
+        users = ChatService._execute(
+            client,
+            ChatService.USER_MODEL,
+            "search_read",
+            [("id", "in", user_ids)],
+            fields=["partner_id"],
+        )
+        return sorted({int(user["partner_id"][0]) for user in users if user.get("partner_id")})
+
+    # ---------- Grupo ----------
+
+    @staticmethod
+    def find_group(client: OdooClient) -> Optional[Dict[str, Any]]:
+        """Grupo de suporte já existente do usuário logado (ou None)."""
+        groups = ChatService._execute(
+            client,
+            ChatService.CHANNEL_MODEL,
+            "search_read",
+            [
+                ("create_uid", "=", client.uid),
+                ("description", "=", ChatService._group_marker(client.uid)),
+            ],
+            fields=["id", "channel_partner_ids"],
+            order="id asc",
+            limit=1,
+        )
+        return groups[0] if groups else None
+
+    @staticmethod
+    def get_or_create_group(client: OdooClient) -> int:
+        """Retorna o grupo do usuário com a equipe de T.I., criando-o se não existir.
+
+        Se alguém entrou no departamento de T.I. depois que o grupo foi criado,
+        a pessoa é adicionada ao grupo.
+        """
+        me = ChatService.get_me(client)
+        ti_partner_ids = ChatService.get_ti_partner_ids(client)
+
+        if not ti_partner_ids:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pessoa não encontrada na equipe de T.I.",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Nenhuma pessoa da equipe de T.I. foi encontrada no Odoo.",
             )
-        return member
 
-    @staticmethod
-    def get_partner_id(client: OdooClient, login: str) -> int:
-        """Retorna o partner do usuário Odoo com o login informado."""
-        try:
-            users = client.execute(
-                ChatService.USER_MODEL,
-                "search_read",
-                [("login", "=", login)],
-                fields=["partner_id"],
-                limit=1,
-                context={"active_test": False},
+        members = sorted(set(ti_partner_ids) | {me["partner_id"]})
+        group = ChatService.find_group(client)
+
+        if group is None:
+            return int(ChatService._execute(
+                client,
+                ChatService.CHANNEL_MODEL,
+                "create",
+                {
+                    "name": f"{GROUP_NAME_PREFIX} - {me['name']}".strip(" -"),
+                    "description": ChatService._group_marker(client.uid),
+                    "channel_type": "channel",
+                    "public": "private",
+                    "channel_partner_ids": [(4, partner_id) for partner_id in members],
+                },
+            ))
+
+        missing = set(members) - set(group.get("channel_partner_ids") or [])
+
+        if missing:
+            ChatService._execute(
+                client,
+                ChatService.CHANNEL_MODEL,
+                "write",
+                [group["id"]],
+                {"channel_partner_ids": [(4, partner_id) for partner_id in sorted(missing)]},
             )
-        except xmlrpc.client.Fault as error:
-            raise ChatService._odoo_error(error)
 
-        if not users or not users[0].get("partner_id"):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuário não encontrado no Odoo.",
-            )
-        return int(users[0]["partner_id"][0])
+        return int(group["id"])
 
-    @staticmethod
-    def get_my_partner_id(client: OdooClient) -> int:
-        try:
-            users = client.execute(
-                ChatService.USER_MODEL,
-                "read",
-                [client.uid],
-                fields=["partner_id"],
-            )
-        except xmlrpc.client.Fault as error:
-            raise ChatService._odoo_error(error)
-
-        return int(users[0]["partner_id"][0])
-
-    @staticmethod
-    def get_channel_id(client: OdooClient, partner_id: int) -> int:
-        """Retorna (ou cria) a conversa privada entre o usuário logado e o partner."""
-        try:
-            channel = client.execute(ChatService.CHANNEL_MODEL, "channel_get", [partner_id])
-        except xmlrpc.client.Fault as error:
-            raise ChatService._odoo_error(error)
-
-        return int(channel["id"])
+    # ---------- Mensagens ----------
 
     @staticmethod
     def _today_range_utc() -> tuple[str, str]:
@@ -123,32 +189,30 @@ class ChatService:
         return html.unescape(text).strip()
 
     @staticmethod
-    def list_today_messages(client: OdooClient, key: str) -> Dict[str, Any]:
-        """Mensagens trocadas hoje com a pessoa escolhida."""
-        member = ChatService.get_team_member(key)
-        partner_id = ChatService.get_partner_id(client, member["login"])
-        my_partner_id = ChatService.get_my_partner_id(client)
-        channel_id = ChatService.get_channel_id(client, partner_id)
+    def list_today_messages(client: OdooClient) -> Dict[str, Any]:
+        """Mensagens de hoje no grupo de suporte. Não cria o grupo se ele não existir."""
+        group = ChatService.find_group(client)
 
+        if group is None:
+            return {"mensagens": []}
+
+        my_partner_id = ChatService.get_me(client)["partner_id"]
         start, end = ChatService._today_range_utc()
-        domain = [
-            ("model", "=", ChatService.CHANNEL_MODEL),
-            ("res_id", "=", channel_id),
-            ("message_type", "=", "comment"),
-            ("date", ">=", start),
-            ("date", "<=", end),
-        ]
 
-        try:
-            records = client.execute(
-                ChatService.MESSAGE_MODEL,
-                "search_read",
-                domain,
-                fields=["id", "body", "author_id", "date"],
-                order="date asc, id asc",
-            )
-        except xmlrpc.client.Fault as error:
-            raise ChatService._odoo_error(error)
+        records = ChatService._execute(
+            client,
+            ChatService.MESSAGE_MODEL,
+            "search_read",
+            [
+                ("model", "=", ChatService.CHANNEL_MODEL),
+                ("res_id", "=", group["id"]),
+                ("message_type", "=", "comment"),
+                ("date", ">=", start),
+                ("date", "<=", end),
+            ],
+            fields=["id", "body", "author_id", "date"],
+            order="date asc, id asc",
+        )
 
         messages = []
         for record in records:
@@ -164,25 +228,21 @@ class ChatService:
         return {"mensagens": messages}
 
     @staticmethod
-    def send_message(client: OdooClient, key: str, texto: str) -> Dict[str, Any]:
-        """Envia uma mensagem privada para a pessoa escolhida."""
-        member = ChatService.get_team_member(key)
-        partner_id = ChatService.get_partner_id(client, member["login"])
-        channel_id = ChatService.get_channel_id(client, partner_id)
+    def send_message(client: OdooClient, texto: str) -> Dict[str, Any]:
+        """Envia a mensagem para o grupo de suporte (criando o grupo na primeira vez)."""
+        channel_id = ChatService.get_or_create_group(client)
 
         # O texto é escapado: o Odoo guarda o corpo como HTML.
         body = f"<p>{html.escape(texto)}</p>"
 
-        try:
-            message_id = client.execute(
-                ChatService.CHANNEL_MODEL,
-                "message_post",
-                [channel_id],
-                body=body,
-                message_type="comment",
-                subtype_xmlid="mail.mt_comment",
-            )
-        except xmlrpc.client.Fault as error:
-            raise ChatService._odoo_error(error)
+        message_id = ChatService._execute(
+            client,
+            ChatService.CHANNEL_MODEL,
+            "message_post",
+            [channel_id],
+            body=body,
+            message_type="comment",
+            subtype_xmlid="mail.mt_comment",
+        )
 
         return {"id": message_id, "texto": texto, "eu": True}
