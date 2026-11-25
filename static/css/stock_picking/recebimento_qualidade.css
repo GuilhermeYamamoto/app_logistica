@@ -604,3 +604,99 @@
         animation: none;
     }
 }
+
+
+/* =========================================================
+   MODAL CONSULTE BENEFICIAMENTO
+   ========================================================= */
+
+.beneficiamento-body {
+    padding: 0 26px 8px;
+}
+
+.beneficiamento-message {
+    padding: 18px 16px;
+    border-radius: 10px;
+    background: var(--surface-secondary);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.beneficiamento-section {
+    position: relative;
+    margin-bottom: 16px;
+    padding: 20px 22px;
+    border-radius: 12px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--app-primary);
+    color: var(--text);
+}
+
+.beneficiamento-section:last-child {
+    margin-bottom: 0;
+}
+
+.beneficiamento-section-title {
+    margin-bottom: 14px;
+}
+
+/* Linha "Rótulo: valor": rótulo à esquerda, valor em destaque à direita */
+.beneficiamento-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 42%) 1fr;
+    align-items: baseline;
+    gap: 6px 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+}
+
+.beneficiamento-row:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.beneficiamento-row-label {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: .03em;
+    color: var(--text);
+    opacity: .75;
+}
+
+.beneficiamento-row-value {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+/* Linha sem rótulo: funciona como subtítulo do grupo */
+.beneficiamento-text {
+    margin: 18px 0 4px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--app-primary);
+}
+
+.beneficiamento-text:first-of-type {
+    margin-top: 0;
+}
+
+@media (max-width: 480px) {
+    .beneficiamento-body {
+        padding: 0 16px 8px;
+    }
+
+    .beneficiamento-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}

@@ -1725,13 +1725,15 @@ html[data-theme="dark"] .quality-modal {
 
     height: 36px;
 
-    padding: 0 14px;
+    padding: 0 16px;
 
     display: flex;
 
     align-items: center;
 
     justify-content: center;
+
+    gap: 8px;
 
     border: 1px solid var(--border);
 
@@ -1750,10 +1752,25 @@ html[data-theme="dark"] .quality-modal {
 
     font-size: 18px;
 
+    white-space: nowrap;
+
     transition:
         background 0.2s ease,
         color 0.2s ease,
         transform 0.2s ease;
+
+}
+
+
+.chat-tab .chat-tab-label {
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.02em;
+
+    line-height: 1;
 
 }
 
@@ -2670,5 +2687,42 @@ html[data-theme="dark"] .quality-modal {
     }
     to {
         background-position: -150% 0, 0 0;
+    }
+}
+
+
+/* =========================================================
+   GRUPO DE ABAS DO CARD
+   Agrupa as abas do topo (ex.: Consulte Beneficiamento + Follow-Up).
+   Mantém as mesmas posições que a aba de chat tinha sozinha.
+========================================================= */
+
+.card-tabs {
+    position: absolute;
+    top: -14px;
+    right: 24px;
+    z-index: 25;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.picking-card .card-tabs > .chat-tab {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: auto;
+}
+
+@media (max-width: 760px) {
+    .card-tabs {
+        top: -13px;
+        right: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-tabs {
+        right: 14px;
     }
 }
