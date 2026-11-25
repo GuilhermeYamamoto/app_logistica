@@ -544,13 +544,14 @@
 /* Tarja diagonal: faixa em gradiente da marca, com brilho que passa lentamente. */
 .estoque-banner-clip .estoque-glass-banner {
     position: absolute;
-    top: 34px;
-    right: -54px;
+    top: 93px;
+    right: -120px;
 
-    width: 260px;
-    min-height: 34px;
+    width: 360px;
+    min-height: 42px;
     box-sizing: border-box;
-    padding: 7px 12px;
+    /* Padding direito maior desloca o texto para o centro da parte visível da tarja */
+    padding: 8px 76px 8px 14px;
 
     display: flex;
     align-items: center;
@@ -561,7 +562,7 @@
     transform-origin: center;
 
     color: #ffffff;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     letter-spacing: .14em;
     line-height: 1.2;
@@ -586,8 +587,8 @@
 }
 
 .estoque-glass-banner .ui-icon {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
 }
 
 @keyframes estoque-sheen {
