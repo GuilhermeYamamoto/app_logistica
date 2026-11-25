@@ -451,24 +451,7 @@ body {
     display: none !important;
 }
 
-/* Mesmo spinner colorido do chat (gradiente da marca), sobre o fundo escurecido. */
-.loading-spinner {
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: conic-gradient(#8b5cf6, #ec4899, #fdba74, #8b5cf6);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
-    animation: loading-spin .75s linear infinite;
-}
-
-@keyframes loading-spin {
-
-    to {
-        transform: rotate(360deg);
-    }
-
-}
+/* O visual do loading (caixas em carrossel) fica em css/base/base.css. */
 
 
 /* ========================================================= */

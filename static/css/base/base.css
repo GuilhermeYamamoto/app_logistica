@@ -287,17 +287,140 @@ body {
     cursor: wait;
 }
 
+/* Loading logístico: três caixas em carrossel.
+   A caixa do centro é montada (abas fecham e a fita é aplicada), depois todas
+   andam uma posição para a direita; a da direita passa por trás da central
+   e volta aberta para a esquerda, dando sensação de profundidade. */
 .loading-spinner {
-    width: 58px;
-    height: 58px;
-    border: 6px solid rgba(255, 255, 255, 0.35);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: app-loading-spin 0.75s linear infinite;
+    --box-cycle: 3.6s;
+    --box-size: 38px;
+    position: relative;
+    width: 130px;
+    height: 70px;
 }
 
-@keyframes app-loading-spin {
-    to { transform: rotate(360deg); }
+.loading-box {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    width: var(--box-size);
+    height: calc(var(--box-size) * 0.8);
+    margin-left: calc(var(--box-size) / -2);
+    transform-origin: 50% 100%;
+    animation: app-loading-box-carousel var(--box-cycle) ease-in-out var(--box-delay) infinite;
+}
+
+.loading-box::after {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    bottom: -5px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    filter: blur(2px);
+    z-index: -1;
+}
+
+.loading-box-body {
+    position: absolute;
+    inset: 0;
+    border: 2px solid #9a6432;
+    border-radius: 2px 2px 4px 4px;
+    background: linear-gradient(180deg, #e2ad72 0%, #cf9356 100%);
+    overflow: hidden;
+}
+
+.loading-box-tape {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 22%;
+    height: 48%;
+    transform: translateX(-50%) scaleY(0);
+    transform-origin: 50% 0;
+    background: #f4e2bb;
+    box-shadow: inset 0 0 0 1px rgba(154, 100, 50, 0.35);
+    animation: app-loading-box-tape var(--box-cycle) ease-out var(--box-delay) infinite;
+}
+
+.loading-box-flap {
+    position: absolute;
+    bottom: calc(100% - 2px);
+    width: 50%;
+    height: 7px;
+    border: 2px solid #9a6432;
+    background: #c4854a;
+}
+
+.loading-box-flap-left {
+    left: 0;
+    border-radius: 2px 0 0 2px;
+    transform-origin: 0 100%;
+    transform: rotate(-135deg);
+    animation: app-loading-box-flap-left var(--box-cycle) ease-in-out var(--box-delay) infinite;
+}
+
+.loading-box-flap-right {
+    right: 0;
+    border-radius: 0 2px 2px 0;
+    transform-origin: 100% 100%;
+    transform: rotate(135deg);
+    animation: app-loading-box-flap-right var(--box-cycle) ease-in-out var(--box-delay) infinite;
+}
+
+/* Ciclo de cada caixa (3 passos de 1/3):
+   0–33%  centro: monta (0–20%) e anda para a direita
+   33–67% direita: espera e passa por trás da central até a esquerda
+   67–100% esquerda: espera e anda para o centro */
+@keyframes app-loading-box-carousel {
+    0%, 20% {
+        transform: translateX(0) scale(1);
+        filter: brightness(1);
+        z-index: 3;
+    }
+    33.333%, 53.333% {
+        transform: translateX(40px) scale(0.72);
+        filter: brightness(0.78);
+        z-index: 2;
+    }
+    53.4% {
+        z-index: 0;
+    }
+    60% {
+        transform: translateX(0) translateY(-10px) scale(0.55);
+        filter: brightness(0.6);
+        z-index: 0;
+    }
+    66.667%, 86.667% {
+        transform: translateX(-40px) scale(0.72);
+        filter: brightness(0.78);
+        z-index: 1;
+    }
+    100% {
+        transform: translateX(0) scale(1);
+        filter: brightness(1);
+        z-index: 3;
+    }
+}
+
+@keyframes app-loading-box-flap-left {
+    0% { transform: rotate(-135deg); }
+    8%, 56% { transform: rotate(0deg); }
+    64%, 100% { transform: rotate(-135deg); }
+}
+
+@keyframes app-loading-box-flap-right {
+    0%, 4% { transform: rotate(135deg); }
+    12%, 56% { transform: rotate(0deg); }
+    64%, 100% { transform: rotate(135deg); }
+}
+
+@keyframes app-loading-box-tape {
+    0%, 12% { transform: translateX(-50%) scaleY(0); }
+    19%, 56% { transform: translateX(-50%) scaleY(1); }
+    62%, 100% { transform: translateX(-50%) scaleY(0); }
 }
 
 .toast {
