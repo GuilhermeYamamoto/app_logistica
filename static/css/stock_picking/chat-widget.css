@@ -815,3 +815,47 @@
         animation-iteration-count: 1 !important;
     }
 }
+
+/* =========================================================
+   BLOCO TEMPORÁRIO — IA INATIVA
+   Fundo e texto com opacidade reduzida + cadeado sobreposto.
+   Remover este bloco inteiro quando a IA tiver funcionalidade.
+========================================================= */
+
+.hw-tile[data-hw-mode="ia"] {
+    position: relative;
+    background: none;
+    /* Não clicável: os cliques passam para o que está por baixo. */
+    pointer-events: none;
+}
+
+/* Fundo: o gradiente original, com opacidade reduzida. */
+.hw-tile[data-hw-mode="ia"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--hw-gradient);
+    opacity: 0.45;
+}
+
+/* Texto "IA": também com opacidade reduzida. */
+.hw-tile[data-hw-mode="ia"] span {
+    position: relative;
+    opacity: 0.45;
+}
+
+/* Cadeado sobreposto, com opacidade normal. */
+.hw-tile[data-hw-mode="ia"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 30px;
+    height: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+/* FIM DO BLOCO TEMPORÁRIO — IA INATIVA */
