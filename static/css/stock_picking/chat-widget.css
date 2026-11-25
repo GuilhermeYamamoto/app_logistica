@@ -16,7 +16,7 @@
     position: fixed;
     right: 24px;
     /* Fica acima do botão de tema (bottom 24px + 52px de altura + respiro). */
-    bottom: 38px;
+    bottom: 84px;
     z-index: 900;
 
     width: var(--hw-closed-size);
