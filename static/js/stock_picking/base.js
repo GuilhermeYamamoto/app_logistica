@@ -2217,13 +2217,49 @@
         render();
     }
 
+    // Etiquetas impressas na sessão atual do navegador. O sessionStorage
+    // mantém a informação ao recarregar a página e é descartado ao fechar
+    // a aba ou ao abrir a tela de login (ver login.js).
+    const PRINTED_LABELS_STORAGE_KEY = "app_logistica:etiquetasImpressas";
+
+    function readPrintedLabels() {
+        try {
+            const stored = JSON.parse(
+                window.sessionStorage.getItem(PRINTED_LABELS_STORAGE_KEY),
+            );
+            return new Set(Array.isArray(stored) ? stored.map(Number) : []);
+        } catch (error) {
+            return new Set();
+        }
+    }
+
+    function hasPrintedLabel(pickingId) {
+        return readPrintedLabels().has(Number(pickingId));
+    }
+
+    function markLabelPrinted(pickingId) {
+        const printedLabels = readPrintedLabels();
+        printedLabels.add(Number(pickingId));
+
+        try {
+            window.sessionStorage.setItem(
+                PRINTED_LABELS_STORAGE_KEY,
+                JSON.stringify([...printedLabels]),
+            );
+        } catch (error) {
+            console.warn("Não foi possível salvar a etiqueta impressa na sessão:", error);
+        }
+    }
+
     window.AppInventory = Object.freeze({
         configure,
         getRecord,
         getRecords: () => records,
+        hasPrintedLabel,
         hideLoading,
         initialize,
         isActionInProgress: () => actionInProgress,
+        markLabelPrinted,
         markPrintButtonPrinted,
         openChat,
         openQuality,

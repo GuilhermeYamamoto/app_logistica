@@ -11,7 +11,6 @@
 
     let selectedConferenciaPicking = null;
     let selectedReplicarPesoPicking = null;
-    const printedLabels = new Set();
 
     // Retorna true quando o picking possui a tag 29, usada pelo Odoo
     // para indicar que a separação foi conferida.
@@ -613,13 +612,14 @@
                 "secondary-action",
                 "conference-action",
             );
-            conferirSeparacao.disabled =
-                !pesoConferido || !printedLabels.has(picking.id);
+            const etiquetaImpressa = inventory.hasPrintedLabel(picking.id);
+
+            conferirSeparacao.disabled = !pesoConferido || !etiquetaImpressa;
 
             if (!pesoConferido) {
                 conferirSeparacao.title =
                     "Preencha e corrija o peso antes de conferir.";
-            } else if (!printedLabels.has(picking.id)) {
+            } else if (!etiquetaImpressa) {
                 conferirSeparacao.title =
                     "Imprima a etiqueta antes de solicitar a conferência.";
             }
@@ -859,7 +859,7 @@
                     }
 
                     // Registra a impressão somente após a resposta IoT ser bem-sucedida.
-                    printedLabels.add(picking.id);
+                    inventory.markLabelPrinted(picking.id);
 
                     // Libera a conferência respeitando a trava de divergência já existente.
                     const conferirSeparacao = card.querySelector(".conference-action");
