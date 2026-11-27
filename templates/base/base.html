@@ -55,7 +55,23 @@
         </button>
 
         <div id="loadingOverlay" class="loading-overlay hidden" aria-hidden="true">
-            <div class="loading-spinner" role="status" aria-label="Carregando"></div>
+            <div class="loading-spinner" role="status" aria-label="Carregando">
+                <div class="loading-box" style="--box-delay: 0s;">
+                    <span class="loading-box-flap loading-box-flap-left"></span>
+                    <span class="loading-box-flap loading-box-flap-right"></span>
+                    <span class="loading-box-body"><span class="loading-box-tape"></span></span>
+                </div>
+                <div class="loading-box" style="--box-delay: calc(var(--box-cycle) / -3);">
+                    <span class="loading-box-flap loading-box-flap-left"></span>
+                    <span class="loading-box-flap loading-box-flap-right"></span>
+                    <span class="loading-box-body"><span class="loading-box-tape"></span></span>
+                </div>
+                <div class="loading-box" style="--box-delay: calc(var(--box-cycle) / -1.5);">
+                    <span class="loading-box-flap loading-box-flap-left"></span>
+                    <span class="loading-box-flap loading-box-flap-right"></span>
+                    <span class="loading-box-body"><span class="loading-box-tape"></span></span>
+                </div>
+            </div>
         </div>
 
         <div id="toast" class="toast" role="status" aria-live="polite">

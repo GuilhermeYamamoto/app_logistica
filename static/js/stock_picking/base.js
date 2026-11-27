@@ -14,6 +14,7 @@
         camera: '<path d="M4 8.5h3.2L9 6h6l1.8 2.5H20v10.5H4z"/><circle cx="12" cy="13.2" r="3.3"/>',
         print: '<path d="M7 9V3.8h10V9"/><rect x="4" y="9" width="16" height="7.5" rx="2"/><path d="M7 14h10v6.2H7z"/>',
         package: '<path d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2z"/><path d="M4 7.2l8 4.2 8-4.2M12 11.4V21"/>',
+        screw: '<rect x="4" y="3.5" width="16" height="4" rx="1.2"/><path d="M12 7.5V21"/><path d="M8 11l8 2M8 15l8 2M8 19l8 2"/>',
         scale: '<path d="M12 4v16M7 20h10M5 7.5h14"/><path d="M5 7.5L2.5 13h5zM19 7.5L16.5 13h5z"/>',
         layers: '<path d="M12 4l9 5-9 5-9-5z"/><path d="M3 14l9 5 9-5"/>',
         tool: '<path d="M14.7 6.3a4 4 0 0 0 5 5l-8.2 8.2a2.1 2.1 0 0 1-3-3l8.2-8.2z"/>',
@@ -418,6 +419,14 @@
             onClick: () => openChat(record),
         });
 
+        // Texto ao lado do ícone; o mesmo rótulo vale para chatter e follow-up.
+        chatTab.append(createElement("span", "chat-tab-label", "Follow-Up"));
+
+        // Grupo de abas no topo do card. Etapas podem acrescentar abas à
+        // esquerda do follow-up via context.tabs (ex.: recebimento de qualidade).
+        const tabs = createElement("div", "card-tabs");
+        tabs.append(chatTab);
+
         const main = createElement("div", "picking-main");
         const identification = createElement("div", "picking-identification");
 
@@ -535,6 +544,8 @@
 
             main,
 
+            tabs,
+
             openChat: () =>
                 openChat(record),
 
@@ -561,7 +572,7 @@
         updateValidationButtonsState(card, record);
 
         card.append(
-            chatTab,
+            tabs,
             main,
             primaryActions,
             secondaryActions,

@@ -16,7 +16,7 @@
     position: fixed;
     right: 24px;
     /* Fica acima do botão de tema (bottom 24px + 52px de altura + respiro). */
-    bottom: 38px;
+    bottom: 84px;
     z-index: 900;
 
     width: var(--hw-closed-size);
@@ -295,127 +295,6 @@
     transition:
         opacity 0.35s ease 0.2s,
         visibility 0s linear 0s;
-}
-
-/* ---------- Seleção de destinatário (T.I.) ---------- */
-
-.hw-recipients {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--app-border, #dfe5ee);
-}
-
-.hw-recipients[hidden] {
-    display: none;
-}
-
-.hw-recipients.is-attention {
-    animation: hw-shake 0.45s var(--hw-ease);
-}
-
-.hw-recipient {
-    flex: 1 1 0;
-    min-width: 0;
-    height: 34px;
-    padding: 0 10px;
-    border: 1.5px solid transparent;
-    border-radius: 999px;
-    /* Só a borda recebe o gradiente; o fundo continua neutro. */
-    background:
-        linear-gradient(var(--app-surface, #ffffff), var(--app-surface, #ffffff)) padding-box,
-        var(--hw-gradient) border-box;
-    color: var(--app-text, #172033);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
-}
-
-.hw-recipient:hover {
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
-}
-
-.hw-recipient:focus-visible {
-    outline: 2px solid #ec4899;
-    outline-offset: 2px;
-}
-
-/* Contador de não lidas dentro da caixa da pessoa. */
-.hw-recipient {
-    position: relative;
-}
-
-.hw-recipient-badge {
-    position: absolute;
-    top: -7px;
-    right: -7px;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 5px;
-    box-sizing: border-box;
-    border-radius: 999px;
-    border: 2px solid #ffffff;
-    background: #dc2626;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 16px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(127, 29, 29, 0.35);
-    pointer-events: none;
-    animation: hw-badge-in 0.35s var(--hw-ease);
-}
-
-.hw-recipient-badge[hidden] {
-    display: none;
-}
-
-/* Selecionado: brilho suave ao redor da borda em gradiente e texto em destaque. */
-.hw-recipient.is-selected {
-    box-shadow:
-        0 0 0 3px rgba(236, 72, 153, 0.14),
-        0 6px 18px rgba(139, 92, 246, 0.22);
-    font-weight: 700;
-    transform: translateY(-1px);
-}
-
-/* Aviso exibido logo abaixo dos nomes, quando nenhuma pessoa foi selecionada. */
-.hw-alert {
-    flex: 0 0 auto;
-    max-height: 0;
-    margin: 0 16px;
-    padding: 0 14px;
-    border: 0 solid transparent;
-    border-radius: 14px;
-    background:
-        linear-gradient(var(--app-surface, #ffffff), var(--app-surface, #ffffff)) padding-box,
-        var(--hw-gradient) border-box;
-    box-shadow: 0 10px 24px rgba(60, 20, 110, 0.14);
-    color: var(--app-text, #172033);
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.4;
-    text-align: center;
-    overflow: hidden;
-    pointer-events: none;
-    opacity: 0;
-    transition:
-        opacity 0.25s ease,
-        max-height 0.35s var(--hw-ease),
-        margin 0.35s var(--hw-ease),
-        padding 0.35s var(--hw-ease);
-}
-
-.hw-alert.is-visible {
-    max-height: 80px;
-    margin: 10px 16px 0;
-    padding: 10px 14px;
-    border: 1.5px solid transparent;
-    opacity: 1;
 }
 
 .hw-back {
@@ -753,18 +632,6 @@
     }
 }
 
-@keyframes hw-shake {
-    0%, 100% {
-        transform: translateX(0);
-    }
-    20%, 60% {
-        transform: translateX(-5px);
-    }
-    40%, 80% {
-        transform: translateX(5px);
-    }
-}
-
 @keyframes hw-bounce {
     0%, 80%, 100% {
         transform: translateY(0);
@@ -815,3 +682,47 @@
         animation-iteration-count: 1 !important;
     }
 }
+
+/* =========================================================
+   BLOCO TEMPORÁRIO — IA INATIVA
+   Fundo e texto com opacidade reduzida + cadeado sobreposto.
+   Remover este bloco inteiro quando a IA tiver funcionalidade.
+========================================================= */
+
+.hw-tile[data-hw-mode="ia"] {
+    position: relative;
+    background: none;
+    /* Não clicável: os cliques passam para o que está por baixo. */
+    pointer-events: none;
+}
+
+/* Fundo: o gradiente original, com opacidade reduzida. */
+.hw-tile[data-hw-mode="ia"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--hw-gradient);
+    opacity: 0.45;
+}
+
+/* Texto "IA": também com opacidade reduzida. */
+.hw-tile[data-hw-mode="ia"] span {
+    position: relative;
+    opacity: 0.45;
+}
+
+/* Cadeado sobreposto, com opacidade normal. */
+.hw-tile[data-hw-mode="ia"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 30px;
+    height: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+/* FIM DO BLOCO TEMPORÁRIO — IA INATIVA */

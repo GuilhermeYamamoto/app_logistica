@@ -28,9 +28,6 @@
     const backButton = document.getElementById("helpWidgetBack");
     const closeButton = document.getElementById("helpWidgetClose");
     const messages = document.getElementById("helpWidgetMessages");
-    const recipientsBox = document.getElementById("helpWidgetRecipients");
-    const recipientButtons = document.querySelectorAll("[data-hw-recipient]");
-    const alertBox = document.getElementById("helpWidgetAlert");
     const form = document.getElementById("helpWidgetForm");
     const input = document.getElementById("helpWidgetInput");
     const sendButton = document.getElementById("helpWidgetSend");
@@ -52,7 +49,7 @@
         },
         ti: {
             title: "Suporte de T.I.",
-            welcome: "Olá! Em que posso ajudar com o sistema?",
+            welcome: "Você está falando com a equipe de T.I.",
             // O chat de T.I. não mostra perguntas frequentes.
             faq: false,
         },
@@ -63,8 +60,6 @@
     let isAnimating = false;
     let isChatVisible = false;
     let currentMode = null;
-    let selectedRecipient = null;
-    let currentRecipientName = null;
     let historyTimer = null;
     let historyController = null;
     let historyLoadingForced = false;
@@ -72,15 +67,12 @@
 
     const CHAT_API = "/api/chat";
     const HISTORY_INTERVAL_MS = 5000;
-    const SEEN_STORAGE_KEY = "hwChatSeen";
-    let alertTimer = null;
+    const SEEN_STORAGE_KEY = "hwChatSeenTi";
 
     const badge = document.getElementById("helpWidgetBadge");
-    // Último ID lido de cada pessoa (por usuário do navegador).
-    let seenIds = loadSeen();
+    // Último ID recebido da equipe de T.I. já lido (null = ainda não acompanhado neste navegador).
+    let seenId = loadSeen();
     let unreadTotal = 0;
-    // Não lidas por pessoa (chave em minúsculas, como no backend).
-    let unreadByPerson = {};
     let summaryBusy = false;
 
     /* ---------- Integração (ponto de extensão) ---------- */
@@ -205,7 +197,9 @@
         title.className = "hw-welcome-title";
         title.textContent = config.welcome;
         text.className = "hw-welcome-text";
-        text.textContent = "Escolha uma sugestão ou escreva sua dúvida abaixo.";
+        text.textContent = config.faq
+            ? "Escolha uma sugestão ou escreva sua dúvida abaixo."
+            : "Escreva sua dúvida abaixo.";
         chipList.className = "hw-chips";
 
         if (config.faq) {
@@ -226,68 +220,6 @@
         messages.appendChild(box);
     }
 
-    /* ---------- Destinatário (somente T.I.) ---------- */
-
-    function selectRecipient(name) {
-        selectedRecipient = name;
-        currentRecipientName = name;
-
-        recipientButtons.forEach(function (button) {
-            const active = button.getAttribute("data-hw-recipient") === name;
-            button.classList.toggle("is-selected", active);
-            button.setAttribute("aria-checked", String(active));
-        });
-
-        // No T.I., o nome do assistente passa a ser o da pessoa selecionada.
-        if (currentMode === "ti") {
-            chatTitle.textContent = name;
-        }
-
-        // Enquanto a saudação do T.I. estiver visível, ela passa a indicar com quem o usuário está falando.
-        const welcomeTitle = messages.querySelector(".hw-welcome-title");
-
-        if (currentMode === "ti" && welcomeTitle) {
-            welcomeTitle.textContent = "Você está falando com o " + name;
-        }
-
-        hideRecipientAlert();
-
-        if (currentMode === "ti") {
-            startTiHistory();
-        }
-    }
-
-    function resetRecipients(mode) {
-        selectedRecipient = null;
-        currentRecipientName = null;
-        stopTiHistory();
-        chatTitle.textContent = "Assistente";
-        recipientButtons.forEach(function (button) {
-            button.classList.remove("is-selected");
-            button.setAttribute("aria-checked", "false");
-        });
-        recipientsBox.hidden = mode !== "ti";
-        hideRecipientAlert();
-    }
-
-    function hideRecipientAlert() {
-        window.clearTimeout(alertTimer);
-        alertBox.classList.remove("is-visible");
-    }
-
-    /* Mostra o aviso sobreposto e chama atenção para as opções logo abaixo. */
-    function showRecipientAlert() {
-        window.clearTimeout(alertTimer);
-        alertBox.classList.add("is-visible");
-
-        recipientsBox.classList.remove("is-attention");
-        // Reinicia a animação caso já tenha sido executada.
-        void recipientsBox.offsetWidth;
-        recipientsBox.classList.add("is-attention");
-
-        alertTimer = window.setTimeout(hideRecipientAlert, 3200);
-    }
-
     /* Opção clicada: o quadrado cresce até preencher o retângulo, depois o widget vira o chat. */
     function openChat(mode) {
         if (isAnimating || isChatVisible || !MODES[mode]) {
@@ -298,11 +230,17 @@
         const from = getTransformFromTile(tile, burst);
 
         currentMode = mode;
-        resetRecipients(mode);
+        stopTiHistory();
+        chatTitle.textContent = MODES[mode].title;
         messages.replaceChildren();
         renderWelcome(mode);
         input.value = "";
         resizeInput();
+
+        // T.I.: carrega as mensagens de hoje do grupo com a equipe (se o grupo já existir).
+        if (mode === "ti") {
+            startTiHistory();
+        }
 
         isAnimating = true;
 
@@ -378,14 +316,6 @@
         return data;
     }
 
-    function applyWelcomeTitle() {
-        const title = messages.querySelector(".hw-welcome-title");
-
-        if (title && currentRecipientName) {
-            title.textContent = "Você está falando com o " + currentRecipientName;
-        }
-    }
-
     function appendHistoryMessage(item) {
         const bubble = document.createElement("div");
         bubble.className = "hw-msg " + (item.eu ? "hw-msg-user" : "hw-msg-bot");
@@ -413,24 +343,19 @@
         messages.replaceChildren(loader);
     }
 
-    function currentHistoryKey() {
-        return selectedRecipient ? selectedRecipient.toLowerCase() : null;
-    }
-
     /*
-     * Carrega as mensagens de hoje com a pessoa selecionada.
-     * - showLoading: troca de pessoa; mostra o carregamento e sempre renderiza o resultado.
+     * Carrega as mensagens de hoje do grupo com a equipe de T.I.
+     * O histórico reinicia às 00:00: o backend só devolve as mensagens do dia.
+     * - showLoading: abertura do chat; mostra o carregamento e sempre renderiza o resultado.
      * - sem showLoading: atualização periódica; só redesenha se houver mudança.
-     * Cada chamada cancela a anterior, para que a resposta de uma pessoa nunca apareça na conversa de outra.
+     * Cada chamada cancela a anterior.
      */
     async function loadTiHistory({ showLoading = false } = {}) {
-        const key = currentHistoryKey();
-
-        if (!key || currentMode !== "ti" || isBusy) {
+        if (currentMode !== "ti" || isBusy) {
             return;
         }
 
-        // Uma atualização periódica não interrompe o carregamento de uma troca de pessoa.
+        // Uma atualização periódica não interrompe o carregamento inicial.
         if (!showLoading && historyLoadingForced) {
             return;
         }
@@ -444,9 +369,9 @@
         }
 
         try {
-            const data = await apiRequest(`${CHAT_API}/conversas/${key}`, { signal: controller.signal });
+            const data = await apiRequest(`${CHAT_API}/conversa`, { signal: controller.signal });
 
-            if (controller.signal.aborted || key !== currentHistoryKey()) {
+            if (controller.signal.aborted || currentMode !== "ti") {
                 return;
             }
 
@@ -461,7 +386,6 @@
 
             if (data.mensagens.length === 0) {
                 renderWelcome("ti");
-                applyWelcomeTitle();
                 return;
             }
 
@@ -472,10 +396,9 @@
             }
 
             // Falha na atualização em segundo plano: mantém o que já está na tela.
-            if (showLoading && key === currentHistoryKey()) {
+            if (showLoading && currentMode === "ti") {
                 messages.replaceChildren();
                 renderWelcome("ti");
-                applyWelcomeTitle();
             }
         } finally {
             if (historyController === controller) {
@@ -515,7 +438,7 @@
 
         try {
             const data = await apiRequest(
-                `${CHAT_API}/conversas/${selectedRecipient.toLowerCase()}/mensagens`,
+                `${CHAT_API}/conversa/mensagens`,
                 { method: "POST", body: JSON.stringify({ texto: text }) },
             );
             typing.remove();
@@ -576,11 +499,6 @@
             return;
         }
 
-        if (currentMode === "ti" && !selectedRecipient) {
-            showRecipientAlert();
-            return;
-        }
-
         if (currentMode === "ti") {
             await sendTiMessage(text);
             return;
@@ -620,15 +538,16 @@
 
     function loadSeen() {
         try {
-            return JSON.parse(window.localStorage.getItem(SEEN_STORAGE_KEY)) || {};
+            const value = JSON.parse(window.localStorage.getItem(SEEN_STORAGE_KEY));
+            return typeof value === "number" ? value : null;
         } catch (error) {
-            return {};
+            return null;
         }
     }
 
     function saveSeen() {
         try {
-            window.localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(seenIds));
+            window.localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(seenId));
         } catch (error) {
             // Sem armazenamento disponível, o controle vale só enquanto a página estiver aberta.
         }
@@ -642,22 +561,6 @@
         badge.textContent = unreadTotal > 99 ? "99+" : String(unreadTotal);
     }
 
-    /* Contador vermelho dentro da caixa de cada pessoa do T.I. */
-    function renderRecipientBadges() {
-        recipientButtons.forEach(function (button) {
-            const key = button.getAttribute("data-hw-recipient").toLowerCase();
-            const count = unreadByPerson[key] || 0;
-            const counter = button.querySelector(".hw-recipient-badge");
-
-            if (!counter) {
-                return;
-            }
-
-            counter.hidden = count === 0;
-            counter.textContent = count > 99 ? "99+" : String(count);
-        });
-    }
-
     /* Tremida leve do widget quando chega mensagem nova. */
     function shakeLauncher() {
         launcher.classList.remove("is-shaking");
@@ -669,8 +572,8 @@
     }
 
     /*
-     * Consulta as mensagens recebidas de hoje e conta as que ainda não foram lidas.
-     * Lido = a conversa com a pessoa estava aberta, ou a mensagem já existia antes
+     * Consulta as mensagens recebidas hoje da equipe de T.I. e conta as que ainda não foram lidas.
+     * Lido = o chat de T.I. estava aberto, ou a mensagem já existia antes
      * do widget começar a acompanhar a conversa.
      */
     async function loadSummary() {
@@ -682,46 +585,26 @@
 
         try {
             const data = await apiRequest(`${CHAT_API}/resumo`);
-            const pessoas = data.pessoas || {};
-            const viewingKey = isChatVisible && currentMode === "ti" ? currentHistoryKey() : null;
+            const ids = data.recebidas || [];
+            const viewing = isChatVisible && currentMode === "ti";
             const previousTotal = unreadTotal;
-            let changed = false;
-            let total = 0;
-            unreadByPerson = {};
+            const maxId = ids.reduce(function (max, id) {
+                return Math.max(max, id);
+            }, 0);
 
-            Object.keys(pessoas).forEach(function (key) {
-                const ids = pessoas[key].recebidas || [];
-                const maxId = ids.reduce(function (max, id) {
-                    return Math.max(max, id);
-                }, 0);
-
-                // Primeira vez que a pessoa aparece: o que já existe conta como lido.
-                if (!(key in seenIds)) {
-                    seenIds[key] = maxId;
-                    changed = true;
-                }
-
-                // Conversa aberta na tela: tudo que chegou fica como lido.
-                if (key === viewingKey && maxId > seenIds[key]) {
-                    seenIds[key] = maxId;
-                    changed = true;
-                }
-
-                const count = ids.filter(function (id) {
-                    return id > seenIds[key];
-                }).length;
-
-                unreadByPerson[key] = count;
-                total += count;
-            });
-
-            if (changed) {
+            // Primeira consulta neste navegador: o que já existe conta como lido.
+            // Chat de T.I. aberto na tela: tudo que chegou fica como lido.
+            if (seenId === null || (viewing && maxId > seenId)) {
+                seenId = maxId;
                 saveSeen();
             }
 
+            const total = ids.filter(function (id) {
+                return id > seenId;
+            }).length;
+
             unreadTotal = total;
             renderBadge();
-            renderRecipientBadges();
 
             if (total > previousTotal && !isChatVisible) {
                 shakeLauncher();
@@ -742,12 +625,6 @@
     tiles.forEach(function (tile) {
         tile.addEventListener("click", function () {
             openChat(tile.getAttribute("data-hw-mode"));
-        });
-    });
-
-    recipientButtons.forEach(function (button) {
-        button.addEventListener("click", function () {
-            selectRecipient(button.getAttribute("data-hw-recipient"));
         });
     });
 
@@ -789,7 +666,6 @@
     sendButton.disabled = true;
 
     renderBadge();
-    renderRecipientBadges();
     loadSummary();
     window.setInterval(loadSummary, HISTORY_INTERVAL_MS);
 

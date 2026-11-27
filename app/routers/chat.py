@@ -1,6 +1,6 @@
-"""Router do chat privado com a equipe de T.I."""
+"""Router do chat de suporte com a equipe de T.I."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends
 
@@ -12,38 +12,23 @@ from app.services.chat_service import ChatService
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
-@router.get("/equipe")
-async def list_team(client: OdooClient = Depends(get_odoo_client)) -> List[Dict[str, str]]:
-    """Pessoas com quem o usuário pode conversar."""
-    return ChatService.get_team()
-
-
 @router.get("/resumo")
 async def list_summary(client: OdooClient = Depends(get_odoo_client)) -> Dict[str, Any]:
-    """IDs das mensagens recebidas hoje de cada pessoa da equipe (para o aviso de não lidas)."""
-    pessoas: Dict[str, Dict[str, List[int]]] = {}
-    for member in ChatService.get_team():
-        data = ChatService.list_today_messages(client, member["key"])
-        pessoas[member["key"]] = {
-            "recebidas": [item["id"] for item in data["mensagens"] if not item["eu"]],
-        }
-    return {"pessoas": pessoas}
+    """IDs das mensagens recebidas hoje da equipe de T.I. (para o aviso de não lidas)."""
+    data = ChatService.list_today_messages(client)
+    return {"recebidas": [item["id"] for item in data["mensagens"] if not item["eu"]]}
 
 
-@router.get("/conversas/{pessoa}")
-async def list_messages(
-    pessoa: str,
-    client: OdooClient = Depends(get_odoo_client),
-) -> Dict[str, Any]:
-    """Mensagens trocadas hoje (00:00 a 23:59) com a pessoa escolhida."""
-    return ChatService.list_today_messages(client, pessoa)
+@router.get("/conversa")
+async def list_messages(client: OdooClient = Depends(get_odoo_client)) -> Dict[str, Any]:
+    """Mensagens de hoje (00:00 a 23:59) no grupo com a equipe de T.I."""
+    return ChatService.list_today_messages(client)
 
 
-@router.post("/conversas/{pessoa}/mensagens")
+@router.post("/conversa/mensagens")
 async def send_message(
-    pessoa: str,
     payload: ChatMessageRequest,
     client: OdooClient = Depends(get_odoo_client),
 ) -> Dict[str, Any]:
-    """Envia uma mensagem privada para a pessoa escolhida."""
-    return ChatService.send_message(client, pessoa, payload.texto.strip())
+    """Envia uma mensagem ao grupo com a equipe de T.I. (cria o grupo na primeira vez)."""
+    return ChatService.send_message(client, payload.texto.strip())
