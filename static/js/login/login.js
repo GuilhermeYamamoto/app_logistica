@@ -4,6 +4,14 @@ const togglePassword = document.getElementById("togglePassword");
 const loginButton = document.getElementById("loginButton");
 const loginMessage = document.getElementById("loginMessage");
 
+// Ao chegar no login (logout ou sessão expirada), descarta as etiquetas
+// marcadas como impressas na sessão anterior desta aba (ver stock_picking/base.js).
+try {
+    sessionStorage.removeItem("app_logistica:etiquetasImpressas");
+} catch (error) {
+    console.warn("Não foi possível limpar as etiquetas impressas da sessão:", error);
+}
+
 
 // =========================
 // MOSTRAR / OCULTAR SENHA
