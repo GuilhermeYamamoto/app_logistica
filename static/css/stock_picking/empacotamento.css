@@ -104,7 +104,7 @@
     background: var(--app-surface);
     color: var(--text);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1;
 
@@ -321,7 +321,7 @@
 }
 
 .emp-select-all-label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     color: var(--muted);
@@ -380,37 +380,54 @@
 }
 
 .emp-picking-item.emp-picking-packed::after {
-    content: "EMPACOTADO";
-
-    position: absolute;
-    z-index: 1;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    padding: 12px 28px;
-
-    background: rgba(100, 100, 100, 0.32);
-
-    color: var(--emp-packed-text);
-
-    border: 1px solid rgba(100, 100, 100, 0.45);
-    border-radius: 8px;
-
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-
-    pointer-events: none;
-    white-space: nowrap;
-
-    /*
-     * Mantém o rótulo visível sem recortar os elementos do item.
-     */
-    opacity: 1.8;
+   content: "EMPACOTADO";
+   position: absolute;
+   left: 0;
+   right: 0;
+   top: 50%;
+   transform: translateY(-50%);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   min-height: 58px;
+   padding: 12px 20px 12px 56px;
+   background:
+       linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
+       var(--grad-green);
+   background-size: 240% 100%, 100% 100%;
+   background-repeat: no-repeat;
+   animation: tarja-sheen 3.6s linear infinite;
+   border-top: 1px solid rgba(255, 255, 255, .4);
+   border-bottom: 1px solid rgba(255, 255, 255, .4);
+   box-shadow: 0 12px 26px rgba(30, 27, 46, .28), inset 0 1px 0 rgba(255, 255, 255, .45);
+   color: #ffffff;
+   font-size: 16px;
+   font-weight: 800;
+   letter-spacing: .12em;
+   line-height: 1.2;
+   text-align: center;
+   text-transform: uppercase;
+   text-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+   pointer-events: none;
+   z-index: 2;
 }
+
+.emp-picking-item.emp-picking-packed::before {
+   content: "";
+   position: absolute;
+   top: 50%;
+   left: 22px;
+   width: 24px;
+   height: 24px;
+   transform: translateY(-50%);
+   background: #ffffff;
+   -webkit-mask: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9'/%3E%3Cpath%20d='M8%2012.3l2.8%202.8L16%209.5'/%3E%3C/svg%3E") center / contain no-repeat;
+   mask: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='9'/%3E%3Cpath%20d='M8%2012.3l2.8%202.8L16%209.5'/%3E%3C/svg%3E") center / contain no-repeat;
+   pointer-events: none;
+   z-index: 3;
+}
+
 
 .emp-picking-item.emp-picking-packed .emp-picking-info {
     position: relative;
@@ -460,7 +477,7 @@
 /* LABEL */
 
 .emp-picking-label {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
 
     color: var(--app-muted);
@@ -566,11 +583,11 @@
 }
 
 .emp-picking-label {
-    font-size: 10px;
+    font-size: 13px;
 }
 
 .emp-picking-value {
-    font-size: 13px;
+    font-size: 14px;
 }
 
     .pv-generate-package-button {
@@ -789,7 +806,7 @@ body.emp-modal-open {
 
     color: var(--text);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     text-align: left;
@@ -832,7 +849,7 @@ body.emp-modal-open {
 
     border-radius: 8px;
 
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
 
     cursor: pointer;
@@ -950,7 +967,7 @@ body.emp-modal-open {
 .modal-kicker {
     display: block;
     color: var(--blue);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     letter-spacing: 1px;
     margin-bottom: 5px;
@@ -1055,9 +1072,7 @@ body.emp-modal-open {
 }
 
 
-.package-icon {
-    background: #eee8ff;
-}
+
 
 
 .validation-icon {

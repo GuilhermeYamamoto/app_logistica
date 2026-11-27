@@ -34,6 +34,23 @@
             </div>
         </div>
     </div>
+    <div id="beneficiamentoModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal beneficiamento-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-kicker">BENEFICIAMENTO</span>
+                    <h2 id="beneficiamentoTitle">CONSULTE BENEFICIAMENTO</h2>
+                    <p id="beneficiamentoInfo">-</p>
+                </div>
+                <button class="close-modal" type="button" data-close="beneficiamentoModal">×</button>
+            </div>
+            <div id="beneficiamentoBody" class="beneficiamento-body"></div>
+            <div class="modal-footer">
+                <button class="secondary-button" type="button" data-close="beneficiamentoModal">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
     <input id="photoCameraInput" class="photo-file-input" type="file" accept="image/*" capture="environment">
 
     <div id="barcodeScannerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">

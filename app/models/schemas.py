@@ -67,3 +67,9 @@ class BarcodeScan(BaseModel):
     """Código de barras lido para um recebimento."""
 
     barcode: str
+
+
+class ChatMessageRequest(BaseModel):
+    """Mensagem enviada no chat privado da equipe de T.I."""
+
+    texto: str = Field(..., min_length=1, max_length=500)

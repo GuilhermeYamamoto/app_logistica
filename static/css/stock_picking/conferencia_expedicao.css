@@ -53,7 +53,7 @@
     border-radius: 8px;
     background: #ffffff;
     color: var(--blue);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
     cursor: pointer;
 }
@@ -87,7 +87,7 @@
     border-radius: 50%;
     background: var(--app-surface);
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     line-height: 1;
     pointer-events: none;
@@ -110,7 +110,7 @@
 
 .sales-order-summary-label {
     color: var(--app-muted);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
     text-transform: uppercase;
 }

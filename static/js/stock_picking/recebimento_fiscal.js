@@ -17,7 +17,7 @@
         const definirQtdAction = document.createElement("button");
         definirQtdAction.classList.add("main-action");
         definirQtdAction.classList.add("definir-qtd-action");
-        definirQtdAction.innerHTML = '<span class="action-icon-small">📦</span>DEFINIR QUANTIDADE';
+        definirQtdAction.innerHTML = AppIcons.svg("package", "action-icon-small") + 'DEFINIR QUANTIDADE';
 
         // Adiciona o evento de clique ao botão "Definir Quantidade"
         definirQtdAction.addEventListener("click", async () => {

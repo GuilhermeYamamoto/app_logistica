@@ -185,7 +185,7 @@
             const addPhotoButton = document.createElement("button");
             addPhotoButton.type = "button";
             addPhotoButton.className = "delivery-add-photo-button";
-            addPhotoButton.innerHTML = '<span class="camera-icon">📷</span><span>TIRAR FOTO</span>';
+            addPhotoButton.innerHTML = AppIcons.svg("camera", "camera-icon") + '<span>TIRAR FOTO</span>';
             addPhotoButton.addEventListener("click", selectCanhotoPhoto);
             preview.append(addPhotoButton);
             const message = document.createElement("p");

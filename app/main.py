@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routers import auth, index, stock_picking, models
+from app.routers import auth, chat, index, stock_picking, models
 
 app = FastAPI()
 
@@ -33,6 +33,7 @@ async def health():
 app.include_router(auth.router)
 app.include_router(index.router)
 app.include_router(stock_picking.router)
+app.include_router(chat.router)
 app.include_router(models.router)
 
 

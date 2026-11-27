@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     ODOO_URL: str = "https://trn-serp.indufix.com.br"
     ODOO_DB: str = "odoo-trn"
 
+    # Chat de T.I.: departamento (hr.department) cujas pessoas entram no grupo de suporte.
+    # "Diretoria / Operações / Departamento de TI - VT"
+    TI_DEPARTMENT_ID: int = 4
+
     # Segurança
     SESSION_COOKIE_NAME: str = "odoo_session"
     SESSION_MAX_AGE: int = 60 * 60 * 8  # 8 horas

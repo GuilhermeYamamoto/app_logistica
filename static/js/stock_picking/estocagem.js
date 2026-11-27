@@ -480,6 +480,7 @@
             card.classList.remove("correction-requested");
             delete card.dataset.correctionRequested;
         }
+        window.AppTarja.set(card, correctionRequested ? "correction" : null);
 
         const addPeso = document.createElement("button");
 
@@ -514,7 +515,7 @@
             "package-action",
             "full-width-action"
         );
-        addPeso.innerHTML = '<span class="action-icon-small">⚖️</span>ADICIONAR PESO';
+        addPeso.innerHTML = AppIcons.svg("scale", "action-icon-small") + 'ADICIONAR PESO';
 
         const hasWeightDivergence = isWeightDivergenceActive(picking);
 
@@ -532,7 +533,7 @@
             corrigirPesoDivergente.type = "button";
             corrigirPesoDivergente.className = "main-action correction-action";
             corrigirPesoDivergente.innerHTML =
-                '<span class="action-icon-small">🛠️</span>SOLICITAR CORREÇÃO DE PESO';
+                AppIcons.svg("tool", "action-icon-small") + 'SOLICITAR CORREÇÃO DE PESO';
 
             corrigirPesoDivergente.addEventListener(
                 "click",
@@ -576,6 +577,7 @@
                             if (cardElement) {
                                 cardElement.classList.add("correction-requested");
                                 cardElement.dataset.correctionRequested = "true";
+                                window.AppTarja.set(cardElement, "correction");
                             }
 
                             if (!Array.isArray(picking.tagIds)) {
@@ -622,10 +624,13 @@
         const detailsHint = document.createElement("button");
         detailsHint.type = "button";
         detailsHint.className = "picking-details-hint";
-        detailsHint.innerHTML = '<span>👁️</span>VER DETALHES';
+        detailsHint.innerHTML = AppIcons.svg("eye") + 'VER DETALHES';
         detailsHint.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
         detailsHint.addEventListener("click", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             event.stopPropagation();
             openPickingDetailsModal(picking);
         });
@@ -637,6 +642,9 @@
         card.setAttribute("aria-label", `Abrir detalhes do picking ${picking.pv || picking.reference || "-"}`);
 
         card.addEventListener("keydown", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 openPickingDetailsModal(picking);
@@ -644,6 +652,9 @@
         });
 
         card.addEventListener("click", (event) => {
+            if (window.AppTarja.isLocked(card)) {
+                return;
+            }
             if (
                 event.target.closest("button") ||
                 event.target.closest("input") ||

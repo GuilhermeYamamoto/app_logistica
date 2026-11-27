@@ -219,7 +219,7 @@
 
     color: var(--muted);
 
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     text-align: center;
@@ -236,7 +236,7 @@
 
 .photo-progress > span {
     display: block;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     margin-bottom: 7px;
 }
@@ -541,52 +541,163 @@
     border-radius: inherit;
 }
 
-/* Tarja diagonal */
+/* Tarja diagonal: faixa em gradiente da marca, com brilho que passa lentamente. */
 .estoque-banner-clip .estoque-glass-banner {
     position: absolute;
-    top: 38px;
-    right: -48px;
+    top: 93px;
+    right: -120px;
 
-    width: 250px;
-    min-height: 46px;
+    width: 360px;
+    min-height: 42px;
     box-sizing: border-box;
-    padding: 10px 12px;
+    /* Padding direito maior desloca o texto para o centro da parte visível da tarja */
+    padding: 8px 76px 8px 14px;
 
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
 
     transform: rotate(45deg);
     transform-origin: center;
 
-    color: var(--muted-text, var(--text));
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: .08em;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .14em;
     line-height: 1.2;
     text-transform: uppercase;
-    text-align: center;
     white-space: nowrap;
 
-    background: rgba(255, 255, 255, 0.18);
-    border-top: 1px solid rgba(255, 255, 255, 0.35);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    background:
+        linear-gradient(100deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, 0) 65%),
+        var(--brand-gradient);
+    background-size: 240% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    animation: estoque-sheen 3.6s linear infinite;
 
-    box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
-
-    backdrop-filter: blur(10px) saturate(1.2);
-    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    box-shadow:
+        0 8px 18px rgba(219, 39, 119, .32),
+        inset 0 1px 0 rgba(255, 255, 255, .45);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .18);
 
     pointer-events: none;
     user-select: none;
 }
 
-html:not([data-theme="dark"]) .estoque-banner-clip .estoque-glass-banner {
-    background: rgba(60, 68, 77, 0.72);
-    border-top-color: rgba(255, 255, 255, 0.25);
-    border-bottom-color: rgba(255, 255, 255, 0.25);
-    color: #f5f7fb;
-    box-shadow: 0 0 18px rgba(30, 35, 42, 0.18);
-    backdrop-filter: blur(10px) saturate(1.2);
-    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+.estoque-glass-banner .ui-icon {
+    width: 18px;
+    height: 18px;
+}
+
+@keyframes estoque-sheen {
+    from {
+        background-position: 150% 0, 0 0;
+    }
+    to {
+        background-position: -150% 0, 0 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .estoque-glass-banner {
+        animation: none;
+    }
+}
+
+
+/* =========================================================
+   MODAL CONSULTE BENEFICIAMENTO
+   ========================================================= */
+
+.beneficiamento-body {
+    padding: 0 26px 8px;
+}
+
+.beneficiamento-message {
+    padding: 18px 16px;
+    border-radius: 10px;
+    background: var(--surface-secondary);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.beneficiamento-section {
+    position: relative;
+    margin-bottom: 16px;
+    padding: 20px 22px;
+    border-radius: 12px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--app-primary);
+    color: var(--text);
+}
+
+.beneficiamento-section:last-child {
+    margin-bottom: 0;
+}
+
+.beneficiamento-section-title {
+    margin-bottom: 14px;
+}
+
+/* Linha "Rótulo: valor": rótulo à esquerda, valor em destaque à direita */
+.beneficiamento-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 42%) 1fr;
+    align-items: baseline;
+    gap: 6px 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+}
+
+.beneficiamento-row:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.beneficiamento-row-label {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: .03em;
+    color: var(--text);
+    opacity: .75;
+}
+
+.beneficiamento-row-value {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+/* Linha sem rótulo: funciona como subtítulo do grupo */
+.beneficiamento-text {
+    margin: 18px 0 4px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--app-primary);
+}
+
+.beneficiamento-text:first-of-type {
+    margin-top: 0;
+}
+
+@media (max-width: 480px) {
+    .beneficiamento-body {
+        padding: 0 16px 8px;
+    }
+
+    .beneficiamento-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
 }

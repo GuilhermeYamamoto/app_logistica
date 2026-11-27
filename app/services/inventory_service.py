@@ -3,6 +3,7 @@
 from typing import Any, Dict, List
 from fastapi import HTTPException, status
 from collections import defaultdict
+import ast
 import xmlrpc.client
 from app.core.auth import OdooClient
 import json
@@ -2375,3 +2376,154 @@ class InventoryService:
         except Exception as error:
             print(error)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=("Não foi possível solicitar a conferencia de separação no Odoo")) from error
+
+    #  BENEFICIAMENTO
+    #  Botão "Consulte Beneficiamento" (type=action, id 1891) no stock.picking.
+    #  Reproduz o clique do cliente web: lê a ação e os valores padrão do
+    #  formulário com o contexto do picking, sem criar registros no Odoo.
+    BENEFICIAMENTO_ACTION_ID = 1891
+    BENEFICIAMENTO_DISPLAY_TYPES = {
+        "char", "text", "html", "boolean", "integer", "float",
+        "monetary", "date", "datetime", "selection", "many2one",
+    }
+
+    @staticmethod
+    def _parse_action_context(raw: Any) -> Dict[str, Any]:
+        """O contexto da ação é gravado como texto Python; devolve {} se não for literal."""
+        if isinstance(raw, dict):
+            return dict(raw)
+        if not raw or not isinstance(raw, str):
+            return {}
+        try:
+            parsed = ast.literal_eval(raw)
+        except (ValueError, SyntaxError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    @staticmethod
+    def _format_field_value(info: Dict[str, Any], value: Any) -> Any:
+        """Converte o valor padrão do Odoo em texto legível. Vazio vira None."""
+        if value in (None, False, "", []):
+            return None
+        field_type = info.get("type")
+        if field_type == "many2one":
+            return value[1] if isinstance(value, (list, tuple)) and len(value) > 1 else None
+        if field_type == "selection":
+            return dict(info.get("selection") or []).get(value, str(value))
+        if field_type == "boolean":
+            return "Sim" if value else "Não"
+        return str(value)
+
+    @staticmethod
+    def open_beneficiamento(client: OdooClient, picking_id: int) -> Dict[str, Any]:
+        """Executa a ação 1891 sobre o picking e devolve os campos do formulário para o modal."""
+        try:
+            # O botão type="action" aponta para qualquer ação (ir.actions.actions),
+            # inclusive de servidor. Descobre o tipo antes de executar.
+            base_actions = client.execute(
+                "ir.actions.actions",
+                "read",
+                [InventoryService.BENEFICIAMENTO_ACTION_ID],
+                fields=["name", "type"],
+            )
+            if not base_actions:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Ação de beneficiamento não encontrada no Odoo.")
+
+            base_action = base_actions[0]
+            action_name = base_action.get("name") or "Consulte Beneficiamento"
+            action_type = base_action.get("type")
+            action_context = {
+                "active_model": "stock.picking",
+                "active_ids": [picking_id],
+                "active_id": picking_id,
+            }
+
+            if action_type == "ir.actions.server":
+                # Igual ao botão no Odoo: executa a ação de servidor no contexto do picking.
+                # Ela pode devolver uma ação de janela (dict) para abrir um formulário.
+                result = client.execute(
+                    "ir.actions.server",
+                    "run",
+                    [InventoryService.BENEFICIAMENTO_ACTION_ID],
+                    context=action_context,
+                )
+                if not isinstance(result, dict) or not result.get("res_model"):
+                    return {
+                        "success": True,
+                        "picking_id": picking_id,
+                        "action_id": InventoryService.BENEFICIAMENTO_ACTION_ID,
+                        "action_name": action_name,
+                        "fields": [],
+                        "message": "A ação foi executada no Odoo, mas não há formulário de beneficiamento para exibir.",
+                    }
+                action = result
+            elif action_type == "ir.actions.act_window":
+                actions = client.execute(
+                    "ir.actions.act_window",
+                    "read",
+                    [InventoryService.BENEFICIAMENTO_ACTION_ID],
+                    fields=["name", "res_model", "view_mode", "target", "context"],
+                )
+                action = actions[0] if actions else {}
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Tipo de ação não suportado para beneficiamento: {action_type}.",
+                )
+
+            res_model = action.get("res_model")
+            if not res_model:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A ação de beneficiamento não possui formulário.")
+
+            context = InventoryService._parse_action_context(action.get("context"))
+            context.update({
+                "active_model": "stock.picking",
+                "active_ids": [picking_id],
+                "active_id": picking_id,
+            })
+
+            fields_info = client.execute(res_model, "fields_get", attributes=["string", "type", "selection"], context=context)
+            displayable = {
+                name: info
+                for name, info in fields_info.items()
+                if info.get("type") in InventoryService.BENEFICIAMENTO_DISPLAY_TYPES
+            }
+            defaults = (
+                client.execute(res_model, "default_get", list(displayable.keys()), context=context)
+                if displayable else {}
+            )
+            # default_get não calcula campos "compute" (não armazenados). O cliente web
+            # faz um onchange vazio ao abrir o formulário; repetimos isso sem gravar nada.
+            # Alguns wizards sobrescrevem onchange com outra assinatura no servidor;
+            # nesse caso mantemos os valores padrão em vez de falhar a consulta.
+            if displayable:
+                try:
+                    onchange_spec = {name: "1" for name in displayable}
+                    onchange_result = client.execute(res_model, "onchange", {}, [], onchange_spec, context=context)
+                    computed = (onchange_result or {}).get("value") or {}
+                    defaults = {**defaults, **{k: v for k, v in computed.items() if k in displayable}}
+                except xmlrpc.client.Fault as onchange_error:
+                    print(f"Onchange de {res_model} ignorado: {onchange_error.faultString[-200:]}")
+        except HTTPException:
+            raise
+        except xmlrpc.client.Fault as error:
+            match = re.search(r"(?:UserError|ValidationError): (.+)", str(error.faultString or ""))
+            if match:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=match.group(1).strip()) from error
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível consultar o beneficiamento no Odoo.") from error
+        except (KeyError, OSError, xmlrpc.client.Error) as error:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível consultar o beneficiamento no Odoo.") from error
+
+        fields: List[Dict[str, Any]] = []
+        for name, info in displayable.items():
+            value = InventoryService._format_field_value(info, defaults.get(name))
+            if value is not None:
+                fields.append({"name": name, "label": info.get("string") or name, "value": value})
+
+        return {
+            "success": True,
+            "picking_id": picking_id,
+            "action_id": InventoryService.BENEFICIAMENTO_ACTION_ID,
+            "action_name": action_name,
+            "fields": fields,
+        }

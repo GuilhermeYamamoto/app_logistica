@@ -1,6 +1,86 @@
 (function () {
     "use strict";
 
+    /* =========================================================
+       ÍCONES (SVG em linha, traço contínuo)
+       Substituem emojis: aparência igual em todos os aparelhos.
+    ========================================================= */
+
+    const ICON_PATHS = {
+        check: '<path d="M5 12.5l4.2 4.2L19 7"/>',
+        close: '<path d="M6 6l12 12M18 6L6 18"/>',
+        alert: '<path d="M12 4 2.8 19.5h18.4L12 4z"/><path d="M12 10v4.5M12 17.2v.1"/>',
+        chat: '<path d="M4 5.5h16v10.5H9l-5 4V5.5z"/>',
+        camera: '<path d="M4 8.5h3.2L9 6h6l1.8 2.5H20v10.5H4z"/><circle cx="12" cy="13.2" r="3.3"/>',
+        print: '<path d="M7 9V3.8h10V9"/><rect x="4" y="9" width="16" height="7.5" rx="2"/><path d="M7 14h10v6.2H7z"/>',
+        package: '<path d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2z"/><path d="M4 7.2l8 4.2 8-4.2M12 11.4V21"/>',
+        screw: '<rect x="4" y="3.5" width="16" height="4" rx="1.2"/><path d="M12 7.5V21"/><path d="M8 11l8 2M8 15l8 2M8 19l8 2"/>',
+        scale: '<path d="M12 4v16M7 20h10M5 7.5h14"/><path d="M5 7.5L2.5 13h5zM19 7.5L16.5 13h5z"/>',
+        layers: '<path d="M12 4l9 5-9 5-9-5z"/><path d="M3 14l9 5 9-5"/>',
+        tool: '<path d="M14.7 6.3a4 4 0 0 0 5 5l-8.2 8.2a2.1 2.1 0 0 1-3-3l8.2-8.2z"/>',
+        eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+        scan: '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M8 9v6M12 9v6M16 9v6"/>',
+        user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.8 20c1-3.7 3.8-5.6 7.2-5.6s6.2 1.9 7.2 5.6"/>',
+        search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+        back: '<path d="M14.5 6L8.5 12l6 6"/>',
+        send: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+        circleCheck: '<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16 9.5"/>',
+    };
+
+    function iconSvg(name, className = "") {
+        const paths = ICON_PATHS[name] || "";
+        return `<svg class="ui-icon ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+    }
+
+    /* Cria um <span> com o ícone. Se `raw` for informado, usa esse HTML no lugar do ícone. */
+    function iconSpan(name, className, raw) {
+        const element = document.createElement("span");
+        element.className = className || "";
+        element.innerHTML = raw ?? iconSvg(name);
+        return element;
+    }
+
+    window.AppIcons = Object.freeze({
+        svg: iconSvg,
+        span: iconSpan,
+    });
+
+    /* Tarjas de status sobre o card (ícone e texto lado a lado). */
+    const TARJA_VARIANTS = {
+        correction: { text: "CORREÇÃO DE PESO SOLICITADA", icon: "tool" },
+        estoque: { text: "ESTOQUE PENDENTE", icon: "package" },
+    };
+
+    function setTarja(card, variant) {
+        card.querySelector(":scope > .picking-tarja")?.remove();
+
+        const config = TARJA_VARIANTS[variant];
+        if (!config) {
+            return;
+        }
+
+        const band = document.createElement("div");
+        band.className = `picking-tarja picking-tarja--${variant}`;
+        band.setAttribute("role", "status");
+        band.innerHTML = `${iconSvg(config.icon)}<span>${config.text}</span>`;
+        card.appendChild(band);
+    }
+
+    // Card com tarja ativa não abre detalhes nem recebe ações.
+    function isTarjaLocked(card) {
+        return Boolean(
+            card &&
+            (card.classList.contains("correction-requested") ||
+                card.classList.contains("stock-pending")),
+        );
+    }
+
+    window.AppTarja = Object.freeze({
+        set: setTarja,
+        isLocked: isTarjaLocked,
+    });
+
+
     const elements = {
         records: document.getElementById("inventoryStageRecords"),
         container: document.getElementById("pickingsContainer"),
@@ -187,9 +267,7 @@
         }
 
         if (icon) {
-            button.append(
-                createElement("span", "action-icon-small", icon),
-            );
+            button.append(AppIcons.span(null, "action-icon-small", icon));
         }
 
         button.append(
@@ -285,7 +363,7 @@
         const button = createAction({
             className,
             label: "CONCLUÍDO",
-            icon: "✓",
+            icon: AppIcons.svg("check"),
             disabled,
             onClick: () => openValidation(record),
         });
@@ -301,7 +379,7 @@
         return createAction({
             className,
             label: "ALERTA DE QUALIDADE",
-            icon: "⚠️",
+            icon: AppIcons.svg("alert"),
             disabled,
             onClick: () => openQuality(record),
         });
@@ -334,11 +412,20 @@
 
         const chatTab = createAction({
             className: `chat-tab${hasMessages ? " has-messages" : ""}`,
-            label: "💬",
+            icon: AppIcons.svg("chat"),
+            label: "",
             ariaLabel: "Abrir chat do registro",
             title: "Abrir chat",
             onClick: () => openChat(record),
         });
+
+        // Texto ao lado do ícone; o mesmo rótulo vale para chatter e follow-up.
+        chatTab.append(createElement("span", "chat-tab-label", "Follow-Up"));
+
+        // Grupo de abas no topo do card. Etapas podem acrescentar abas à
+        // esquerda do follow-up via context.tabs (ex.: recebimento de qualidade).
+        const tabs = createElement("div", "card-tabs");
+        tabs.append(chatTab);
 
         const main = createElement("div", "picking-main");
         const identification = createElement("div", "picking-identification");
@@ -457,6 +544,8 @@
 
             main,
 
+            tabs,
+
             openChat: () =>
                 openChat(record),
 
@@ -483,7 +572,7 @@
         updateValidationButtonsState(card, record);
 
         card.append(
-            chatTab,
+            tabs,
             main,
             primaryActions,
             secondaryActions,
@@ -669,11 +758,24 @@
         }
     }
 
+    /* Converte o ícone recebido (símbolo legado ou nome) em SVG para o toast. */
+    const TOAST_ICON_NAMES = {
+        "✓": "check",
+        "✔": "check",
+        "✗": "close",
+        "✕": "close",
+        "!": "alert",
+        "⚠": "alert",
+        "⚠️": "alert",
+    };
+
     function showToast(message, icon = "✓") {
-        window.AppUI.showToast(
-            message,
-            icon,
-        );
+        window.AppUI.showToast(message, "");
+
+        const toastIcon = document.getElementById("toastIcon");
+        if (toastIcon) {
+            toastIcon.innerHTML = iconSvg(TOAST_ICON_NAMES[icon] || "check");
+        }
     }
 
     
@@ -1368,11 +1470,7 @@
                     cause.id;
 
                 button.append(
-                    createElement(
-                        "span",
-                        "cause-check",
-                        "✓",
-                    ),
+                    AppIcons.span("check", "cause-check"),
                     createElement(
                         "span",
                         "cause-option-name",
