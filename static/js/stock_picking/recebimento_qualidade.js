@@ -24,7 +24,6 @@
 
     let filteredPickingIds = null;
     let currentPhotoPickingId = null;
-    const printedLabels = new Set();
     let currentPhotoIndex = null;
 
     function hasValidPrintLocation(localValue) {
@@ -226,7 +225,10 @@
         });
 
         printButton.dataset.stopPrintShake = shouldAnimatePrintButton ? "false" : "true";
-        if (shouldAnimatePrintButton) {
+        if (inventory.hasPrintedLabel(picking.id)) {
+            // Etiqueta já impressa nesta sessão: mantém o botão sem animação após recarregar.
+            markPrintButtonPrinted(printButton);
+        } else if (shouldAnimatePrintButton) {
             stopPrintButtonAttention(printButton);
             startPrintButtonAttention(printButton);
         } else {
@@ -251,7 +253,7 @@
             !picking.photosRegistered ||
                 !picking.local ||
                 picking.local === "CD/STO" ||
-                !printedLabels.has(picking.id),
+                !inventory.hasPrintedLabel(picking.id),
         );
 
         context.addSecondaryAction(validationButton);
@@ -1260,7 +1262,7 @@
                     const body = await iotResponse.json().catch(() => iotResponse.statusText);
                     throw new Error(`Erro IoT: ${iotResponse.status} - ${JSON.stringify(body)}`);
                 }
-                printedLabels.add(picking.id);
+                inventory.markLabelPrinted(picking.id);
                 if (button) {
                     markPrintButtonPrinted(button);
                 }
