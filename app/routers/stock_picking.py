@@ -662,6 +662,21 @@ def post_picking_chat(picking_id: int,data: Dict[str, Any] = Body(...),client: O
 
 
 ####################################
+#  BENEFICIAMENTO (ação 1891 do stock.picking)
+####################################
+
+@router.post("/api/inventario/pickings/{picking_id}/beneficiamento")
+def post_picking_beneficiamento(picking_id: int, client: OdooClient = Depends(get_odoo_client),):
+
+    """
+    Executa a ação "Consulte Beneficiamento" (ação 1891) sobre o picking
+    e devolve os campos do formulário para exibição no modal.
+    """
+
+    return InventoryService.open_beneficiamento(client, picking_id)
+
+
+####################################
 #  FOLLOW-UP DO PEDIDO DE VENDA
 ####################################
 

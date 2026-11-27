@@ -117,17 +117,17 @@
         };
     }
 
+    // Campo x_studio_possui_beneficiamento do Odoo: True (ou equivalente) = picking de beneficiamento.
+    function hasBeneficiamento(picking) {
+        const raw = picking?.x_studio_possui_beneficiamento;
+        return raw === true || raw === 1 || raw === "true" || raw === "1";
+    }
+
     function getRequiredPhotoCount(picking) {
         const isAssignedPicking = String(picking?.state ?? "").trim().toLowerCase() === "assigned";
         const isQualityPicking = Number(picking?.picking_type_id ?? 137) === 137;
-        const rawBeneficiamento = picking?.x_studio_possui_beneficiamento;
-        const hasBeneficiamento =
-            rawBeneficiamento === true ||
-            rawBeneficiamento === 1 ||
-            rawBeneficiamento === "true" ||
-            rawBeneficiamento === "1";
 
-        if (isQualityPicking && isAssignedPicking && hasBeneficiamento) {
+        if (isQualityPicking && isAssignedPicking && hasBeneficiamento(picking)) {
             return 2;
         }
 
@@ -152,7 +152,21 @@
     }
 
     function enhanceCard(card, picking, context) {
-               
+
+        // Aba "Consultar Beneficiamento" à esquerda do follow-up.
+        // Só aparece em pickings de beneficiamento (x_studio_possui_beneficiamento = True).
+        if (hasBeneficiamento(picking)) {
+            const beneficiamentoTab = document.createElement("button");
+            beneficiamentoTab.type = "button";
+            beneficiamentoTab.className = "chat-tab beneficiamento-tab";
+            beneficiamentoTab.setAttribute("aria-label", "Consultar beneficiamento do registro");
+            beneficiamentoTab.title = "Consultar beneficiamento";
+            beneficiamentoTab.innerHTML =
+                `${AppIcons.svg("screw", "action-icon-small")}<span class="chat-tab-label">Consultar Beneficiamento</span>`;
+            beneficiamentoTab.addEventListener("click", () => openBeneficiamentoModal(picking));
+            context.tabs.prepend(beneficiamentoTab);
+        }
+
         const product = context.main.querySelector(".product-info");
 
         // TARJA ESTOQUE — tag Odoo ID 35
@@ -393,6 +407,114 @@
     function setupPhotoControls() {
         document.getElementById("finishPhotosButton")?.addEventListener("click", savePhotos);
         document.getElementById("photoCameraInput")?.addEventListener("change", handlePhotoSelection);
+    }
+
+    // ####################################
+    // # CONSULTE BENEFICIAMENTO (ação 1891)
+    // ####################################
+
+    function renderBeneficiamentoMessage(text) {
+        const body = document.getElementById("beneficiamentoBody");
+        if (!body) {
+            return;
+        }
+        const message = document.createElement("div");
+        message.className = "beneficiamento-message";
+        message.textContent = text;
+        body.replaceChildren(message);
+    }
+
+    function renderBeneficiamentoFields(fields) {
+        const body = document.getElementById("beneficiamentoBody");
+        if (!body) {
+            return;
+        }
+        if (!fields.length) {
+            renderBeneficiamentoMessage("Nenhuma informação de beneficiamento para este registro.");
+            return;
+        }
+        // Cada campo vira um bloco; o texto é quebrado nas linhas originais do Odoo
+        // e as linhas "Rótulo: valor" viram pares. Tudo com textContent (sem HTML).
+        const sections = fields.map((field) => {
+            const section = document.createElement("div");
+            section.className = "beneficiamento-section";
+
+            // O campo "message" não recebe título: o cabeçalho do modal já identifica a consulta.
+            if (field.name !== "message") {
+                const title = document.createElement("span");
+                title.className = "modal-kicker beneficiamento-section-title";
+                title.textContent = field.label;
+                section.append(title);
+            }
+
+            const lines = String(field.value ?? "")
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean);
+
+            lines.forEach((line) => {
+                const pair = line.match(/^([^:]{2,80}):\s*(.+)$/);
+                if (pair) {
+                    const row = document.createElement("div");
+                    row.className = "beneficiamento-row";
+                    const label = document.createElement("span");
+                    label.className = "beneficiamento-row-label";
+                    label.textContent = pair[1].trim();
+                    const value = document.createElement("span");
+                    value.className = "beneficiamento-row-value";
+                    value.textContent = pair[2].trim();
+                    row.append(label, value);
+                    section.append(row);
+                } else {
+                    const text = document.createElement("p");
+                    text.className = "beneficiamento-text";
+                    text.textContent = line;
+                    section.append(text);
+                }
+            });
+
+            return section;
+        });
+        body.replaceChildren(...sections);
+    }
+
+    async function openBeneficiamentoModal(picking) {
+        const info = document.getElementById("beneficiamentoInfo");
+        if (info) {
+            info.textContent = `${picking.pv || picking.reference || ""} • ${picking.product || ""}`;
+        }
+        renderBeneficiamentoMessage("Consultando beneficiamento...");
+        window.AppUI.openModal("beneficiamentoModal");
+
+        try {
+            const response = await fetch(
+                `/api/inventario/pickings/${picking.id}/beneficiamento`,
+                {
+                    method: "POST",
+                    headers: { Accept: "application/json" },
+                    cache: "no-store",
+                },
+            );
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.detail || "Não foi possível consultar o beneficiamento.");
+            }
+
+            const title = document.getElementById("beneficiamentoTitle");
+            if (title && data.action_name) {
+                title.textContent = String(data.action_name).toUpperCase();
+            }
+            const fields = Array.isArray(data.fields) ? data.fields : [];
+            if (!fields.length && data.message) {
+                renderBeneficiamentoMessage(data.message);
+            } else {
+                renderBeneficiamentoFields(fields);
+            }
+        } catch (error) {
+            console.error("Erro ao consultar beneficiamento:", error);
+            renderBeneficiamentoMessage(error.message || "Não foi possível consultar o beneficiamento.");
+        }
     }
 
     function openPhotoModal(picking) {
